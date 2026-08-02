@@ -181,4 +181,8 @@ permanente.
 
 - [`pipeline.md`](pipeline.md) — precios, guion de venta, secuencia y contrato
 - [`decision_criteria.yaml`](decision_criteria.yaml) — criterio de kill pre-registrado
+- [`validation.md`](validation.md) — investigación de mercado externa: qué tan real es el
+  problema, quién más cobra por esto, objeciones documentadas, qué NO está en la oferta
+- [`plan_aprendizaje.md`](plan_aprendizaje.md) — plan semanal de aprendizaje + simulación +
+  ejecución para quien arranca sin conocer el terreno
 - [`offers/`](offers/) — one-pagers de oferta, en inglés

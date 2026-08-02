@@ -72,19 +72,82 @@ el gancho de la llamada perdida requiere una observación registrada— pero la 
 tuya, no del código: el primer teléfono que atiendan destruye la venta y la reputación
 que estás tratando de construir.
 
+## Guion de apertura — llamada en frío (20 segundos)
+
+Objetivo único: permiso para mandar el link por SMS. No es venta, no es la
+demo, no son 20 minutos. Implementado también en
+[`factory/contact.py::build_call_script`](factory/contact.py) — si se retoca
+acá, retocarlo ahí también para que no diverjan.
+
+**ES**
+
+> Hola, ¿hablo con {negocio}? — No soy cliente, esto dura 20 segundos.
+> Hago sitios web para {oficio} en {ciudad} y ya te armé uno de muestra. Está
+> online ahora mismo.
+> ¿Te puedo mandar el link por mensaje para que lo mires más tarde? … Genial,
+> va a este número.
+> [Enviar SMS: {link}]
+> Sin compromiso — si te gusta lo apunto a tu dominio, si no te lo quedás
+> igual.
+
+**EN**
+
+> Hi, is this {business}? — I am not a customer, this will take 20 seconds.
+> I build websites for {trade} in {city} and I already built one for you as a
+> sample. It is online right now.
+> Can I text you the link so you can look at it later? … Great, it is going
+> to this number.
+> [Enviar SMS: {link}]
+> No obligation — if you like it I can point it at your domain, if not keep
+> it.
+
 ## Guion de la llamada (20 min)
 
-No es una demo del producto. Es confirmar que el dolor existe y que hay presupuesto.
+Es la llamada que se agenda **después** de que respondieron al link, no la de
+apertura. No es una demo del producto: es confirmar que el dolor existe y que
+hay presupuesto.
 
-1. "¿Cómo entran hoy los trabajos?" — dejar hablar
-2. "¿Qué pasa cuando llaman y estás en un techo?" — **este es el momento**
-3. "¿Cuánto vale un trabajo promedio para vos?" — cuantifica la pérdida sin que la
-   cuantifiques vos
-4. "¿Cuántas llamadas dirías que se te pasan por semana?"
-5. Recién ahí: precio, plazo, garantía
+**ES**
 
-Multiplicar 4 × 3 delante suyo es todo el argumento. Si da menos que USD 950, el
-prospecto está mal elegido: volver al paso de discovery, no bajar el precio.
+1. "Contame, ¿cómo te están llegando los trabajos hoy en día?" — dejar hablar,
+   no interrumpir.
+2. "¿Qué pasa cuando te llaman y estás arriba de un techo, abajo de una
+   pileta, manejando?" — **este es el momento**: que lo diga él, no vos.
+3. "Más o menos, ¿cuánto vale un trabajo típico para vos?" — cuantifica la
+   pérdida sin que la cuantifiques vos.
+4. "¿Cuántas llamadas dirías que se te escapan por semana, más o menos?"
+5. Multiplicar en voz alta delante suyo (4 × 3): "Entonces son unos
+   USD X por semana." Es todo el argumento — no agregar nada arriba.
+6. Recién ahí: precio (USD 950), plazo (48 hs), garantía (14 días, reembolso
+   total).
+
+**EN**
+
+1. "Walk me through it — how are jobs coming in for you these days?" — let
+   them talk, do not interrupt.
+2. "What happens when someone calls and you are on a roof, under a sink,
+   driving?" — **this is the moment**: let them say it, not you.
+3. "Roughly, what is a typical job worth to you?" — quantify the loss without
+   quantifying it yourself.
+4. "How many calls would you say you miss in a week, roughly?"
+5. Multiply out loud in front of them (4 × 3): "So that is about $X a week."
+   That is the whole pitch — do not add anything on top.
+6. Only then: price ($950), timeline (48 hours), guarantee (14-day full
+   refund).
+
+Si el número del paso 5 da menos que USD 950, el prospecto está mal elegido:
+volver al discovery, no bajar el precio.
+
+### Objeciones esperadas
+
+Documentadas en [`validation.md`](validation.md) a partir de debates reales en
+Reddit (r/Contractor, r/electricians) — no son hipotéticas, van a aparecer.
+
+| Objeción | Respuesta |
+|---|---|
+| "Consigo el 99% de mi trabajo por referidos" | "Totalmente, y esto no reemplaza eso — es específicamente para las llamadas que se te escapan mientras estás trabajando. Los referidos te siguen llegando igual." |
+| "Ya tengo sitio web" | Preguntar si carga rápido en el celular; ofrecer mandarles el link de pagespeed.web.dev para que lo vean con su propio número, no el tuyo. |
+| "No confío en alguien que llama de la nada" | Es la razón de que la demo ya esté online *antes* de la llamada — no piden que les crean nada, lo pueden abrir ellos mismos. |
 
 ## Resolver la falta de marca
 
