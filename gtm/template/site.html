@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<!-- noindex: esta demo NO debe competir en buscadores con el sitio real del negocio
+     ni ser confundida con él. Se saca solo cuando el cliente compra y pasa a su dominio. -->
+<meta name="robots" content="noindex,nofollow">
+<title>$business_name — $city $vertical_label</title>
+<meta name="description" content="$business_name: $vertical_label serving $city. Call $phone.">
+<style>
+/* Todo el CSS va inline: cero requests externos = carga inmediata. El contraste con
+   el sitio actual del prospecto es literalmente el argumento de venta. */
+*,*::before,*::after{box-sizing:border-box}
+body{margin:0;font:16px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;color:#16202a;background:#fff}
+img{max-width:100%;height:auto}
+.wrap{max-width:1040px;margin:0 auto;padding:0 20px}
+.demo-flag{background:#1f2937;color:#f9fafb;font-size:13px;padding:10px 20px;text-align:center}
+.demo-flag strong{color:#fff}
+header{background:#fff;border-bottom:1px solid #e5e7eb;position:sticky;top:0;z-index:10}
+.bar{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:14px 0;flex-wrap:wrap}
+.brand{font-size:19px;font-weight:700;letter-spacing:-.01em}
+.call{display:inline-block;background:#c2410c;color:#fff;text-decoration:none;font-weight:700;padding:12px 20px;border-radius:8px;white-space:nowrap}
+.call:hover{background:#9a3412}
+.hero{background:linear-gradient(180deg,#f8fafc,#fff);padding:56px 0 44px;text-align:center}
+.hero h1{font-size:clamp(28px,5vw,44px);line-height:1.15;margin:0 0 14px;letter-spacing:-.02em}
+.hero p{font-size:18px;color:#475569;max-width:60ch;margin:0 auto 26px}
+.trust{display:flex;gap:22px;justify-content:center;flex-wrap:wrap;color:#475569;font-size:15px;margin-top:26px}
+.trust b{color:#16202a}
+h2{font-size:26px;letter-spacing:-.01em;margin:0 0 22px}
+section{padding:48px 0;border-top:1px solid #f1f5f9}
+.grid{display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(230px,1fr))}
+.card{border:1px solid #e5e7eb;border-radius:10px;padding:20px;background:#fff}
+.card h3{margin:0 0 8px;font-size:17px}
+.card p{margin:0;color:#475569;font-size:15px}
+.quote{border-left:3px solid #c2410c;padding:4px 0 4px 16px;margin:0 0 20px;color:#334155;font-style:italic}
+.cta{background:#16202a;color:#fff;text-align:center;padding:52px 0}
+.cta h2{color:#fff}
+.cta p{color:#cbd5e1;max-width:52ch;margin:0 auto 24px}
+footer{padding:30px 0;color:#64748b;font-size:14px;text-align:center}
+@media(max-width:520px){
+  .bar{justify-content:center}
+  .brand{width:100%;text-align:center}
+  .bar .call{width:100%;text-align:center}
+}
+@media(prefers-color-scheme:dark){
+  body{background:#0f151b;color:#e8eef4}
+  header,.card{background:#151d25;border-color:#243040}
+  .hero{background:linear-gradient(180deg,#131b23,#0f151b)}
+  .hero p,.card p,.trust{color:#94a3b8}
+  .trust b,.card h3{color:#e8eef4}
+  section{border-color:#1c252f}
+  .quote{color:#cbd5e1}
+}
+</style>
+</head>
+<body>
+
+<div class="demo-flag">
+  <strong>Preview site</strong> — built for $business_name by $author_name. Not affiliated with,
+  or published by, $business_name. <a href="$author_url" style="color:#93c5fd">Who made this</a>
+</div>
+
+<header>
+  <div class="wrap bar">
+    <span class="brand">$business_name</span>
+    <a class="call" href="tel:$phone_href">Call $phone</a>
+  </div>
+</header>
+
+<div class="hero">
+  <div class="wrap">
+    <h1>$headline</h1>
+    <p>$subheadline</p>
+    <a class="call" href="tel:$phone_href">Call $phone</a>
+    <div class="trust">
+      <span><b>$rating★</b> from $review_count reviews</span>
+      <span><b>Serving</b> $city</span>
+      <span><b>Fast</b> response</span>
+    </div>
+  </div>
+</div>
+
+<section>
+  <div class="wrap">
+    <h2>What we do</h2>
+    <div class="grid">$services_html</div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2>What customers say</h2>
+    $reviews_html
+  </div>
+</section>
+
+<div class="cta">
+  <div class="wrap">
+    <h2>Need $vertical_article $vertical_label now?</h2>
+    <p>Call and talk to a real person. If we miss you, you get a text back in
+       seconds — not tomorrow.</p>
+    <a class="call" href="tel:$phone_href">Call $phone</a>
+  </div>
+</div>
+
+<footer>
+  <div class="wrap">
+    <p>$business_name · $address</p>
+    <p>Preview built by $author_name. The business information shown here is public
+       data from Google Maps.</p>
+  </div>
+</footer>
+
+</body>
+</html>

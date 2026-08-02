@@ -1,0 +1,66 @@
+# Criterio de decisión PRE-REGISTRADO.
+#
+# Se commitea ANTES del primer envío. El hash del commit es la prueba de que el
+# criterio no se escribió después de ver los resultados.
+#
+# El problema que esto resuelve: mirando datos ambiguos, siempre se encuentra una
+# lectura que justifica seguir con la hipótesis en la que ya se invirtió tiempo.
+# Fijar el umbral antes de tener datos es la única defensa contra eso.
+#
+# REGLA DURA: este archivo no se modifica durante el experimento. Si el criterio
+# resulta mal calibrado, eso es un resultado del experimento, no un bug a parchear.
+
+experimento: "Demos no solicitadas a home services de USA"
+horizonte_semanas: 8
+
+# Escalera de compromiso. El nivel 1 (clic) se registra pero NO decide nada:
+# mide curiosidad, no disposición a pagar.
+niveles:
+  1: clic en el link de la demo
+  2: responde el email
+  3: agenda una llamada
+  4: acepta la propuesta escrita
+  5: paga
+
+ganador:
+  # Cualquiera de las dos condiciones alcanza. Nivel 5 es terminal: una venta
+  # cobrada supera a cualquier cantidad de señal blanda.
+  - ventas_cobradas >= 1
+  - llamadas_agendadas >= 3
+
+kill:
+  # Si se cumple, el problema es la OFERTA o el VERTICAL, no el copy del email.
+  # Cambiar el asunto por décima vez es la forma más común de no aceptar un no.
+  - demos_enviadas >= 60 and respuestas < 3
+  # Interés que nunca llega a plata: el precio o el paquete están mal.
+  - respuestas >= 10 and llamadas_agendadas == 0
+
+accion_si_kill: "cambiar de vertical u oferta, no de redacción"
+
+# La regla que sostiene todo lo demás. Vivía solo en un comentario, así que nada la
+# hacía cumplir; ahora es una clave que los tests verifican.
+regla_dura: "este criterio no se modifica después de ver datos"
+
+# Los mismos umbrales, en forma legible por máquina. `FunnelReport` los implementa y
+# tests/gtm/test_ledger_criteria.py falla si el código se aparta de estos valores.
+# Sin esto, el pre-registro sería decorativo: nada impediría mover el umbral en el
+# código después de ver los datos, que es exactamente lo que hay que evitar.
+umbrales:
+  ganador_ventas_cobradas: 1
+  ganador_llamadas_agendadas: 3
+  kill_demos_enviadas: 60
+  kill_respuestas_minimas: 3
+  kill_respuestas_sin_llamada: 10
+
+# Segundo eje, para el desempate. Sin esto, el experimento optimiza demanda sola
+# y elige el negocio que más trabajo de soporte genera.
+desempate_por_mantenibilidad:
+  - horas_mes_por_cliente        # menor es mejor
+  - requiere_on_call             # descalifica
+  - dependencia_de_normativa     # penaliza (cambia sola, mantenimiento infinito)
+
+restricciones_no_negociables:
+  - "sin on-call"
+  - "sitio estático: no hay servidor propio que se rompa"
+  - "el bot lo opera un proveedor de terceros, no nosotros"
+  - "alcance de cambios topeado por contrato"

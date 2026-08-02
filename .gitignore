@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+htmlcov/
+
+# Entornos
+venv/
+.venv/
+env/
+
+# Secrets locales — nunca en git
+.env
+.env.personal
+
+# --- GTM: fábrica de demos de prospección ---
+# Datos de contacto de negocios reales que no pidieron estar en un repo público.
+# Se generan, se usan y se descartan; nunca entran al historial.
+gtm/build/
+gtm/public/
+
+# suppression.jsonl y funnel.jsonl SÍ se commitean: son la memoria del sistema y
+# guardan solo hashes, ningún dato de contacto recuperable. No se ignoran.
+
+# Editor / OS
+.DS_Store
+.vscode/
+.idea/

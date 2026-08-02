@@ -1,0 +1,28 @@
+[
+  {
+    "place_id": "ChIJsmoke001",
+    "name": "Ramirez Plumbing & Drain",
+    "vertical": "plumber",
+    "metro": "Tucson, AZ",
+    "phone": "(520) 555-0142",
+    "website": null,
+    "rating": 4.8,
+    "review_count": 214,
+    "address": "1420 E Speedway Blvd, Tucson, AZ 85719",
+    "services": [],
+    "top_reviews": ["Showed up in 40 minutes on a Sunday and fixed the leak. Fair price, no upsell."]
+  },
+  {
+    "place_id": "ChIJsmoke002",
+    "name": "Sonoran Desert HVAC",
+    "vertical": "hvac",
+    "metro": "Tucson, AZ",
+    "phone": "+1 520-555-0199",
+    "website": "https://facebook.com/sonoranhvac",
+    "rating": 4.6,
+    "review_count": 87,
+    "address": "2200 N Oracle Rd, Tucson, AZ 85705",
+    "services": [],
+    "top_reviews": ["AC died at 110 degrees. They had it running the same afternoon."]
+  }
+]

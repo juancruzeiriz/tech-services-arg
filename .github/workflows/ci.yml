@@ -1,0 +1,42 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run tests
+        run: pytest tests/ --tb=short -v
+
+      # Gate de cumplimiento aislado: falla ruidosamente y por separado si un
+      # email de prospección puede generarse sin dirección postal, sin
+      # mecanismo de baja o con asunto engañoso. Las multas de CAN-SPAM se
+      # cuentan por mensaje enviado.
+      - name: CAN-SPAM compliance gate
+        run: pytest tests/gtm/test_outreach.py -k canspam --tb=short -v
+
+      - name: Run ruff linter
+        run: ruff check gtm/ tests/
+
+      - name: Run mypy
+        run: mypy gtm/ --config-file mypy.ini
