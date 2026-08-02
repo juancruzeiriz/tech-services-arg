@@ -33,6 +33,12 @@ Ver [`gtm/README.md`](gtm/README.md) para el razonamiento completo, incluida la
 aritmética completa y por qué se descartaron las ofertas tipo auditoría (requieren
 credenciales del cliente, así que impiden hacer el trabajo primero).
 
+**¿Por qué Estados Unidos y por qué oficios, puntualmente?** Eso está en
+[`docs/WHY.md`](docs/WHY.md) — el documento que responde qué se ofrece exactamente, por
+qué el contacto en frío es legal en USA y no en Europa (CAN-SPAM vs. GDPR), y las cuatro
+condiciones que tienen que darse a la vez para que home services sea el vertical
+correcto (y que ningún otro tipo de negocio chico cumple todas juntas).
+
 ## Qué hace
 
 Vertical inicial: home services en USA (plomeros, HVAC, electricistas, techistas).
@@ -85,6 +91,7 @@ mypy gtm/ --config-file mypy.ini
 
 | Doc | Contenido |
 |---|---|
+| [`docs/WHY.md`](docs/WHY.md) | **Qué se ofrece, por qué USA, por qué oficios — empezar acá** |
 | [`gtm/README.md`](gtm/README.md) | Pipeline técnico: etapas, configuración, reglas que el código hace cumplir |
 | [`gtm/pipeline.md`](gtm/pipeline.md) | GTM comercial: oferta, precios, guion de venta, contrato, riesgos legales |
 | [`gtm/decision_criteria.yaml`](gtm/decision_criteria.yaml) | Criterio de éxito/kill pre-registrado, verificado por test |

@@ -8,6 +8,12 @@ Operativa de venta. El código fabrica el artefacto; esto define qué se hace co
 Criterio: el trabajo vale USD 300-15.000, el negocio es telefónico, las webs son malas,
 y una llamada perdida es una pérdida cuantificable. **Evitar salud (HIPAA) y legal.**
 
+Hay una cuarta razón, menos obvia que las anteriores: el servicio del prospecto no se
+puede deslocalizar (un plomero de Tucson no compite contra uno de otro país porque el
+trabajo se hace en la casa del cliente), así que la venta del sitio se cierra por
+confianza y urgencia local, no comparando precio contra un freelancer más barato en
+otro lado. Desarrollo del razonamiento en [`docs/WHY.md`](../docs/WHY.md#3-por-qué-oficios-home-services).
+
 **Nicho inicial: un oficio, un metro secundario.** No NYC ni LA. Es la decisión de
 apalancamiento más importante: el mismo template sirve a todos, el costo marginal por
 demo tiende a cero, y a la tercera venta podés decir "trabajo con otros tres plomeros
@@ -118,7 +124,11 @@ llegan a ~USD 53.000 por mensaje. El cumplimiento es trivial y está automatizad
 `pytest tests/gtm/test_outreach.py -k canspam` antes de cada envío. Y honrar las bajas
 en ≤10 días hábiles, de verdad.
 
-**GDPR bloquea esto en Europa.** El beachhead es USA por una razón legal, no cultural.
+**GDPR bloquea esto en Europa.** El beachhead es USA por una razón legal, no cultural:
+CAN-SPAM permite el contacto B2B en frío con reglas de forma (remitente real, opt-out
+honrado), mientras que GDPR exige consentimiento previo o interés legítimo demostrable.
+El mismo pipeline que es legal en USA sería una infracción desde el primer email si se
+apuntara a Europa. Razonamiento completo en [`docs/WHY.md`](../docs/WHY.md#2-por-qué-estados-unidos).
 
 **WhatsApp no aplica.** En USA el canal es teléfono y SMS; además la Business API exige
 plantillas aprobadas y opt-in previo, así que el envío en frío es inviable.
