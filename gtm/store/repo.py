@@ -101,6 +101,24 @@ TABLE_SPECS: dict[str, tuple[tuple[str, ...], tuple[str, ...]]] = {
         ),
         ("client_id",),
     ),
+    # client_id como clave de conflicto, no id: es un bigserial que no se
+    # conoce hasta después del insert, y esta tabla necesita reescribirse
+    # muchas veces (draft -> queued -> sending -> sent -> delivered) contra la
+    # MISMA fila lógica -- client_id se genera en Python antes del primer
+    # intento de escritura, igual que ya hacen costs/time_log/demo_views.
+    "outreach_messages": (
+        (
+            "client_id", "run_id", "place_id", "channel", "to_address", "subject", "body",
+            "link_token", "status", "attempt_count", "max_attempts", "next_attempt_at",
+            "provider_message_id", "verp_tag", "created_at", "queued_at", "sent_at",
+            "delivered_at", "failed_at", "failure_kind", "failure_reason", "last_error",
+        ),
+        ("client_id",),
+    ),
+    "outreach_attempts": (
+        ("client_id", "message_id", "attempt_no", "at", "outcome", "detail", "smtp_code"),
+        ("client_id",),
+    ),
 }
 
 

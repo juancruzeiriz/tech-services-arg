@@ -7,6 +7,7 @@ context manager async, `conn.cursor()` también, `executemany`)."""
 
 from __future__ import annotations
 
+import re
 from datetime import UTC, datetime
 
 import pytest
@@ -85,6 +86,67 @@ def outbox_path(tmp_path, monkeypatch):
     return path
 
 
+def _sql_table_columns() -> dict[str, set[str]]:
+    """Columnas reales por tabla, leídas de gtm/store/schema/*.sql.
+
+    Parser mínimo a propósito (no un parser SQL general): cuenta paréntesis
+    para encontrar el cierre de cada `create table`, y de cada línea adentro
+    toma la primera palabra si no es una palabra clave de constraint. Alcanza
+    para lo que este repo escribe a mano (una columna por línea) sin arrastrar
+    una dependencia de parsing SQL solo para un test.
+    """
+    from pathlib import Path
+
+    schema_dir = Path(__file__).resolve().parents[2] / "gtm" / "store" / "schema"
+    constraint_keywords = {"unique", "primary", "foreign", "check", "constraint"}
+    tables: dict[str, set[str]] = {}
+
+    for sql_path in sorted(schema_dir.glob("*.sql")):
+        text = sql_path.read_text(encoding="utf-8")
+        pos = 0
+        while True:
+            match = re.search(r"create table if not exists\s+(\w+)\s*\(", text[pos:], re.IGNORECASE)
+            if not match:
+                break
+            name = match.group(1)
+            body_start = pos + match.end()
+            depth = 1
+            i = body_start
+            while depth > 0 and i < len(text):
+                if text[i] == "(":
+                    depth += 1
+                elif text[i] == ")":
+                    depth -= 1
+                i += 1
+            body = text[body_start : i - 1]
+
+            # Sacar TODOS los comentarios antes de partir por comas, no
+            # después: una coma adentro de un comentario en español ("--
+            # email, URL del formulario...") se confunde con una coma real
+            # que separa columnas si el split por coma corre primero.
+            body_no_comments = "\n".join(line.split("--", 1)[0] for line in body.split("\n"))
+
+            columns = tables.setdefault(name, set())
+            for raw_segment in body_no_comments.split(","):
+                segment = raw_segment.strip()
+                if not segment:
+                    continue
+                first_word = segment.split()[0].lower()
+                if first_word in constraint_keywords:
+                    continue
+                columns.add(first_word)
+
+            pos = i
+
+        # ALTER TABLE ... ADD COLUMN IF NOT EXISTS <name> (migraciones posteriores).
+        for alter_match in re.finditer(
+            r"alter table (\w+) add column if not exists\s+(\w+)", text, re.IGNORECASE
+        ):
+            tables.setdefault(alter_match.group(1), set()).add(alter_match.group(2).lower())
+
+    return tables
+
+
 class TestTableSpecs:
     def test_toda_tabla_tiene_columnas(self):
         for table, (columns, _conflict) in repo.TABLE_SPECS.items():
@@ -99,6 +161,16 @@ class TestTableSpecs:
         schema/0001_init.sql para por qué incluso los logs de eventos la tienen."""
         for table, (_columns, conflict) in repo.TABLE_SPECS.items():
             assert conflict, f"{table} sin clave de conflicto: el replay no sería idempotente"
+
+    def test_las_columnas_del_spec_existen_de_verdad_en_el_sql(self):
+        """El bug que este test evita: TABLE_SPECS y el .sql real divergiendo
+        en silencio -- upsert() arma SQL válido igual (no sabe que una
+        columna no existe) hasta que Postgres lo rechaza en producción."""
+        sql_tables = _sql_table_columns()
+        for table, (columns, _conflict) in repo.TABLE_SPECS.items():
+            assert table in sql_tables, f"{table} está en TABLE_SPECS pero no en ningún .sql"
+            missing = set(columns) - sql_tables[table]
+            assert not missing, f"{table}: columnas en TABLE_SPECS que no existen en el SQL: {missing}"
 
 
 class TestBuildUpsertSql:
