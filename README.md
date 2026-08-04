@@ -112,6 +112,7 @@ mypy gtm/ --config-file mypy.ini
 | Doc | Contenido |
 |---|---|
 | [`docs/WHY.md`](docs/WHY.md) | **Qué se ofrece, por qué USA, por qué oficios — empezar acá** |
+| [`docs/CHANNELS.md`](docs/CHANNELS.md) | Qué canal usar para contactar (y por qué no SMS/WhatsApp/Telegram), cómo evitar la carpeta de spam |
 | [`gtm/README.md`](gtm/README.md) | Pipeline técnico: etapas, configuración, reglas que el código hace cumplir |
 | [`gtm/pipeline.md`](gtm/pipeline.md) | GTM comercial: oferta, precios, guion de venta, contrato, riesgos legales |
 | [`gtm/decision_criteria.yaml`](gtm/decision_criteria.yaml) | Criterio de éxito/kill pre-registrado, verificado por test |

@@ -181,6 +181,8 @@ las multas en vez de solo aplicarlas— y además falla justo con los mejores pr
 que son los que no tienen sitio del cual scrapear nada. Tampoco hay SMS en frío: el TCPA
 exige consentimiento previo expreso por escrito, con multas de USD 500-1.500 por mensaje.
 Quedan dos canales: teléfono para los de mayor dolor, formulario propio para el resto.
+El análisis completo de canales —por qué tampoco hay WhatsApp ni Telegram, y cómo se
+manda el email sin caer en spam— está en [`docs/CHANNELS.md`](../docs/CHANNELS.md).
 
 **La supresión persiste, pero sin datos personales.** `suppression.jsonl` y
 `funnel.jsonl` **sí** van a git —si se pierden, le volvés a escribir a quien pidió que
