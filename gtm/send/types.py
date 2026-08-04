@@ -126,3 +126,15 @@ class SmtpSettings:
     username: str
     password: str
     bounce_address: str
+
+
+@dataclass(frozen=True, slots=True)
+class ImapSettings:
+    """Host/puerto propios (IMAP y SMTP suelen vivir en subdominios
+    distintos), pero mismas credenciales que `SmtpSettings`: es la misma
+    casilla, solo que leída por otro protocolo."""
+
+    host: str
+    port: int
+    username: str
+    password: str

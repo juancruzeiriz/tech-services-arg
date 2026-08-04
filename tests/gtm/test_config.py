@@ -10,7 +10,7 @@ from __future__ import annotations
 import pytest
 
 from gtm.factory import config
-from gtm.send.types import SmtpSettings
+from gtm.send.types import ImapSettings, SmtpSettings
 
 
 @pytest.fixture(autouse=True)
@@ -28,6 +28,8 @@ def _entorno_limpio(monkeypatch):
         "GTM_SMTP_USER",
         "GTM_SMTP_PASSWORD",
         "GTM_BOUNCE_ADDRESS",
+        "GTM_IMAP_HOST",
+        "GTM_IMAP_PORT",
     ):
         monkeypatch.delenv(name, raising=False)
 
@@ -104,6 +106,29 @@ class TestLoadSmtpSettings:
     def test_sin_host_levanta_missing_config_error(self):
         with pytest.raises(config.MissingConfigError):
             config.load_smtp_settings()
+
+
+class TestLoadImapSettings:
+    def test_reusa_usuario_y_password_de_smtp(self, monkeypatch):
+        monkeypatch.setenv("GTM_IMAP_HOST", "imap.zoho.com")
+        monkeypatch.setenv("GTM_SMTP_USER", "bounces@dominio.com")
+        monkeypatch.setenv("GTM_SMTP_PASSWORD", "secreto")
+
+        settings = config.load_imap_settings()
+
+        assert settings == ImapSettings(
+            host="imap.zoho.com", port=993, username="bounces@dominio.com", password="secreto",
+        )
+
+    def test_sin_host_levanta_missing_config_error(self, monkeypatch):
+        monkeypatch.setenv("GTM_SMTP_USER", "u")
+        monkeypatch.setenv("GTM_SMTP_PASSWORD", "p")
+        with pytest.raises(config.MissingConfigError):
+            config.load_imap_settings()
+
+    def test_puede_pedir_imap(self):
+        missing = config.check_config(need_places=False, need_sender=False, need_imap=True)
+        assert missing == ["GTM_IMAP_HOST"]
 
 
 class TestReloadEnv:

@@ -12,6 +12,9 @@ Variables de entorno (cargadas desde `.env.personal` en la raíz del repo):
     GTM_SMTP_USER           Usuario de la casilla de envío.
     GTM_SMTP_PASSWORD       Contraseña o app password de la casilla de envío.
     GTM_BOUNCE_ADDRESS      Casilla que recibe los rebotes (VERP y lectura IMAP).
+    GTM_IMAP_HOST           Requerida por `gtm.send.bounces`. IMAP y SMTP suelen
+                             vivir en subdominios distintos del mismo proveedor.
+    GTM_IMAP_PORT           Puerto IMAP sobre TLS implícito (default 993).
     GTM_FROM_NAME           Remitente real (CAN-SPAM).
     GTM_FROM_EMAIL          Email de respuesta real y monitoreado (CAN-SPAM).
     GTM_PHYSICAL_ADDRESS    Dirección postal física (CAN-SPAM, obligatoria).
@@ -28,7 +31,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 from gtm.factory.types import GTMError, SenderIdentity
-from gtm.send.types import SmtpSettings
+from gtm.send.types import ImapSettings, SmtpSettings
 
 ROOT = Path(__file__).resolve().parents[2]
 GTM_DIR = ROOT / "gtm"
@@ -74,6 +77,7 @@ _PLACES_VARS = ("GOOGLE_PLACES_API_KEY",)
 _SENDER_VARS = ("GTM_FROM_NAME", "GTM_FROM_EMAIL", "GTM_PHYSICAL_ADDRESS", "GTM_UNSUBSCRIBE_URL")
 _DEMO_BASE_URL_VARS = ("GTM_DEMO_BASE_URL",)
 _SMTP_VARS = ("GTM_SMTP_HOST", "GTM_SMTP_USER", "GTM_SMTP_PASSWORD", "GTM_BOUNCE_ADDRESS")
+_IMAP_VARS = ("GTM_IMAP_HOST",)
 
 
 class MissingConfigError(GTMError):
@@ -100,6 +104,7 @@ def check_config(
     need_sender: bool = True,
     need_demo_base_url: bool = False,
     need_smtp: bool = False,
+    need_imap: bool = False,
 ) -> list[str]:
     """Nombres de variables de entorno faltantes, sin levantar nunca.
 
@@ -117,6 +122,8 @@ def check_config(
         wanted += _DEMO_BASE_URL_VARS
     if need_smtp:
         wanted += _SMTP_VARS
+    if need_imap:
+        wanted += _IMAP_VARS
     return [name for name in wanted if not optional_env(name)]
 
 
@@ -157,6 +164,18 @@ def load_smtp_settings() -> SmtpSettings:
         username=require_env("GTM_SMTP_USER"),
         password=require_env("GTM_SMTP_PASSWORD"),
         bounce_address=require_env("GTM_BOUNCE_ADDRESS"),
+    )
+
+
+def load_imap_settings() -> ImapSettings:
+    """Mismas credenciales que `load_smtp_settings` (es la misma casilla),
+    host/puerto propios porque IMAP y SMTP suelen vivir en subdominios
+    distintos del mismo proveedor."""
+    return ImapSettings(
+        host=require_env("GTM_IMAP_HOST"),
+        port=int(optional_env("GTM_IMAP_PORT", "993")),
+        username=require_env("GTM_SMTP_USER"),
+        password=require_env("GTM_SMTP_PASSWORD"),
     )
 
 
