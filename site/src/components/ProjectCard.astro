@@ -11,9 +11,15 @@ const lang = getLangFromUrl(Astro.url);
 const t = useTranslations(lang);
 ---
 <article class="project-card" data-reveal>
-  <a class="project-media" href={project.url ?? undefined} target={project.url ? "_blank" : undefined} rel={project.url ? "noopener noreferrer" : undefined} aria-label={project.title[lang]}>
-    <img src={project.image} alt="" loading="lazy" width="800" height="500" />
-  </a>
+  {project.url ? (
+    <a class="project-media" href={project.url} target="_blank" rel="noopener noreferrer" aria-label={project.title[lang]}>
+      <img src={project.image} alt="" loading="lazy" width="800" height="500" />
+    </a>
+  ) : (
+    <div class="project-media">
+      <img src={project.image} alt="" loading="lazy" width="800" height="500" />
+    </div>
+  )}
 
   <div class="project-body">
     <div class="project-heading">

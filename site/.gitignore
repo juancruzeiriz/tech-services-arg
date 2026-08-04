@@ -7,6 +7,11 @@ dist/
 # dependencies
 node_modules/
 
+# Chromium local para correr Lighthouse CI a mano (npx @puppeteer/browsers
+# install chrome@stable). CI usa su propio Chrome del runner, no este.
+chrome/
+.lighthouseci/
+
 # logs
 npm-debug.log*
 
