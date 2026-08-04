@@ -10,9 +10,18 @@ verificarla en el momento.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from datetime import date
 from enum import StrEnum
 
+from gtm.factory.archive import format_month_year
 from gtm.factory.types import Language
+
+# Códigos cuya evidencia se guarda en un formato neutral (ISO) y se traduce a
+# prosa recién al renderizar, porque `Finding.evidence` es un solo string y no
+# puede ser dos idiomas a la vez. `score.py` guarda la fecha con
+# `date.isoformat()`; acá se reformatea a "marzo de 2016" / "March 2016" según
+# el idioma que pida `sales_line`.
+_DATE_EVIDENCE_CODES = frozenset({"stale_since"})
 
 
 class Severity(StrEnum):
@@ -63,7 +72,16 @@ class Finding:
     def sales_line(self, language: Language) -> str:
         spec = self.spec
         template = spec.sales_line_es if language is Language.ES else spec.sales_line_en
-        return template.format(evidence=self.evidence)
+        return template.format(evidence=self._formatted_evidence(language))
+
+    def _formatted_evidence(self, language: Language) -> str:
+        if self.code not in _DATE_EVIDENCE_CODES:
+            return self.evidence
+        try:
+            parsed = date.fromisoformat(self.evidence)
+        except ValueError:
+            return self.evidence  # evidencia ya no-ISO (o corrupta): mostrar tal cual
+        return format_month_year(parsed, language.value)
 
 
 FINDINGS: dict[str, FindingSpec] = {

@@ -93,6 +93,29 @@ class TestScore:
 
     CLIENT = object()
 
+    @pytest.fixture(autouse=True)
+    def _sin_senales_de_red_extra(self, monkeypatch):
+        """`score_prospect` ahora también busca HTML (forensics), CrUX y
+        Wayback en paralelo con PageSpeed. Sin esto, cualquier test que
+        llegue a "el sitio existe y se puntúa" haría 3 requests reales
+        contra dominios que no resuelven (`self.CLIENT` ni siquiera es un
+        httpx.AsyncClient real) — lento, de red, y no es lo que este test
+        mide. Los tests que sí quieren ejercitar esas señales sobreescriben
+        el mock puntual después de pedir este fixture."""
+
+        async def _sin_html(*_args, **_kwargs):
+            return None
+
+        async def _sin_crux(*_args, **_kwargs):
+            return None
+
+        async def _sin_archive(*_args, **_kwargs):
+            return None
+
+        monkeypatch.setattr(score_mod, "fetch_text_async", _sin_html)
+        monkeypatch.setattr(score_mod, "_fetch_crux_safe", _sin_crux)
+        monkeypatch.setattr(score_mod, "last_meaningful_change", _sin_archive)
+
     async def test_sin_sitio_no_llama_a_la_api(self, monkeypatch):
         async def _explode(*_args, **_kwargs):
             pytest.fail("no debe llamarse")
@@ -162,6 +185,77 @@ class TestScore:
 
         assert result.performance == 18
         assert any("18/100" in note for note in result.notes)
+
+    async def test_score_prospect_junta_lab_campo_y_forense(self, monkeypatch):
+        """Las tres fuentes -- Lighthouse, CrUX y forensics -- terminan en el
+        mismo PainScore, cada una en su lugar."""
+        from datetime import date
+
+        from gtm.factory.crux import CruxMetrics
+
+        async def _up(*_args, **_kwargs):
+            return True
+
+        async def _lab(*_args, **_kwargs):
+            return PainScore(place_id="", performance=90, seo=90, accessibility=90, mobile_friendly=True)
+
+        async def _html(_client, _url):
+            return (_url, '<html><table bgcolor="#fff"><tr><td>x</td></tr></table></html>')
+
+        async def _crux(*_args, **_kwargs):
+            return CruxMetrics(lcp_ms=6200, inp_ms=100, cls=0.05)
+
+        async def _archive(*_args, **_kwargs):
+            return date(2016, 3, 12)
+
+        monkeypatch.setattr(score_mod, "probe_url_async", _up)
+        monkeypatch.setattr(score_mod, "score_website", _lab)
+        monkeypatch.setattr(score_mod, "fetch_text_async", _html)
+        monkeypatch.setattr(score_mod, "_fetch_crux_safe", _crux)
+        monkeypatch.setattr(score_mod, "last_meaningful_change", _archive)
+
+        prospect = Prospect(
+            place_id="p", name="X", vertical="plumber", metro="Tucson, AZ",
+            website="https://viejo.example",
+        )
+
+        result = await score_mod.score_prospect(self.CLIENT, prospect, crux_api_key="k")
+
+        assert result.crux_lcp_ms == 6200
+        assert result.has_field_data is True
+        assert result.last_changed == date(2016, 3, 12)
+        codes = {f.code for f in result.findings}
+        assert "crux_lcp_poor" in codes
+        assert "table_layout" in codes
+
+    async def test_si_crux_no_tiene_datos_degrada_a_laboratorio(self, monkeypatch):
+        """Un 404 de CrUX (ya resuelto a None por _fetch_crux_safe) es normal
+        en negocios chicos; no puede tumbar la etapa ni perder el dato de
+        laboratorio que sí se consiguió."""
+
+        async def _up(*_args, **_kwargs):
+            return True
+
+        async def _lab(*_args, **_kwargs):
+            return PainScore(place_id="", performance=40, seo=60)
+
+        async def _sin_crux(*_args, **_kwargs):
+            return None
+
+        monkeypatch.setattr(score_mod, "probe_url_async", _up)
+        monkeypatch.setattr(score_mod, "score_website", _lab)
+        monkeypatch.setattr(score_mod, "_fetch_crux_safe", _sin_crux)
+
+        prospect = Prospect(
+            place_id="p", name="X", vertical="plumber", metro="Tucson, AZ",
+            website="https://chico.example",
+        )
+
+        result = await score_mod.score_prospect(self.CLIENT, prospect, crux_api_key="k")
+
+        assert result.has_field_data is False
+        assert result.crux_lcp_ms is None
+        assert result.performance == 40
 
     async def test_un_fallo_individual_no_aborta_la_corrida(self, monkeypatch):
         """gather propagaría la primera excepción y perderíamos los que sí se puntuaron."""

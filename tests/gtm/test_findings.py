@@ -19,9 +19,31 @@ def test_la_linea_de_venta_interpola_la_evidencia():
 
 
 def test_la_linea_en_ingles_tambien_interpola():
-    finding = Finding(code="stale_since", evidence="March 2016")
+    finding = Finding(code="no_tel_link", evidence="phone number in plain text")
     linea = finding.sales_line(Language.EN)
-    assert "March 2016" in linea
+    assert "phone number in plain text" in linea
+
+
+class TestEvidenciaDeFecha:
+    """stale_since guarda la fecha en ISO (score.py) y se reformatea a prosa
+    recién al renderizar, porque evidence es un solo string y no puede ser
+    dos idiomas a la vez -- ver el comentario de _DATE_EVIDENCE_CODES."""
+
+    def test_reformatea_a_prosa_en_espanol(self):
+        finding = Finding(code="stale_since", evidence="2016-03-12")
+        assert "marzo de 2016" in finding.sales_line(Language.ES)
+
+    def test_reformatea_a_prosa_en_ingles(self):
+        finding = Finding(code="stale_since", evidence="2016-03-12")
+        assert "March 2016" in finding.sales_line(Language.EN)
+
+    def test_evidencia_no_iso_se_muestra_tal_cual_sin_lanzar(self):
+        finding = Finding(code="stale_since", evidence="hace mucho")
+        assert "hace mucho" in finding.sales_line(Language.ES)
+
+    def test_otros_codigos_no_se_tocan(self):
+        finding = Finding(code="no_https", evidence="http://x.com")
+        assert "http://x.com" in finding.sales_line(Language.ES)
 
 
 def test_no_hay_hallazgo_sin_severidad_declarada():

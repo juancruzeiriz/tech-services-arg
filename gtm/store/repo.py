@@ -54,6 +54,8 @@ TABLE_SPECS: dict[str, tuple[tuple[str, ...], tuple[str, ...]]] = {
         (
             "run_id", "place_id", "measured_at", "performance", "seo", "accessibility",
             "mobile_friendly", "has_web_presence", "reachable", "score", "is_qualified", "notes",
+            "speed_score", "mobile_score", "seo_score", "modernity_score", "conversion_score",
+            "crux_lcp_ms", "crux_inp_ms", "crux_cls", "has_field_data", "last_changed", "findings",
         ),
         ("run_id", "place_id"),
     ),
@@ -172,6 +174,7 @@ def run_prospect_row(run_id: str, prospect: Prospect, position: int) -> dict[str
 
 
 def score_row(run_id: str, score: PainScore, *, now: datetime | None = None) -> dict[str, Any]:
+    sub_scores = score.sub_scores
     return {
         "run_id": run_id,
         "place_id": score.place_id,
@@ -185,6 +188,20 @@ def score_row(run_id: str, score: PainScore, *, now: datetime | None = None) -> 
         "score": score.score,
         "is_qualified": score.is_qualified,
         "notes": list(score.notes),
+        "speed_score": sub_scores["speed"],
+        "mobile_score": sub_scores["mobile"],
+        "seo_score": sub_scores["seo"],
+        "modernity_score": sub_scores["modernity"],
+        "conversion_score": sub_scores["conversion"],
+        "crux_lcp_ms": score.crux_lcp_ms,
+        "crux_inp_ms": score.crux_inp_ms,
+        "crux_cls": score.crux_cls,
+        "has_field_data": score.has_field_data,
+        "last_changed": score.last_changed.isoformat() if score.last_changed else None,
+        "findings": [
+            {"code": f.code, "evidence": f.evidence, "weight": f.weight, "extra": dict(f.extra)}
+            for f in score.findings
+        ],
     }
 
 

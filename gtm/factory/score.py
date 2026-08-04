@@ -23,11 +23,15 @@ from typing import Any
 
 import httpx
 
-from gtm.factory import artifacts, config
+from gtm.factory import artifacts, config, forensics
+from gtm.factory.archive import last_meaningful_change
+from gtm.factory.crux import CruxMetrics, classify_inp, classify_lcp, fetch_crux_metrics
+from gtm.factory.findings import FINDINGS, Finding
 from gtm.factory.logs import get_logger
 from gtm.factory.net import (
     DEFAULT_CONCURRENCY,
     async_client,
+    fetch_text_async,
     gather_limited,
     probe_url_async,
     request_json_async,
@@ -53,6 +57,18 @@ def _category_score(lighthouse: dict[str, Any], category: str) -> int | None:
     if raw is None:
         return None
     return round(float(raw) * 100)
+
+
+def _audit_failed(lighthouse: dict[str, Any], audit_id: str) -> bool:
+    """True si Lighthouse corrió esta auditoría puntual y dio mal (score < 1).
+
+    `tap-targets` y `font-size` son señales que la propia forensics.py NO
+    puede medir desde el HTML crudo (dependen del layout ya renderizado) —
+    por eso viven acá y no ahí, aunque ambas terminan como el mismo tipo de
+    Finding con evidencia citable.
+    """
+    raw = lighthouse.get("audits", {}).get(audit_id, {}).get("score")
+    return raw is not None and float(raw) < 1.0
 
 
 async def score_website(
@@ -92,6 +108,24 @@ async def score_website(
     audits = lighthouse.get("audits", {})
     viewport = audits.get("viewport", {}).get("score")
 
+    lab_findings: list[Finding] = []
+    if _audit_failed(lighthouse, "tap-targets"):
+        lab_findings.append(
+            Finding(
+                code="tap_targets",
+                evidence="botones o enlaces muy chicos o muy juntos entre sí",
+                weight=FINDINGS["tap_targets"].weight,
+            )
+        )
+    if _audit_failed(lighthouse, "font-size"):
+        lab_findings.append(
+            Finding(
+                code="tiny_font",
+                evidence="texto por debajo del tamaño legible en celular",
+                weight=FINDINGS["tiny_font"].weight,
+            )
+        )
+
     return PainScore(
         place_id="",  # lo completa score_prospect
         performance=performance,
@@ -100,11 +134,35 @@ async def score_website(
         mobile_friendly=None if viewport is None else bool(viewport),
         has_web_presence=True,
         reachable=True,
+        findings=tuple(lab_findings),
     )
 
 
+async def _fetch_crux_safe(
+    client: httpx.AsyncClient, url: str, crux_api_key: str | None
+) -> CruxMetrics | None:
+    """Como `crux.fetch_crux_metrics`, pero sin dejar pasar nada más que un
+    404 (que esa función ya resuelve sola). CrUX puede estar caído, dar 500 o
+    agotar reintentos, y nada de eso puede tumbar la corrida — exactamente la
+    misma regla que ya aplica `archive.last_meaningful_change` para el
+    Wayback Machine."""
+    if not crux_api_key:
+        return None
+    try:
+        return await fetch_crux_metrics(client, url, api_key=crux_api_key)
+    except Exception as exc:  # noqa: BLE001 - CrUX nunca puede tumbar la corrida
+        _logger.warning(
+            "CrUX no respondió", extra={"event": "crux_failed", "url": url, "error": str(exc)}
+        )
+        return None
+
+
 async def score_prospect(
-    client: httpx.AsyncClient, prospect: Prospect, api_key: str | None = None
+    client: httpx.AsyncClient,
+    prospect: Prospect,
+    api_key: str | None = None,
+    *,
+    crux_api_key: str | None = None,
 ) -> PainScore:
     """Puntúa un prospecto, degradando a señales estructurales si no hay sitio medible."""
     presence = prospect.web_presence
@@ -149,6 +207,50 @@ async def score_prospect(
     if measured.seo is not None and measured.seo < 70:
         notes.append(f"SEO {measured.seo}/100: pierde búsquedas locales.")
 
+    # Tres señales independientes entre sí y de PageSpeed, en paralelo: ninguna
+    # puede alargar la etapa en serie, y las tres funciones ya se tragan sus
+    # propios errores (ver sus docstrings), así que ninguna puede tumbarla.
+    html_result, crux_metrics, last_changed = await asyncio.gather(
+        fetch_text_async(client, prospect.website),
+        _fetch_crux_safe(client, prospect.website, crux_api_key),
+        last_meaningful_change(client, _host_of(prospect.website)),
+    )
+
+    findings: list[Finding] = list(measured.findings)  # tap_targets/tiny_font, si Lighthouse los vio
+
+    if html_result is not None:
+        _, html = html_result
+        findings.extend(forensics.analyse_html(html, prospect.website))
+
+    if crux_metrics is not None:
+        lcp_ms = crux_metrics.lcp_ms
+        if lcp_ms is not None and classify_lcp(lcp_ms) == "poor":
+            findings.append(
+                Finding(
+                    code="crux_lcp_poor",
+                    evidence=f"{lcp_ms / 1000:.1f}s",
+                    weight=FINDINGS["crux_lcp_poor"].weight,
+                )
+            )
+        inp_ms = crux_metrics.inp_ms
+        if inp_ms is not None and classify_inp(inp_ms) == "poor":
+            findings.append(
+                Finding(
+                    code="crux_inp_poor",
+                    evidence=f"{inp_ms}ms",
+                    weight=FINDINGS["crux_inp_poor"].weight,
+                )
+            )
+
+    if last_changed is not None:
+        findings.append(
+            Finding(
+                code="stale_since",
+                evidence=last_changed.isoformat(),
+                weight=FINDINGS["stale_since"].weight,
+            )
+        )
+
     return PainScore(
         place_id=prospect.place_id,
         performance=measured.performance,
@@ -156,7 +258,17 @@ async def score_prospect(
         accessibility=measured.accessibility,
         mobile_friendly=measured.mobile_friendly,
         notes=tuple(notes),
+        findings=tuple(findings),
+        crux_lcp_ms=crux_metrics.lcp_ms if crux_metrics else None,
+        crux_inp_ms=crux_metrics.inp_ms if crux_metrics else None,
+        crux_cls=crux_metrics.cls if crux_metrics else None,
+        has_field_data=crux_metrics is not None,
+        last_changed=last_changed,
     )
+
+
+def _host_of(url: str) -> str:
+    return httpx.URL(url).host
 
 
 async def score_all(
@@ -164,6 +276,7 @@ async def score_all(
     api_key: str | None = None,
     concurrency: int = DEFAULT_CONCURRENCY,
     *,
+    crux_api_key: str | None = None,
     on_item: Callable[[str], None] | None = None,
 ) -> list[PainScore]:
     """Puntúa una lista de prospectos en paralelo.
@@ -182,7 +295,7 @@ async def score_all(
 
         async def _one(prospect: Prospect) -> PainScore | None:
             try:
-                score = await score_prospect(client, prospect, api_key)
+                score = await score_prospect(client, prospect, api_key, crux_api_key=crux_api_key)
             except ScoringError as exc:
                 _logger.warning(
                     "prospecto sin puntuar",
@@ -240,7 +353,12 @@ def main(argv: list[str] | None = None) -> int:
     prospects = artifacts.read_prospects(input_path)
 
     api_key = config.optional_env("PAGESPEED_API_KEY") or None
-    scores = asyncio.run(score_all(prospects, api_key, args.concurrency))
+    # Mismo proyecto de Google Cloud habilita las dos APIs: si no hay una key
+    # dedicada para CrUX, la de PageSpeed también sirve.
+    crux_api_key = config.optional_env("CRUX_API_KEY") or api_key
+    scores = asyncio.run(
+        score_all(prospects, api_key, args.concurrency, crux_api_key=crux_api_key)
+    )
 
     artifacts.write_scores(output_path, scores)
 

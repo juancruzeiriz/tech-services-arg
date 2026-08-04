@@ -11,6 +11,7 @@ from datetime import UTC, datetime
 
 import pytest
 
+from gtm.factory.findings import FINDINGS, Finding
 from gtm.factory.types import (
     ContactChannel,
     ContactPlan,
@@ -175,6 +176,52 @@ class TestRowBuilders:
         assert row["score"] == score.score
         assert row["is_qualified"] == score.is_qualified
         assert row["notes"] == []
+
+    def test_score_row_incluye_sub_scores_y_findings(self):
+        score = PainScore(
+            place_id="p1",
+            performance=30,
+            seo=60,
+            findings=(
+                Finding(code="no_https", evidence="http://x.com", weight=FINDINGS["no_https"].weight),
+            ),
+            crux_lcp_ms=6200,
+            crux_inp_ms=480,
+            crux_cls=0.31,
+            has_field_data=True,
+        )
+        row = repo.score_row("run-1", score)
+        assert row["speed_score"] == score.sub_scores["speed"]
+        assert row["mobile_score"] == score.sub_scores["mobile"]
+        assert row["seo_score"] == score.sub_scores["seo"]
+        assert row["modernity_score"] == score.sub_scores["modernity"]
+        assert row["conversion_score"] == score.sub_scores["conversion"]
+        assert row["crux_lcp_ms"] == 6200
+        assert row["crux_inp_ms"] == 480
+        assert row["crux_cls"] == 0.31
+        assert row["has_field_data"] is True
+        assert row["findings"] == [
+            {"code": "no_https", "evidence": "http://x.com", "weight": FINDINGS["no_https"].weight, "extra": {}}
+        ]
+
+    def test_score_row_last_changed_es_string_iso_o_none(self):
+        from datetime import date
+
+        sin_fecha = repo.score_row("run-1", PainScore(place_id="p1"))
+        assert sin_fecha["last_changed"] is None
+
+        con_fecha = repo.score_row("run-1", PainScore(place_id="p1", last_changed=date(2016, 3, 12)))
+        assert con_fecha["last_changed"] == "2016-03-12"
+
+    def test_score_row_es_json_safe(self):
+        import json
+
+        score = PainScore(
+            place_id="p1",
+            findings=(Finding(code="no_https", evidence="x", weight=FINDINGS["no_https"].weight),),
+            last_changed=None,
+        )
+        json.dumps(repo.score_row("run-1", score))  # no debe lanzar
 
     def test_demo_row(self):
         demo = Demo(

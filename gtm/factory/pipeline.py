@@ -288,12 +288,16 @@ async def run_pipeline(
             _emit(emit, ctx.run_id, Stage.SCORE, "item", message=score.place_id)
     else:
         api_key = config.optional_env("PAGESPEED_API_KEY") or None
+        # Mismo proyecto de Google Cloud habilita las dos APIs: si no hay una
+        # key dedicada para CrUX, la de PageSpeed también sirve.
+        crux_api_key = config.optional_env("CRUX_API_KEY") or api_key
 
         def _on_scored(place_id: str) -> None:
             _emit(emit, ctx.run_id, Stage.SCORE, "item", message=place_id)
 
         scores = await score_all(
-            prospects, api_key, ctx.score_concurrency, on_item=_on_scored
+            prospects, api_key, ctx.score_concurrency,
+            crux_api_key=crux_api_key, on_item=_on_scored,
         )
     artifacts.write_scores(ctx.data_dir / "scores.json", scores)
     stages.append(StageResult(Stage.SCORE, True, len(scores), _ms_since(t0)))

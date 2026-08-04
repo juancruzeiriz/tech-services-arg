@@ -4,6 +4,9 @@ Variables de entorno (cargadas desde `.env.personal` en la raíz del repo):
 
     GOOGLE_PLACES_API_KEY   Requerida por `discover`. Places API (New).
     PAGESPEED_API_KEY       Opcional en `score`. Sin key hay cuota reducida.
+    CRUX_API_KEY            Opcional en `score`, para datos de campo (Chrome UX
+                             Report). Si falta, cae a PAGESPEED_API_KEY: es el
+                             mismo proyecto de Google Cloud el que habilita las dos APIs.
     GTM_FROM_NAME           Remitente real (CAN-SPAM).
     GTM_FROM_EMAIL          Email de respuesta real y monitoreado (CAN-SPAM).
     GTM_PHYSICAL_ADDRESS    Dirección postal física (CAN-SPAM, obligatoria).
