@@ -11,9 +11,16 @@ from __future__ import annotations
 import hashlib
 import re
 from dataclasses import asdict, dataclass, field
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from enum import StrEnum
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    # Import solo para tipos: gtm.factory.findings importa Language de este
+    # mismo módulo, así que un import real acá (no bajo TYPE_CHECKING)
+    # sería un ciclo. `from __future__ import annotations` ya vuelve string
+    # toda anotación, así que en runtime nunca hace falta resolver Finding.
+    from gtm.factory.findings import Finding
 
 
 class GTMError(Exception):
@@ -233,12 +240,41 @@ class Prospect:
         )
 
 
+# Peso de cada dimensión en el promedio final de `PainScore.score`. Conversión
+# pesa más que nada porque "no te pueden llamar" cuesta plata hoy, no en
+# abstracto; modernity pesa menos porque es la señal más subjetiva de las
+# cinco. mobile queda en 2.0 (no en una escala más "pareja" con las demás) a
+# propósito: es exactamente el peso que ya tenía `mobile_friendly is False`
+# antes de que existieran dimensiones, y en home services el tráfico es casi
+# puro celular — bajarlo habría hecho que un sitio no apto para móvil dejara
+# de calificar por sí solo, que es la garantía que este score siempre dio.
+_DIMENSION_WEIGHTS: dict[str, float] = {
+    "speed": 1.0,
+    "mobile": 2.0,
+    "seo": 1.0,
+    "modernity": 0.8,
+    "conversion": 2.0,
+}
+
+# Cuánto pain-value de base aporta un Finding a su dimensión, por unidad de
+# FindingSpec.weight (que va de 1.0 a 3.0). Un hallazgo CRITICAL (weight 3.0)
+# solo aporta 90/100 a su dimensión: ni un hallazgo aislado la satura del
+# todo, pero varios hallazgos en la misma dimensión sí pueden acercarse a 100.
+_FINDING_PAIN_SCALE = 30.0
+
+# Ranking para ordenar sales_lines() del hallazgo más grave al menos grave.
+# Valores literales (no el enum Severity) para no importar gtm.factory.findings
+# en tiempo de ejecución — ver el comentario de TYPE_CHECKING más arriba.
+_SEVERITY_RANK: dict[str, int] = {"critical": 0, "high": 1, "medium": 2, "low": 3}
+
+
 @dataclass(frozen=True, slots=True)
 class PainScore:
     """Cuánto le duele al negocio su presencia digital actual.
 
     Escala 0-100, mayor es más dolor y por lo tanto mejor prospecto. Se compone de
-    señales objetivas (Lighthouse) y estructurales (no tener sitio).
+    señales de laboratorio (Lighthouse), de campo (CrUX), forenses (HTML crudo) y
+    estructurales (no tener sitio).
     """
 
     place_id: str
@@ -254,6 +290,18 @@ class PainScore:
 
     notes: tuple[str, ...] = ()
 
+    findings: tuple[Finding, ...] = ()
+    """Hallazgos forenses/de campo con evidencia citable — ver gtm.factory.findings."""
+
+    crux_lcp_ms: int | None = None
+    crux_inp_ms: int | None = None
+    crux_cls: float | None = None
+    has_field_data: bool = False
+    """True si CrUX tenía datos de campo reales (no solo el laboratorio)."""
+
+    last_changed: date | None = None
+    """Última vez que el contenido del sitio cambió de verdad (Wayback CDX)."""
+
     @property
     def score(self) -> int:
         """Pain score compuesto 0-100.
@@ -266,28 +314,29 @@ class PainScore:
         if not self.reachable:
             return 95
 
-        # Promedio ponderado de (dolor, peso). Invertimos los scores de Lighthouse:
-        # bajo rendimiento = alto dolor. Los pesos van aparte del valor a propósito:
-        # bajar el valor y promediar por conteo completo diluiría el score global en
-        # vez de restarle importancia solo a esa señal.
-        signals: list[tuple[float, float]] = []
-        if self.performance is not None:
-            signals.append((100 - self.performance, 1.0))
-        if self.seo is not None:
-            signals.append((100 - self.seo, 1.0))
-        if self.accessibility is not None:
-            # Importa, pero no es lo que le duele al dueño de una plomería.
-            signals.append((100 - self.accessibility, 0.5))
-        if self.mobile_friendly is False:
-            # En home services el tráfico es casi puramente móvil: un sitio que no
-            # es usable en teléfono domina a cualquier otra señal.
-            signals.append((90, 2.0))
+        # Promedio ponderado de (dolor, peso) entre las dimensiones que
+        # tuvieron ALGUNA señal (de laboratorio o de hallazgos) y, aparte,
+        # accessibility como término directo. Una dimensión sin ninguna señal
+        # se EXCLUYE del promedio en vez de contar como "sin dolor" — si no se
+        # midió algo, no corresponde que reste.
+        blend: list[tuple[float, float]] = []
+        for dimension, values in self._dimension_pain_values().items():
+            combined = self._combine_pain(values)
+            if combined is not None:
+                blend.append((combined, _DIMENSION_WEIGHTS[dimension]))
 
-        if not signals:
+        if self.accessibility is not None:
+            # Importa, pero no es lo que le duele al dueño de una plomería, y
+            # conceptualmente no es "mobile-friendliness" — por eso queda
+            # fuera de toda dimensión, como señal directa de peso bajo, igual
+            # que antes de que existieran dimensiones.
+            blend.append((100.0 - self.accessibility, 0.5))
+
+        if not blend:
             return 0
 
-        total_weight = sum(weight for _, weight in signals)
-        weighted = sum(value * weight for value, weight in signals) / total_weight
+        total_weight = sum(weight for _, weight in blend)
+        weighted = sum(value * weight for value, weight in blend) / total_weight
         return max(0, min(100, round(weighted)))
 
     @property
@@ -295,16 +344,76 @@ class PainScore:
         """Umbral de corte para gastar tiempo generando una demo."""
         return self.score >= 45
 
+    @property
+    def sub_scores(self) -> dict[str, int]:
+        """Pain 0-100 por cada una de las cinco dimensiones, para mostrar en
+        pantalla o citar en el copy de venta. A diferencia de `score`, acá
+        una dimensión sin señal se muestra en 0 — este diccionario es para
+        leer, no para promediar (eso ya lo hace `score`)."""
+        return {
+            dimension: round(self._combine_pain(values) or 0.0)
+            for dimension, values in self._dimension_pain_values().items()
+        }
+
+    def sales_lines(self, language: Language) -> list[str]:
+        """Las líneas de venta de los hallazgos, del más grave al menos grave."""
+        ordered = sorted(self.findings, key=lambda f: _SEVERITY_RANK[f.spec.severity.value])
+        return [f.sales_line(language) for f in ordered]
+
+    def _dimension_pain_values(self) -> dict[str, list[float]]:
+        """Valores de dolor (0-100) por dimensión, antes de combinar. `speed`
+        y `seo` incluyen la señal de laboratorio correspondiente; `mobile`
+        incluye `mobile_friendly is False`; las cinco suman los Finding que
+        caen en esa dimensión. `accessibility` NO entra acá — ver `score`."""
+        values: dict[str, list[float]] = {d: [] for d in _DIMENSION_WEIGHTS}
+
+        if self.performance is not None:
+            values["speed"].append(100.0 - self.performance)
+        if self.seo is not None:
+            values["seo"].append(100.0 - self.seo)
+        if self.mobile_friendly is False:
+            # En home services el tráfico es casi puramente móvil: un sitio que
+            # no es usable en teléfono domina a cualquier otra señal.
+            values["mobile"].append(90.0)
+
+        for finding in self.findings:
+            dimension = finding.spec.dimension.value
+            values.setdefault(dimension, []).append(min(100.0, finding.weight * _FINDING_PAIN_SCALE))
+
+        return values
+
+    @staticmethod
+    def _combine_pain(values: list[float]) -> float | None:
+        """Combina las señales de dolor de una misma dimensión con OR
+        ruidoso en vez de promediarlas: dos hallazgos reales en la misma
+        dimensión tienen que doler MÁS que uno solo, nunca menos, y un
+        promedio diluiría al más grave con el más leve. Con una sola señal
+        da exactamente esa señal — por eso `score` no cambió para ningún
+        caso que ya tenía cobertura de tests antes de que existiera esto.
+        """
+        if not values:
+            return None
+        product = 1.0
+        for value in values:
+            product *= 1.0 - max(0.0, min(100.0, value)) / 100.0
+        return (1.0 - product) * 100.0
+
     def to_dict(self) -> dict[str, Any]:
         data = asdict(self)
         data["score"] = self.score
         data["is_qualified"] = self.is_qualified
+        data["sub_scores"] = self.sub_scores
+        if self.last_changed is not None:
+            data["last_changed"] = self.last_changed.isoformat()
         return data
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> PainScore:
-        """Reconstruye desde `to_dict()`. Ignora `score`/`is_qualified`: son
-        propiedades derivadas, no campos — pasarlas al constructor rompería."""
+        """Reconstruye desde `to_dict()`. Ignora `score`/`is_qualified`/`sub_scores`:
+        son propiedades derivadas, no campos — pasarlas al constructor rompería."""
+        from gtm.factory.findings import Finding  # import local: rompe el ciclo en runtime
+
+        last_changed_raw = data.get("last_changed")
         return cls(
             place_id=data["place_id"],
             performance=data.get("performance"),
@@ -314,6 +423,20 @@ class PainScore:
             has_web_presence=data.get("has_web_presence", True),
             reachable=data.get("reachable", True),
             notes=tuple(data.get("notes", ())),
+            findings=tuple(
+                Finding(
+                    code=f["code"],
+                    evidence=f["evidence"],
+                    weight=f.get("weight", 1.0),
+                    extra=f.get("extra", {}),
+                )
+                for f in data.get("findings", ())
+            ),
+            crux_lcp_ms=data.get("crux_lcp_ms"),
+            crux_inp_ms=data.get("crux_inp_ms"),
+            crux_cls=data.get("crux_cls"),
+            has_field_data=data.get("has_field_data", False),
+            last_changed=date.fromisoformat(last_changed_raw) if last_changed_raw else None,
         )
 
 

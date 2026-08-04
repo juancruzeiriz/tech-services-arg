@@ -4,12 +4,14 @@ from __future__ import annotations
 
 import pytest
 
+from gtm.factory.findings import FINDINGS, Finding
 from gtm.factory.types import (
     VERTICAL_LABELS,
     ComplianceError,
     ContactChannel,
     ContactPlan,
     Demo,
+    Language,
     OutreachEmail,
     PainScore,
     Prospect,
@@ -105,6 +107,101 @@ class TestPainScore:
     def test_score_siempre_en_rango(self):
         score = PainScore(place_id="x", performance=0, seo=0, accessibility=0, mobile_friendly=False)
         assert 0 <= score.score <= 100
+
+
+class TestPainScoreSubScores:
+    """`findings` es puramente aditivo: sin hallazgos, el score tiene que
+    seguir dando exactamente los mismos números que antes de esta clase
+    existir -- por eso TestPainScore de arriba no cambió ni un assert."""
+
+    def test_expone_las_cinco_dimensiones(self):
+        s = PainScore(place_id="x", performance=20, seo=40, accessibility=60)
+        assert set(s.sub_scores) == {"speed", "mobile", "seo", "modernity", "conversion"}
+
+    def test_dimension_sin_senal_se_muestra_en_cero(self):
+        s = PainScore(place_id="x", performance=20)
+        assert s.sub_scores["modernity"] == 0
+        assert s.sub_scores["conversion"] == 0
+
+    def test_un_hallazgo_critico_de_conversion_empuja_el_score_global(self):
+        base = PainScore(place_id="x", performance=90, seo=95, accessibility=95, mobile_friendly=True)
+        con_hallazgo = PainScore(
+            place_id="x", performance=90, seo=95, accessibility=95, mobile_friendly=True,
+            findings=(Finding(code="no_tel_link", evidence="teléfono en texto plano", weight=FINDINGS["no_tel_link"].weight),),
+        )
+        assert con_hallazgo.score > base.score
+
+    def test_un_hallazgo_se_refleja_en_su_propia_dimension(self):
+        s = PainScore(
+            place_id="x",
+            findings=(Finding(code="table_layout", evidence="3 tablas", weight=FINDINGS["table_layout"].weight),),
+        )
+        assert s.sub_scores["modernity"] > 0
+        assert s.sub_scores["conversion"] == 0
+
+    def test_mas_hallazgos_en_la_misma_dimension_suben_mas_el_dolor(self):
+        uno = PainScore(
+            place_id="x",
+            findings=(Finding(code="table_layout", evidence="x", weight=FINDINGS["table_layout"].weight),),
+        )
+        dos = PainScore(
+            place_id="x",
+            findings=(
+                Finding(code="table_layout", evidence="x", weight=FINDINGS["table_layout"].weight),
+                Finding(code="dead_analytics", evidence="x", weight=FINDINGS["dead_analytics"].weight),
+            ),
+        )
+        assert dos.sub_scores["modernity"] > uno.sub_scores["modernity"]
+
+    def test_findings_vacio_no_cambia_el_score_de_antes(self, slow_site_score):
+        # Regresión directa: mismos campos que el fixture ya usado en
+        # TestPainScore, sin findings -- tiene que dar exactamente 52.
+        assert slow_site_score.score == 52
+        assert slow_site_score.sub_scores["modernity"] == 0
+        assert slow_site_score.sub_scores["conversion"] == 0
+
+    def test_las_lineas_de_venta_salen_ordenadas_por_severidad(self):
+        s = PainScore(
+            place_id="x",
+            findings=(
+                Finding(code="stale_copyright", evidence="© 2014", weight=FINDINGS["stale_copyright"].weight),
+                Finding(code="no_tel_link", evidence="teléfono en texto plano", weight=FINDINGS["no_tel_link"].weight),
+            ),
+        )
+        lineas = s.sales_lines(Language.ES)
+        assert len(lineas) == 2
+        assert "teléfono" in lineas[0]  # CRITICAL antes que MEDIUM
+
+    def test_sales_lines_vacio_sin_hallazgos(self):
+        assert PainScore(place_id="x").sales_lines(Language.ES) == []
+
+    def test_el_score_siempre_queda_en_rango_con_muchos_hallazgos(self):
+        s = PainScore(
+            place_id="x",
+            findings=tuple(Finding(code=c, evidence="x", weight=spec.weight) for c, spec in FINDINGS.items()),
+        )
+        assert 0 <= s.score <= 100
+        assert all(0 <= v <= 100 for v in s.sub_scores.values())
+
+
+class TestPainScoreRoundtripConHallazgos:
+    def test_from_dict_reconstruye_los_findings(self):
+        original = PainScore(
+            place_id="x",
+            findings=(Finding(code="no_https", evidence="http://x.com", weight=FINDINGS["no_https"].weight),),
+        )
+        restored = PainScore.from_dict(original.to_dict())
+        assert restored == original
+
+    def test_from_dict_reconstruye_last_changed(self):
+        from datetime import date
+
+        original = PainScore(place_id="x", last_changed=date(2016, 3, 12), has_field_data=True)
+        restored = PainScore.from_dict(original.to_dict())
+        assert restored == original
+
+    def test_from_dict_sin_findings_ni_last_changed_no_rompe(self):
+        assert PainScore.from_dict({"place_id": "x"}) == PainScore(place_id="x")
 
 
 class TestSenderIdentity:
