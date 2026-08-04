@@ -16,7 +16,9 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
+from gtm.factory import config
 from gtm.factory.logs import get_logger
+from gtm.send.worker import start_worker
 from gtm.store.pool import close_pool, open_pool
 from gtm.ui.registry import ProgressBus, RunRegistry
 
@@ -36,9 +38,15 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     app.state.pool = await open_pool()
     app.state.registry = RunRegistry()
     app.state.progress_bus = ProgressBus()
+    # None sin pool: el envío automático queda deshabilitado limpiamente,
+    # igual que el resto de gtm/store/ cuando no hay Postgres -- la cola
+    # manual (/queue) sigue funcionando exactamente igual que siempre.
+    app.state.worker = start_worker(app.state.pool, daily_cap=config.daily_send_cap())
     try:
         yield
     finally:
+        if app.state.worker is not None:
+            await app.state.worker.stop()
         await close_pool(app.state.pool)
 
 

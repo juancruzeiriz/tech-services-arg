@@ -6,6 +6,17 @@ from dataclasses import dataclass
 from datetime import datetime
 from enum import StrEnum
 
+# Lo que protege la reputación del dominio de envío más que cualquier otra
+# cosa: 20-25/día es lo que ya recomienda docs/CHANNELS.md para una casilla
+# nueva, y coincide con el volumen real del proyecto (25 prospectos/semana).
+#
+# Vive acá, no en gtm/send/outbox.py, para que gtm/factory/config.py pueda
+# leerlo sin un ciclo de imports: config -> outbox -> gtm.store.repo ->
+# gtm.factory.pipeline -> gtm.factory.config otra vez. Este módulo (types.py)
+# no importa nada del propio paquete, así que es un punto seguro desde
+# cualquier lado.
+DEFAULT_DAILY_CAP = 20
+
 
 class MessageStatus(StrEnum):
     """draft -> queued -> sending -> sent -> delivered

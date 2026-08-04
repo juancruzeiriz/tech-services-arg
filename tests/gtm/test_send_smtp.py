@@ -79,17 +79,17 @@ class TestBuildMime:
 
 class TestRevalidacionAntesDeEnviar:
     def test_cuerpo_conforme_no_lanza(self):
-        smtp_mod._revalidate_before_send(_BODY_CONFORME, _SENDER)  # no debe lanzar
+        smtp_mod.revalidate_before_send(_BODY_CONFORME, _SENDER)  # no debe lanzar
 
     def test_sin_direccion_postal_lanza_compliance_error(self):
         cuerpo_sin_direccion = _BODY_CONFORME.replace(_SENDER.physical_address, "")
         with pytest.raises(ComplianceError, match="dirección postal"):
-            smtp_mod._revalidate_before_send(cuerpo_sin_direccion, _SENDER)
+            smtp_mod.revalidate_before_send(cuerpo_sin_direccion, _SENDER)
 
     def test_sin_unsubscribe_lanza_compliance_error(self):
         cuerpo_sin_baja = _BODY_CONFORME.replace(_SENDER.unsubscribe_url, "")
         with pytest.raises(ComplianceError, match="baja"):
-            smtp_mod._revalidate_before_send(cuerpo_sin_baja, _SENDER)
+            smtp_mod.revalidate_before_send(cuerpo_sin_baja, _SENDER)
 
     def test_detecta_drift_si_la_config_actual_no_coincide_con_el_cuerpo(self):
         # El caso real que esto atrapa: el mensaje se redactó con un
@@ -102,7 +102,7 @@ class TestRevalidacionAntesDeEnviar:
             unsubscribe_url="https://envio.example/unsub-nuevo",
         )
         with pytest.raises(ComplianceError):
-            smtp_mod._revalidate_before_send(_BODY_CONFORME, sender_nuevo)
+            smtp_mod.revalidate_before_send(_BODY_CONFORME, sender_nuevo)
 
 
 class TestSend:

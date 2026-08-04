@@ -16,18 +16,18 @@ from typing import Any
 
 from psycopg_pool import AsyncConnectionPool
 
-from gtm.send.types import FailureKind, MessageStatus, OutreachMessage
+from gtm.send.types import DEFAULT_DAILY_CAP, FailureKind, MessageStatus, OutreachMessage
 from gtm.store import repo
+
+# DEFAULT_DAILY_CAP se re-exporta desde gtm.send.types (ver el comentario ahí
+# sobre por qué vive en ese módulo y no en este) -- gtm.factory.config lo usa
+# a través de gtm.send.types directamente, y el resto del código lo sigue
+# viendo como outbox.DEFAULT_DAILY_CAP, sin cambios.
 
 # Un rebote suave suele ser un buzón lleno o un greylist temporal: reintentar
 # en el mismo minuto garantiza el mismo fallo. Las horas crecen y frenan en
 # 72h -- no tiene sentido esperar una semana por un mensaje de prospección.
 _BACKOFF_HOURS = (4, 24, 72)
-
-# Lo que protege la reputación del dominio de envío más que cualquier otra
-# cosa: 20-25/día es lo que ya recomienda docs/CHANNELS.md para una casilla
-# nueva, y coincide con el volumen real del proyecto (25 prospectos/semana).
-DEFAULT_DAILY_CAP = 20
 
 _CLAIM_COLUMNS = (
     "id", "client_id", "run_id", "place_id", "channel", "to_address", "subject", "body",
@@ -139,15 +139,60 @@ async def claim_due(
     return [replace(_row_to_message(row), status=MessageStatus.SENDING) for row in rows]
 
 
+async def get_by_verp_tag(pool: AsyncConnectionPool, verp_tag: str) -> OutreachMessage | None:
+    """El mensaje que generó ese tag VERP, o None. Es cómo `worker.py`
+    empareja un rebote recién leído con el mensaje que lo causó, sin tener
+    que abrir el cuerpo del DSN para buscar una referencia."""
+    cols = ", ".join(_CLAIM_COLUMNS)
+    async with pool.connection() as conn, conn.cursor() as cur:
+        await cur.execute(
+            f"select {cols} from outreach_messages where verp_tag = %(tag)s",
+            {"tag": verp_tag},
+        )
+        row = await cur.fetchone()
+    return _row_to_message(row) if row else None
+
+
+async def find_opened_but_not_delivered(pool: AsyncConnectionPool) -> list[OutreachMessage]:
+    """Mensajes `sent` cuyo link con token tuvo una apertura no-bot en
+    `demo_views` — la confirmación de entrega para los tres canales, no solo
+    email: el mismo link con tracking se manda por formulario y por teléfono.
+    """
+    cols = ", ".join(f"m.{c}" for c in _CLAIM_COLUMNS)
+    async with pool.connection() as conn, conn.cursor() as cur:
+        await cur.execute(
+            f"""
+            select {cols} from outreach_messages m
+            where m.status = %(status)s
+              and m.link_token is not null
+              and exists (
+                  select 1 from demo_views v
+                  where v.token = m.link_token and v.is_probable_bot = false
+              )
+            """,
+            {"status": MessageStatus.SENT.value},
+        )
+        rows = await cur.fetchall()
+    return [_row_to_message(row) for row in rows]
+
+
 async def mark_sent(
-    pool: AsyncConnectionPool, message: OutreachMessage, *, provider_message_id: str | None
+    pool: AsyncConnectionPool,
+    message: OutreachMessage,
+    *,
+    provider_message_id: str | None,
+    verp_tag: str | None = None,
 ) -> OutreachMessage:
+    """`verp_tag`: el que se usó como remitente de sobre en este intento
+    (`smtp.envelope_from`) -- si no se persiste acá, un rebote que llegue
+    después nunca podría encontrar este mensaje por `get_by_verp_tag`."""
     updated = replace(
         message,
         status=MessageStatus.SENT,
         sent_at=datetime.now(UTC),
         attempt_count=message.attempt_count + 1,
         provider_message_id=provider_message_id,
+        verp_tag=verp_tag or message.verp_tag,
     )
     await repo.upsert(pool, "outreach_messages", [repo.outreach_message_row(updated)])
     return updated
@@ -159,6 +204,7 @@ async def mark_failed(
     *,
     error: str,
     kind: FailureKind = FailureKind.SMTP_ERROR,
+    verp_tag: str | None = None,
 ) -> OutreachMessage:
     """Un error no conforme (`FailureKind.COMPLIANCE`) nunca se reintenta,
     aunque queden intentos disponibles: un mensaje no conforme reintentado
@@ -176,6 +222,7 @@ async def mark_failed(
         last_error=error,
         failed_at=datetime.now(UTC),
         next_attempt_at=(datetime.now(UTC) + backoff_for_attempt(attempt)) if can_retry else None,
+        verp_tag=verp_tag or message.verp_tag,
     )
     await repo.upsert(pool, "outreach_messages", [repo.outreach_message_row(updated)])
     return updated

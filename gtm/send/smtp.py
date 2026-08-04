@@ -68,7 +68,7 @@ def build_mime(
     return msg
 
 
-def _revalidate_before_send(body: str, sender: SenderIdentity) -> None:
+def revalidate_before_send(body: str, sender: SenderIdentity) -> None:
     """Re-chequea, justo antes de enviar, que el cuerpo YA ESCRITO siga
     conforme con la identidad de remitente ACTUAL — no la que existía cuando
     el mensaje se redactó y se encoló, que puede ser minutos o días antes.

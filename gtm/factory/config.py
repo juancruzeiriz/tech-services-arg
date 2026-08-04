@@ -31,7 +31,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 from gtm.factory.types import GTMError, SenderIdentity
-from gtm.send.types import ImapSettings, SmtpSettings
+from gtm.send.types import DEFAULT_DAILY_CAP, ImapSettings, SmtpSettings
 
 ROOT = Path(__file__).resolve().parents[2]
 GTM_DIR = ROOT / "gtm"
@@ -177,6 +177,13 @@ def load_imap_settings() -> ImapSettings:
         username=require_env("GTM_SMTP_USER"),
         password=require_env("GTM_SMTP_PASSWORD"),
     )
+
+
+def daily_send_cap() -> int:
+    """Tope de mensajes por día que el worker (`gtm/send/worker.py`) puede
+    mandar. Configurable porque lo correcto depende de cuántos días lleva
+    calentando la casilla — ver docs/CHANNELS.md."""
+    return int(optional_env("GTM_DAILY_SEND_CAP", str(DEFAULT_DAILY_CAP)))
 
 
 def ensure_dirs() -> None:

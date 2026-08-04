@@ -172,6 +172,55 @@ def _async_return(value):
     return _inner()
 
 
+class TestGetByVerpTag:
+    _ROW = (
+        1, "c1", None, "p1", "email", "to@x.com", "asunto", "cuerpo", None,
+        "sent", 1, 3, None, "<abc@x>", "tag123",
+        datetime(2026, 8, 1, tzinfo=UTC), None, datetime(2026, 8, 1, tzinfo=UTC), None, None, None, None, None,
+    )
+
+    async def test_encuentra_el_mensaje_por_su_tag(self):
+        cursor = _FakeCursor(fetchone_result=self._ROW)
+        pool = _FakePool(cursor)
+
+        found = await outbox.get_by_verp_tag(pool, "tag123")
+
+        assert found is not None
+        assert found.id == 1
+        _, params = cursor.executed[0]
+        assert params["tag"] == "tag123"
+
+    async def test_sin_match_devuelve_none(self):
+        cursor = _FakeCursor(fetchone_result=None)
+        pool = _FakePool(cursor)
+        assert await outbox.get_by_verp_tag(pool, "no-existe") is None
+
+
+class TestFindOpenedButNotDelivered:
+    _ROW = (
+        1, "c1", None, "p1", "email", "to@x.com", "asunto", "cuerpo", "tok123",
+        "sent", 1, 3, None, "<abc@x>", "tag123",
+        datetime(2026, 8, 1, tzinfo=UTC), None, datetime(2026, 8, 1, tzinfo=UTC), None, None, None, None, None,
+    )
+
+    async def test_devuelve_los_mensajes_con_apertura_confirmada(self):
+        cursor = _FakeCursor(fetchall_result=[self._ROW])
+        pool = _FakePool(cursor)
+
+        found = await outbox.find_opened_but_not_delivered(pool)
+
+        assert len(found) == 1
+        assert found[0].link_token == "tok123"
+        sql, params = cursor.executed[0]
+        assert "demo_views" in sql
+        assert params["status"] == "sent"
+
+    async def test_sin_aperturas_devuelve_lista_vacia(self):
+        cursor = _FakeCursor(fetchall_result=[])
+        pool = _FakePool(cursor)
+        assert await outbox.find_opened_but_not_delivered(pool) == []
+
+
 class TestMarkSent:
     async def test_marca_enviado_e_incrementa_intentos(self):
         cursor = _FakeCursor()
@@ -184,6 +233,19 @@ class TestMarkSent:
         assert rows[0]["status"] == "sent"
         assert rows[0]["attempt_count"] == 1
         assert rows[0]["provider_message_id"] == "<abc@x>"
+
+    async def test_persiste_el_verp_tag_del_intento(self):
+        # Sin esto, un rebote que llegue después nunca podría encontrar este
+        # mensaje por outbox.get_by_verp_tag.
+        cursor = _FakeCursor()
+        pool = _FakePool(cursor)
+        msg = _message(status=MessageStatus.SENDING)
+
+        updated = await outbox.mark_sent(pool, msg, provider_message_id="<abc@x>", verp_tag="tag123")
+
+        assert updated.verp_tag == "tag123"
+        _, rows = cursor.executed[0]
+        assert rows[0]["verp_tag"] == "tag123"
 
 
 class TestMarkFailed:
