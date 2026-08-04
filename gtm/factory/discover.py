@@ -12,11 +12,10 @@ Uso:
 from __future__ import annotations
 
 import argparse
-import json
 import sys
 from typing import Any
 
-from gtm.factory import config
+from gtm.factory import artifacts, config
 from gtm.factory.logs import get_logger
 from gtm.factory.net import request_json
 from gtm.factory.types import DiscoveryError, Prospect, WebPresence
@@ -27,6 +26,12 @@ _PLACES_ENDPOINT = "https://places.googleapis.com/v1/places:searchText"
 
 # Pedimos solo los campos que usamos: el pricing de Places es por field mask, así
 # que traer campos de más se paga literalmente.
+#
+# Deliberadamente NO se pide "places.reviews": las Service Specific Terms de Google
+# Maps Platform prohíben cachear y republicar el texto de reseñas fuera de un mapa de
+# Google (a diferencia de place_id, que se puede guardar indefinidamente, o lat/lng,
+# hasta 30 días). `generate.py` ya tiene el fallback correcto para cuando no hay
+# reseñas: "Rated N★ by M customers on Google."
 _FIELD_MASK = ",".join(
     (
         "places.id",
@@ -36,7 +41,6 @@ _FIELD_MASK = ",".join(
         "places.websiteUri",
         "places.rating",
         "places.userRatingCount",
-        "places.reviews",
         "nextPageToken",
     )
 )
@@ -50,22 +54,13 @@ MIN_RATING = 4.0
 _MAX_PAGE_SIZE = 20  # límite duro de la API por página
 
 
-def _extract_reviews(place: dict[str, Any], limit: int = 3) -> tuple[str, ...]:
-    """Extrae textos de reseñas para personalizar la demo.
-
-    Usar las reseñas reales del negocio en su propia demo es lo que separa un
-    artefacto creíble de una plantilla obvia.
-    """
-    reviews: list[str] = []
-    for review in place.get("reviews", [])[:limit]:
-        text = (review.get("text") or {}).get("text", "").strip()
-        if text:
-            reviews.append(text)
-    return tuple(reviews)
-
-
 def _to_prospect(place: dict[str, Any], vertical: str, metro: str) -> Prospect | None:
-    """Mapea un place de la API a Prospect. Devuelve None si le falta lo esencial."""
+    """Mapea un place de la API a Prospect. Devuelve None si le falta lo esencial.
+
+    `top_reviews` queda vacío a propósito: no se pide el texto de reseñas (ver el
+    comentario en `_FIELD_MASK`), así que `generate.py` usa el rating y el conteo
+    agregado en su lugar.
+    """
     place_id = place.get("id")
     name = (place.get("displayName") or {}).get("text", "").strip()
     if not place_id or not name:
@@ -81,7 +76,6 @@ def _to_prospect(place: dict[str, Any], vertical: str, metro: str) -> Prospect |
         rating=place.get("rating"),
         review_count=place.get("userRatingCount", 0),
         address=place.get("formattedAddress"),
-        top_reviews=_extract_reviews(place),
     )
 
 
@@ -209,8 +203,7 @@ def main(argv: list[str] | None = None) -> int:
         min_rating=args.min_rating,
     )
 
-    with open(output, "w", encoding="utf-8") as handle:
-        json.dump([p.to_dict() for p in prospects], handle, ensure_ascii=False, indent=2)
+    artifacts.write_prospects(output, prospects)
 
     print(f"{len(prospects)} prospectos calificados -> {output}")
     for prospect in prospects:

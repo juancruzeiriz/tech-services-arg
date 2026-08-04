@@ -1,0 +1,144 @@
+{% extends "base.html" %}
+{% block title %}Docs{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1>Docs</h1>
+  <p>Para vos: qué es esto, cómo funciona, a quién le sirve, qué aprender por tu cuenta, y qué decir cuando hables con alguien que te va a pagar. Todo lo de acá sale de <code>docs/WHY.md</code>, <code>gtm/pipeline.md</code>, <code>gtm/validation.md</code> y <code>gtm/plan_aprendizaje.md</code> — esto es el resumen, esos son la fuente completa.</p>
+</div>
+
+<div class="card mb-2">
+  <div class="flex gap-1" style="flex-wrap: wrap">
+    <a class="btn btn-secondary btn-sm" href="#que-ofrece">Qué ofrece</a>
+    <a class="btn btn-secondary btn-sm" href="#como-funciona">Cómo funciona</a>
+    <a class="btn btn-secondary btn-sm" href="#a-quien-apunta">A quién apunta</a>
+    <a class="btn btn-secondary btn-sm" href="#que-aprender">Qué aprender</a>
+    <a class="btn btn-secondary btn-sm" href="#el-speech">El speech</a>
+  </div>
+</div>
+
+<div class="card mb-2" id="que-ofrece">
+  <div class="card-title">1 · Qué ofrece esto, en una frase</div>
+  <p>Le ofrecés a un negocio de oficio en USA (un plomero, un técnico de HVAC) <strong>una digitalización que ya está hecha</strong>: un sitio con sus datos reales y captura de llamadas perdidas, publicado antes de que el negocio sepa que existís.</p>
+  <p class="text-sm text-muted">Lo inusual no es la oferta — sitio + captura de leads es viejo — es el orden: normalmente vendés primero y construís después. Acá se invierte porque lo que falta (confianza, marca, historial) no se compra con plata ni se genera rápido, pero lo que sobra (velocidad de producción con IA) sí puede generar el sustituto.</p>
+
+  <table class="mt-2">
+    <tbody>
+      <tr><td><strong>Entregable</strong></td><td>Sitio estático rápido + captura de llamadas perdidas con SMS automático</td></tr>
+      <tr><td><strong>Plazo</strong></td><td>48 horas</td></tr>
+      <tr><td><strong>Precio</strong></td><td>USD 950 una vez</td></tr>
+      <tr><td><strong>Garantía</strong></td><td>Devolución total a 14 días, sin preguntas</td></tr>
+      <tr><td><strong>Recurrente (opcional)</strong></td><td>USD 150-200/mes: hosting, bot y cambios menores</td></tr>
+    </tbody>
+  </table>
+
+  <p class="text-sm text-muted mt-2">El bot de llamadas perdidas no se construye: se configura un proveedor existente (AI receptionist / missed-call-text-back) con la info real del negocio. El margen está en la instalación, no en el software.</p>
+</div>
+
+<div class="card mb-2" id="como-funciona">
+  <div class="card-title">2 · Cómo funciona (el pipeline)</div>
+  <p class="text-sm text-muted">Cada corrida pasa por estos pasos, en orden. Todo lo que ves en "Nueva corrida" configura estos pasos.</p>
+  <table>
+    <thead><tr><th>Paso</th><th>Qué hace</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Buscar</strong></td><td>Google Places encuentra negocios reales del oficio y metro elegidos, filtrados por reseñas y rating (evidencia de que el negocio factura de verdad).</td></tr>
+      <tr><td><strong>Puntuar</strong></td><td>Mide qué tan mala es la presencia web de cada uno (velocidad, SEO, si carga bien en el celular) → un "pain score" 0-100. Más dolor, más argumento de venta.</td></tr>
+      <tr><td><strong>Generar</strong></td><td>Arma una demo de sitio con los datos reales del negocio (nombre, reseñas, teléfono) — nunca datos inventados.</td></tr>
+      <tr><td><strong>Publicar</strong></td><td>Sube la demo a una URL pública real, viva, antes de contactar a nadie.</td></tr>
+      <tr><td><strong>Resolver contacto</strong></td><td>Decide el canal por prospecto — teléfono para los de mayor dolor, formulario del propio sitio para el resto. Nunca email scrapeado ni SMS en frío (son ilegales bajo CAN-SPAM/TCPA).</td></tr>
+      <tr><td><strong>Cola de contacto</strong></td><td>Arma el guion listo para copiar, uno por prospecto — lo mandás vos, a mano. A este volumen convierte más y evita los dos riesgos legales del envío automatizado.</td></tr>
+      <tr><td><strong>Embudo</strong></td><td>Registrás qué pasó con cada contacto (respondió, agendó llamada, pagó) — eso es lo que alimenta los dashboards de Embudo y Economía.</td></tr>
+    </tbody>
+  </table>
+  <p class="text-sm text-muted mt-2">Ninguna demo se manda antes de estar online de verdad, y ningún mensaje afirma algo que no se verificó — si dice que te llamaron y perdiste la llamada, es porque quedó registrado, no inventado.</p>
+</div>
+
+<div class="card mb-2" id="a-quien-apunta">
+  <div class="card-title">3 · A quién apunta</div>
+  <p><strong>Home services en USA</strong> — plomeros, HVAC, electricistas, techistas ({{ trade_count }} oficios en el catálogo, {{ metro_count }} metros). Cuatro condiciones tienen que darse a la vez, y por eso el vertical no es casualidad:</p>
+  <table>
+    <tbody>
+      <tr><td><strong>a. El trabajo vale plata real</strong></td><td>USD 300-15.000 por trabajo — USD 950 por el sitio es un gasto trivial al lado.</td></tr>
+      <tr><td><strong>b. El dolor es un hecho, no un argumento</strong></td><td>"Tu sitio tarda 8 segundos en cargar" lo verifica el propio prospecto en su celular, sin creerte nada.</td></tr>
+      <tr><td><strong>c. El mercado está desatendido</strong></td><td>Las agencias de marketing no bajan a este ticket — no cierra su costo de adquisición vendiendo sitios de menos de USD 2.000.</td></tr>
+      <tr><td><strong>d. El servicio no se puede deslocalizar</strong></td><td>Un plomero de Tucson no compite contra uno de Manila — la venta se cierra por confianza y urgencia local, no por precio.</td></tr>
+    </tbody>
+  </table>
+  <p class="text-sm text-muted mt-2">Explícitamente afuera: salud (HIPAA) y legal — la capa regulatoria extra no vale la pena para este ticket.</p>
+
+  <p class="mt-2"><strong>Por qué USA y no, por ejemplo, España o Argentina:</strong> es una razón legal, no cultural. CAN-SPAM permite el contacto B2B en frío sin consentimiento previo (con reglas de forma); GDPR en Europa lo prohíbe salvo base legal específica. El mismo pipeline que es legal en USA sería una infracción desde el primer email si apuntara a Europa.</p>
+
+  <p class="mt-2"><strong>Tu ventaja específica:</strong> sos hispanohablante nativo. Hay cientos de miles de contratistas hispanohablantes en metros como Phoenix, Tucson, San Antonio, El Paso, Miami — venderles en español elimina la barrera de acento/confianza en la llamada, y ninguna agencia de marketing genérica llama en español. Por eso el catálogo de metros trae el % de población hispana y el idioma es un parámetro de primera clase en el formulario.</p>
+</div>
+
+<div class="card mb-2" id="que-aprender">
+  <div class="card-title">4 · Qué aprender por tu cuenta (para poder explicarle esto a otra persona)</div>
+  <p class="text-sm text-muted">Versión condensada de <code>gtm/plan_aprendizaje.md</code> — ahí está completo, con horas por semana. Acá, lo mínimo para poder contar qué estás haciendo sin leer una nota.</p>
+  <table>
+    <tbody>
+      <tr>
+        <td style="white-space:nowrap"><strong>Inmersión pasiva</strong><br><span class="text-sm text-muted">una vez, 4-6 hs</span></td>
+        <td>
+          Leer <code>gtm/validation.md</code> completo (los datos externos de por qué el problema es real). Mirar 15-20 negocios reales del oficio/metro elegido en Google Maps: ¿cuántos no tienen sitio? ¿cuántos no cargan bien en el celular? Meta: poder explicar el problema y 3 objeciones típicas con tus propias palabras.
+        </td>
+      </tr>
+      <tr>
+        <td style="white-space:nowrap"><strong>Escucha activa</strong><br><span class="text-sm text-muted">sin vender</span></td>
+        <td>
+          Sumarte (sin publicar) a un foro real de contratistas (r/Contractor, r/electricians) para ver qué objeciones aparecen de verdad — comparalas contra la tabla de abajo. Practicar el guion en roleplay antes de usarlo con una persona real.
+        </td>
+      </tr>
+      <tr>
+        <td style="white-space:nowrap"><strong>Simulación técnica</strong><br><span class="text-sm text-muted">esta UI</span></td>
+        <td>
+          Correr corridas en modo Simulación acá mismo, revisar la cola generada: ¿el guion suena natural leído en voz alta? Ajustalo antes de gastar el primer contacto real.
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="card" id="el-speech">
+  <div class="card-title">5 · El speech — para cuando hablás con un negocio que te va a pagar</div>
+  <p class="text-sm text-muted">Regla de oro, antes de cualquier guion: <strong>prohibido inventar</strong>. No afirmes que llamaste si no llamaste — el primer teléfono que atienda y note que mentiste destruye la venta y la reputación que estás tratando de construir.</p>
+
+  <h3 class="mt-2">Apertura — llamada en frío (20 segundos)</h3>
+  <p class="text-sm text-muted">Objetivo único: permiso para mandar el link por SMS. No es venta, no es la demo completa.</p>
+  <pre class="queue-script">Hola, ¿hablo con {negocio}? — No soy cliente, esto dura 20 segundos.
+Hago sitios web para {oficio} en {ciudad} y ya te armé uno de muestra. Está online ahora mismo.
+¿Te puedo mandar el link por mensaje para que lo mires más tarde? … Genial, va a este número.
+[Enviar SMS: {link}]
+Sin compromiso — si te gusta lo apunto a tu dominio, si no te lo quedás igual.</pre>
+
+  <h3 class="mt-2">La llamada de 20 minutos (después de que respondieron al link)</h3>
+  <p class="text-sm text-muted">No es una demo del producto: es confirmar que el dolor existe y que hay presupuesto.</p>
+  <pre class="queue-script">1. "Contame, ¿cómo te están llegando los trabajos hoy en día?" — dejar hablar, no interrumpir.
+2. "¿Qué pasa cuando te llaman y estás arriba de un techo, abajo de una pileta, manejando?" — que lo diga él, no vos.
+3. "Más o menos, ¿cuánto vale un trabajo típico para vos?" — cuantifica la pérdida sin que la cuantifiques vos.
+4. "¿Cuántas llamadas dirías que se te escapan por semana, más o menos?"
+5. Multiplicar en voz alta delante suyo (4 × 3): "Entonces son unos USD X por semana." Es todo el argumento — no agregar nada arriba.
+6. Recién ahí: precio (USD 950), plazo (48 hs), garantía (14 días, reembolso total).</pre>
+  <p class="text-sm text-muted">Si el número del paso 5 da menos que USD 950, el prospecto está mal elegido: volver al discovery, no bajar el precio.</p>
+
+  <h3 class="mt-2">Objeciones esperadas</h3>
+  <p class="text-sm text-muted">Documentadas en <code>gtm/validation.md</code> a partir de debates reales en foros de contratistas — no son hipotéticas, van a aparecer.</p>
+  <table>
+    <thead><tr><th>Objeción</th><th>Respuesta</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>"Consigo el 99% de mi trabajo por referidos"</td>
+        <td>"Totalmente, y esto no reemplaza eso — es específicamente para las llamadas que se te escapan mientras estás trabajando. Los referidos te siguen llegando igual."</td>
+      </tr>
+      <tr>
+        <td>"Ya tengo sitio web"</td>
+        <td>Preguntar si carga rápido en el celular; ofrecer mandarle el link de pagespeed.web.dev para que lo vea con su propio número, no el tuyo.</td>
+      </tr>
+      <tr>
+        <td>"No confío en alguien que llama de la nada"</td>
+        <td>Es la razón de que la demo ya esté online antes de la llamada — no le pedís que te crea nada, lo puede abrir él mismo.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <p class="text-sm text-muted mt-2">Guion completo (incluida la versión en inglés) en <code>gtm/pipeline.md</code> — está también implementado en <code>gtm/factory/contact.py::build_call_script</code>, así que lo que ves en la cola de contacto de cada corrida ya sale de acá, no hay que copiarlo a mano.</p>
+</div>
+{% endblock %}

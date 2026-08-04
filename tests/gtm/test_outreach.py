@@ -12,12 +12,13 @@ import pytest
 
 from gtm.factory.outreach import (
     _AD_DISCLOSURE,
+    _AD_DISCLOSURE_ES,
     build_body,
     build_email,
     build_subject,
     validate_compliance,
 )
-from gtm.factory.types import ComplianceError, Demo, OutreachEmail, PainScore
+from gtm.factory.types import ComplianceError, Demo, Language, OutreachEmail, PainScore
 
 
 class TestCanspamCompliance:
@@ -97,6 +98,84 @@ class TestCanspamCompliance:
             validate_compliance(broken)
 
 
+class TestCanspamComplianceES:
+    """Los mismos cinco requisitos de CAN-SPAM, en la versión en español.
+
+    CAN-SPAM aplica al email comercial dirigido a destinatarios de EE.UU. sin
+    importar el idioma del mensaje — un email en español a un negocio de Arizona
+    necesita los cinco elementos exactamente igual que uno en inglés. Nombrados
+    `test_canspam_es_*` a propósito: el gate de CI (`pytest tests/gtm/test_outreach.py
+    -k canspam`) selecciona por substring en el nombre del test, no por clase, así
+    que estos quedan cubiertos sin tocar `.github/workflows/ci.yml`.
+    """
+
+    def test_canspam_es_incluye_direccion_postal(self, prospect, live_demo, sender):
+        email = build_email(prospect, live_demo, sender, language=Language.ES)
+        assert sender.physical_address in email.body
+
+    def test_canspam_es_incluye_mecanismo_de_baja(self, prospect, live_demo, sender):
+        email = build_email(prospect, live_demo, sender, language=Language.ES)
+        assert sender.unsubscribe_url in email.body
+
+    def test_canspam_es_se_identifica_como_comercial(self, prospect, live_demo, sender):
+        email = build_email(prospect, live_demo, sender, language=Language.ES)
+        assert _AD_DISCLOSURE_ES in email.body
+        # La constante en inglés NO debe aparecer: sería la señal de que el
+        # mensaje se armó con el disclosure equivocado pegado sobre otro idioma.
+        assert _AD_DISCLOSURE not in email.body
+
+    def test_canspam_es_declara_plazo_de_baja(self, prospect, live_demo, sender):
+        email = build_email(prospect, live_demo, sender, language=Language.ES)
+        assert "10 días hábiles" in email.body
+
+    def test_canspam_es_asunto_no_enganoso(self, prospect, live_demo, sender):
+        email = build_email(prospect, live_demo, sender, language=Language.ES)
+        assert email.subject.strip()
+        assert not email.subject.lower().startswith(("re:", "fwd:", "fw:"))
+
+    def test_canspam_es_rechaza_cuerpo_sin_direccion_postal(self, prospect, live_demo, sender):
+        body = build_body(prospect, live_demo, sender, language=Language.ES).replace(
+            sender.physical_address, ""
+        )
+        email = OutreachEmail(
+            place_id=prospect.place_id,
+            to_email=None,
+            subject=build_subject(prospect, language=Language.ES),
+            body=body,
+            sender=sender,
+            demo_url=live_demo.url,
+            language=Language.ES,
+        )
+        with pytest.raises(ComplianceError, match="dirección postal"):
+            validate_compliance(email)
+
+    def test_canspam_es_rechaza_cuerpo_sin_disclosure_en_ingles(self, prospect, live_demo, sender):
+        """El disclosure en inglés no debe validar un email marcado como español:
+        si `validate_compliance` mirara la constante equivocada, esto pasaría en
+        silencio en vez de fallar."""
+        body = build_body(prospect, live_demo, sender, language=Language.EN)
+        email = OutreachEmail(
+            place_id=prospect.place_id,
+            to_email=None,
+            subject=build_subject(prospect, language=Language.ES),
+            body=body,
+            sender=sender,
+            demo_url=live_demo.url,
+            language=Language.ES,
+        )
+        with pytest.raises(ComplianceError, match="comunicación comercial"):
+            validate_compliance(email)
+
+    @pytest.mark.parametrize("language", list(Language))
+    def test_canspam_todo_idioma_tiene_disclosure_propio(self, language, prospect, live_demo, sender):
+        """Agregar un idioma nuevo sin su disclosure correspondiente debe ser
+        imposible de que pase este test — es la red que atrapa el error antes de
+        que se mande el primer mensaje en ese idioma."""
+        email = build_email(prospect, live_demo, sender, language=language)
+        validate_compliance(email)  # no debe lanzar
+        assert email.language is language
+
+
 class TestHonestidadDelMensaje:
     """El pipeline no inventa hechos sobre el negocio del prospecto."""
 
@@ -140,3 +219,17 @@ class TestDemoViva:
         body = build_body(prospect, live_demo, sender)
         assert "$950" in body, "el precio visible es el filtro más barato que existe"
         assert "refund" in body.lower()
+
+    def test_precio_es_configurable(self, prospect, live_demo, sender):
+        """El precio define el experimento (decision_criteria.yaml) -- tiene que
+        poder variar sin tocar código, para poder probar distintos puntos."""
+        body = build_body(prospect, live_demo, sender, price_usd=1450)
+        assert "$1450" in body
+        assert "$950" not in body
+
+    def test_precio_en_espanol_tambien_es_configurable(self, prospect, live_demo, sender):
+        from gtm.factory.types import Language
+
+        body = build_body(prospect, live_demo, sender, language=Language.ES, price_usd=690)
+        assert "USD 690" in body
+        assert "USD 950" not in body

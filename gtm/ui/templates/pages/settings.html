@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% block title %}Configuración{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1>Configuración</h1>
+  <p>Estado del entorno — qué falta antes de poder correr cada etapa.</p>
+</div>
+
+<div class="grid grid-3 mb-2">
+  <div class="card">
+    <div class="card-title">Postgres</div>
+    {% if db_connected %}
+      <span class="badge badge-ok">Conectado</span>
+    {% else %}
+      <span class="badge badge-warn">Sin conexión</span>
+      <p class="text-sm text-muted mt-1">Sin <code>SUPABASE_DB_URL</code>, o Postgres no respondió al arrancar. La UI sigue funcionando: todo lo que no se pudo escribir queda en el outbox local.</p>
+    {% endif %}
+  </div>
+  <div class="card">
+    <div class="card-title">Outbox pendiente</div>
+    <div class="stat-value">{{ outbox_pending }}</div>
+    <div class="stat-label">envelopes esperando reintento</div>
+  </div>
+  <div class="card">
+    <div class="card-title">Base URL de demos</div>
+    {% if missing_demo_base %}
+      <span class="badge badge-warn">Falta GTM_DEMO_BASE_URL</span>
+    {% else %}
+      <span class="badge badge-ok">Configurada</span>
+    {% endif %}
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-title">Google Places (discover)</div>
+  {% if missing_places %}
+    <span class="badge badge-danger">Falta: {{ missing_places | join(', ') }}</span>
+    <p class="text-sm text-muted mt-1">Sin esto, <code>discover</code> no puede correr en modo real — solo simulación.</p>
+  {% else %}
+    <span class="badge badge-ok">Configurado</span>
+  {% endif %}
+</div>
+
+<div class="card">
+  <div class="card-title">Remitente (outreach, CAN-SPAM)</div>
+  {% if missing_sender %}
+    <span class="badge badge-danger">Falta: {{ missing_sender | join(', ') }}</span>
+    <p class="text-sm text-muted mt-1">Sin esto, la etapa de outreach no arma emails — CAN-SPAM exige remitente real, dirección postal y mecanismo de baja en cada mensaje.</p>
+  {% else %}
+    <span class="badge badge-ok">Configurado</span>
+  {% endif %}
+</div>
+
+<p class="text-sm text-muted mt-3">Completá lo que falta en <code>.env.personal</code> (copiá <code>.env.example</code> si todavía no existe) y reiniciá la corrida — no hace falta reiniciar la UI entera.</p>
+
+<div class="card mt-3">
+  <div class="card-title">Cargar un costo</div>
+  <p class="text-sm text-muted">Sin esto, USD/hora efectivo no es un número real — es el otro costo (además de tu tiempo) que este negocio de verdad tiene.</p>
+  <form method="post" action="/costs" class="grid grid-4 mt-1">
+    <div class="field">
+      <label for="category">Categoría</label>
+      <select name="category" id="category">
+        <option value="api">API (Places, PageSpeed)</option>
+        <option value="hosting">Hosting / dominio</option>
+        <option value="sms">SMS / A2P 10DLC</option>
+        <option value="software">Software / suscripción</option>
+        <option value="otro">Otro</option>
+      </select>
+    </div>
+    <div class="field">
+      <label for="amount_usd">Monto (USD)</label>
+      <input type="number" name="amount_usd" id="amount_usd" min="0.01" step="0.01" required>
+    </div>
+    <div class="field">
+      <label for="vendor">Proveedor</label>
+      <input type="text" name="vendor" id="vendor" placeholder="ej: Twilio">
+    </div>
+    <div class="field">
+      <label for="note">Nota</label>
+      <input type="text" name="note" id="note" placeholder="opcional">
+    </div>
+    <div class="mt-1"><button class="btn btn-sm" type="submit">Guardar costo</button></div>
+  </form>
+</div>
+{% endblock %}

@@ -3,6 +3,19 @@ httpx==0.28.1
 python-dotenv==1.2.2
 beautifulsoup4==4.15.0
 
+# store — Postgres (Supabase). psycopg3 sirve sync (CLI) y async (UI) desde la
+# misma librería, y funciona bien contra el pooler de transacción de Supabase
+# (puerto 6543), a diferencia de asyncpg, que necesita configuración especial ahí.
+psycopg[binary]==3.3.4
+psycopg-pool==3.3.1
+
+# ui — panel local. Sin CDN ni npm: htmx y alpine van vendorizados en
+# gtm/ui/static/vendor/. El CSS es propio (gtm/ui/static/app.css), sin framework.
+fastapi==0.141.1
+uvicorn[standard]==0.52.1
+jinja2==3.1.6
+python-multipart==0.0.32
+
 # Dev / test / lint — lo que necesitás para desarrollar y para que CI pase.
 pytest==9.1.1
 pytest-asyncio==1.4.0

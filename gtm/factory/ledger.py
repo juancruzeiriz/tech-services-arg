@@ -35,7 +35,14 @@ from urllib.parse import urlparse
 
 from gtm.factory import config
 from gtm.factory.logs import get_logger
-from gtm.factory.types import FunnelEvent, GTMError, Prospect, SuppressionReason
+from gtm.factory.types import (
+    ContactChannel,
+    FunnelEvent,
+    GTMError,
+    Language,
+    Prospect,
+    SuppressionReason,
+)
 
 _logger = get_logger(__name__)
 
@@ -114,6 +121,18 @@ def _read(path: Path) -> list[dict[str, Any]]:
                     },
                 )
     return records
+
+
+def read_suppression_records(path: Path | None = None) -> list[dict[str, Any]]:
+    """Registros crudos de supresión, tal como están en el JSONL — sin agregar
+    ni deduplicar. Para el backfill a Postgres (`gtm/store/backfill.py`); el uso
+    normal del pipeline pasa por `SuppressionList`, no por acá."""
+    return _read(path or SUPPRESSION_PATH)
+
+
+def read_funnel_records(path: Path | None = None) -> list[dict[str, Any]]:
+    """Igual que `read_suppression_records`, para `gtm/funnel.jsonl`."""
+    return _read(path or FUNNEL_PATH)
 
 
 class SuppressionList:
@@ -220,18 +239,26 @@ class FunnelReport:
 
     @property
     def has_winner(self) -> bool:
-        """Criterio pre-registrado: 1 venta cobrada o 3 llamadas agendadas."""
-        return self.paid >= 1 or self.calls_booked >= 3
+        """Criterio pre-registrado (v2): 1 venta cobrada. Nivel 5 es terminal.
+
+        v1 admitía una vía alternativa ("3 llamadas agendadas") que resultó
+        estadísticamente inalcanzable al volumen del experimento y se retiró en el
+        re-registro — ver decision_criteria.yaml.
+        """
+        return self.paid >= 1
 
     @property
     def kill_triggered(self) -> tuple[bool, str]:
-        """Criterio de kill pre-registrado, con el motivo.
+        """Criterio de kill pre-registrado (v2), con el motivo.
 
         Si se dispara, lo que cambia es el vertical o la oferta — **no la redacción**.
         Retocar el asunto por décima vez es la forma más común de no aceptar un no.
         """
-        if self.contacted >= 60 and self.replied < 3:
-            return True, f"{self.contacted} contactados con solo {self.replied} respuestas"
+        if self.contacted >= 200 and self.paid == 0 and self.replied < 5:
+            return True, (
+                f"{self.contacted} contactados, {self.paid} ventas y solo "
+                f"{self.replied} respuestas"
+            )
         if self.replied >= 10 and self.calls_booked == 0:
             return True, f"{self.replied} respuestas y ninguna llamada agendada"
         return False, ""
@@ -250,11 +277,22 @@ class FunnelLedger:
         *,
         vertical: str = "",
         metro: str = "",
+        channel: ContactChannel | str = "",
+        language: Language | str = "",
+        run_id: str = "",
         pain_score: int = 0,
         amount_usd: float = 0.0,
         note: str = "",
     ) -> None:
-        """Registra un evento. Los metadatos no son personales: sirven para segmentar."""
+        """Registra un evento. Los metadatos no son personales: sirven para segmentar.
+
+        `channel` e `idioma` son la segmentación que `decision_criteria.yaml` exige
+        (`segmentacion_obligatoria`): sin ellos, "pocas respuestas" agregado no dice
+        si el problema es el teléfono, el formulario, el inglés o el español —
+        diagnósticos distintos con arreglos distintos.
+        """
+        channel_value = channel.value if isinstance(channel, ContactChannel) else channel
+        language_value = language.value if isinstance(language, Language) else language
         _append(
             self.path,
             {
@@ -264,14 +302,29 @@ class FunnelLedger:
                 "at": datetime.now(UTC).isoformat(),
                 "vertical": vertical,
                 "metro": metro,
+                "channel": channel_value,
+                "language": language_value,
+                "run_id": run_id,
                 "pain_score": pain_score,
                 "amount_usd": amount_usd,
                 "note": note,
             },
         )
 
-    def report(self, spend_usd: float = 0.0, vertical: str | None = None) -> FunnelReport:
-        """Agrega el embudo. Cada prospecto cuenta una vez por escalón alcanzado."""
+    def report(
+        self,
+        spend_usd: float = 0.0,
+        vertical: str | None = None,
+        channel: str | None = None,
+        language: str | None = None,
+        metro: str | None = None,
+    ) -> FunnelReport:
+        """Agrega el embudo. Cada prospecto cuenta una vez por escalón alcanzado.
+
+        `channel`/`language`/`metro` filtran igual que `vertical`: registros
+        grabados antes de que existieran esos campos quedan afuera de un filtro
+        explícito (su valor es `""`), no adentro por accidente.
+        """
         seen: set[tuple[str, str]] = set()
         counts: Counter[str] = Counter()
         prospects: set[str] = set()
@@ -279,6 +332,12 @@ class FunnelLedger:
 
         for record in _read(self.path):
             if vertical and record.get("vertical") != vertical:
+                continue
+            if channel and record.get("channel") != channel:
+                continue
+            if language and record.get("language") != language:
+                continue
+            if metro and record.get("metro") != metro:
                 continue
             key = record.get("key", "")
             event = record.get("event", "")
@@ -328,7 +387,7 @@ def format_report(report: FunnelReport) -> str:
             "   Cambiar de vertical u oferta — NO de redacción.",
         ]
     else:
-        faltan_contactos = max(0, 60 - report.contacted)
+        faltan_contactos = max(0, 200 - report.contacted)
         lines.append(
             f"⏳ En curso. Faltan {faltan_contactos} contactos para evaluar el criterio de kill."
         )
@@ -360,6 +419,9 @@ def _cmd_record(args: argparse.Namespace) -> int:
         FunnelEvent(args.event),
         vertical=args.vertical,
         metro=args.metro,
+        channel=args.channel,
+        language=args.language,
+        pain_score=args.pain_score,
         amount_usd=args.amount,
         note=args.note,
     )
@@ -373,7 +435,8 @@ def _cmd_record(args: argparse.Namespace) -> int:
 
 
 def _cmd_report(args: argparse.Namespace) -> int:
-    print(format_report(FunnelLedger().report(args.spend, args.vertical)))
+    report = FunnelLedger().report(args.spend, args.vertical, args.channel, args.language)
+    print(format_report(report))
     return 0
 
 
@@ -398,6 +461,21 @@ def main(argv: list[str] | None = None) -> int:
     record.add_argument("--event", required=True, choices=[e.value for e in FunnelEvent])
     record.add_argument("--vertical", default="")
     record.add_argument("--metro", default="")
+    record.add_argument(
+        "--channel",
+        default="",
+        choices=["", *(c.value for c in ContactChannel)],
+        help="canal por el que se contactó (para segmentar el embudo)",
+    )
+    record.add_argument(
+        "--language",
+        default="",
+        choices=["", *(lang.value for lang in Language)],
+        help="idioma del mensaje enviado (para segmentar el embudo)",
+    )
+    record.add_argument(
+        "--pain-score", type=int, default=0, help="score del prospecto al momento del evento"
+    )
     record.add_argument("--amount", type=float, default=0.0)
     record.add_argument("--note", default="")
     record.set_defaults(func=_cmd_record)
@@ -405,6 +483,8 @@ def main(argv: list[str] | None = None) -> int:
     report = sub.add_parser("report", help="estado del embudo vs. criterio pre-registrado")
     report.add_argument("--spend", type=float, default=0.0, help="gasto acumulado en USD")
     report.add_argument("--vertical", default=None)
+    report.add_argument("--channel", default=None, choices=[c.value for c in ContactChannel])
+    report.add_argument("--language", default=None, choices=[lang.value for lang in Language])
     report.set_defaults(func=_cmd_report)
 
     args = parser.parse_args(argv)

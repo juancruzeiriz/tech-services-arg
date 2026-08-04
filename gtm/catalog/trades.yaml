@@ -1,0 +1,421 @@
+# Catálogo de oficios. `rank` = avg_ticket_usd × peso_de_urgencia (alto=3, medio=2,
+# bajo=1), ascendente = mejor primero. Ver el docstring de `gtm/catalog/types.py`.
+#
+# Fuentes de avg_ticket_usd: HVAC y plumbing de una muestra de 760 negocios
+# (Data-Driven Trades Newsletter, mar-2026, vía pipelineon.com); roofing de
+# homeyou.com (rango USD 6.243-32.516, se usa un punto conservador dentro del
+# rango, no la media, porque está sesgada por reemplazos completos); el resto son
+# estimados de mercado a partir de guías de precio 2026 de HouseCallPro/ServiceTitan,
+# marcados "estimado" — hay que confirmar con datos reales de Places+ventas antes de
+# tratarlos como algo más que un orden de magnitud.
+#
+# name_prefixes/name_suffixes/sample_reviews_en alimentan `simulate.py`: son texto
+# sintético para practicar el pipeline sin gastar cuota real, no datos de negocios
+# reales. Neutros de región a propósito (no atados a Tucson) porque ahora el
+# catálogo cubre 20 metros distintos.
+
+- key: roofer
+  places_query: "roofing contractor"
+  label_en: "roofing contractor"
+  label_es: "techista"
+  plural_en: "roofing contractors"
+  plural_es: "techistas"
+  article_en: "a"
+  avg_ticket_usd: 9500   # dentro del rango 6.243-32.516 de homeyou.com, no la media
+  urgency: medium         # la gotera es urgente; el reemplazo completo es una compra meditada
+  rank: 1
+  services_en:
+    - {title: "Leak repair", body: "Find the actual source, not just the wet spot."}
+    - {title: "Roof replacement", body: "Full tear-off and install with written warranty."}
+    - {title: "Storm damage", body: "Documentation your insurer will accept."}
+    - {title: "Inspections", body: "Photo report of current condition."}
+  services_es:
+    - {title: "Reparación de goteras", body: "Encontramos el origen real, no solo la mancha."}
+    - {title: "Reemplazo de techo", body: "Demolición completa e instalación con garantía por escrito."}
+    - {title: "Daño por tormenta", body: "Documentación que tu seguro va a aceptar."}
+    - {title: "Inspecciones", body: "Informe con fotos del estado actual."}
+  name_prefixes: ["Summit", "Apex", "Reliable", "Precision", "Trusted", "Superior", "Family", "First Choice", "Straightforward", "Skyline"]
+  name_suffixes: ["Roofing", "Roofing & Coatings", "Roof Systems", "Exteriors"]
+  sample_reviews_en:
+    - "Hail damage after the storm. Their photo report is what got the insurance claim approved."
+    - "Full tear-off in two days, cleaned up every nail. Warranty in writing."
+    - "Came out for a leak inspection and told me I did not need a new roof yet."
+
+- key: hvac
+  places_query: "hvac contractor"
+  label_en: "HVAC contractor"
+  label_es: "técnico de aire acondicionado"
+  plural_en: "HVAC contractors"
+  plural_es: "técnicos de aire acondicionado"
+  article_en: "an"
+  avg_ticket_usd: 2434
+  urgency: high           # falla de AC en verano no espera
+  rank: 2
+  services_en:
+    - {title: "AC repair", body: "Diagnosis and repair when the cooling stops."}
+    - {title: "Heating service", body: "Furnace and heat pump repair before it gets cold."}
+    - {title: "System install", body: "Right-sized replacements, not upsells."}
+    - {title: "Maintenance plans", body: "Seasonal tune-ups that prevent the emergency call."}
+  services_es:
+    - {title: "Reparación de AC", body: "Diagnóstico y reparación cuando deja de enfriar."}
+    - {title: "Calefacción", body: "Reparación de calefactor y bomba de calor antes del frío."}
+    - {title: "Instalación de equipos", body: "Reemplazos del tamaño correcto, sin sobreventa."}
+    - {title: "Planes de mantenimiento", body: "Servicio estacional que evita la llamada de emergencia."}
+  name_prefixes: ["Reliable", "Precision", "Cool Breeze", "Summit", "Apex", "Trusted", "Superior", "Family", "First Choice", "All Seasons"]
+  name_suffixes: ["Air Conditioning", "Cooling & Heating", "HVAC Services", "Air & Heat", "Climate Control"]
+  sample_reviews_en:
+    - "AC died Saturday at 108 degrees. They had someone here in two hours and running by dinner."
+    - "Honest about what needed fixing versus what could wait."
+    - "Been servicing our unit for six years. Always on time, always explains what they did."
+    - "Called three places. They were the only one who picked up."
+
+- key: plumber
+  places_query: "plumber"
+  label_en: "plumber"
+  label_es: "plomero"
+  plural_en: "plumbers"
+  plural_es: "plomeros"
+  article_en: "a"
+  avg_ticket_usd: 1708
+  urgency: high           # un caño roto no espera
+  rank: 3
+  services_en:
+    - {title: "Emergency repairs", body: "Burst pipes, major leaks and backups, same day."}
+    - {title: "Drain cleaning", body: "Slow or blocked drains cleared without guesswork."}
+    - {title: "Water heaters", body: "Repair and replacement, gas or electric."}
+    - {title: "Fixture install", body: "Sinks, toilets, faucets and shutoff valves."}
+  services_es:
+    - {title: "Reparaciones de emergencia", body: "Caños rotos, pérdidas grandes y tapones, el mismo día."}
+    - {title: "Destape de desagües", body: "Desagües lentos o tapados, sin adivinar."}
+    - {title: "Termotanques", body: "Reparación y reemplazo, a gas o eléctrico."}
+    - {title: "Instalación de artefactos", body: "Piletas, inodoros, canillas y llaves de paso."}
+  name_prefixes: ["Sonoran", "Reliable", "Precision", "Trusted", "Superior", "Family", "First Choice", "Rooter", "Pipe Works", "Straightforward"]
+  name_suffixes: ["Plumbing", "Plumbing & Drain", "Rooter & Plumbing", "Pipe Works"]
+  sample_reviews_en:
+    - "Showed up in 40 minutes on a Sunday and fixed the leak. Fair price, no upsell."
+    - "Found the actual source of the leak instead of just patching the drywall."
+    - "Clean, fast, and they put down mats. Small thing but it says a lot."
+
+- key: tree_service
+  places_query: "tree service"
+  label_en: "tree service"
+  label_es: "servicio de poda y tala de árboles"
+  plural_en: "tree services"
+  plural_es: "servicios de poda y tala"
+  article_en: "a"
+  avg_ticket_usd: 1800
+  urgency: medium          # el árbol caído en la tormenta sí es urgente
+  rank: 4
+  services_en:
+    - {title: "Emergency removal", body: "Storm-damaged and fallen trees, cleared fast."}
+    - {title: "Trimming & pruning", body: "Keeps trees healthy and off the roofline."}
+    - {title: "Stump grinding", body: "Full removal, not just a cut-down."}
+    - {title: "Risk assessment", body: "Which trees are a problem before the next storm."}
+  services_es:
+    - {title: "Remoción de emergencia", body: "Árboles caídos o dañados por tormenta, rápido."}
+    - {title: "Poda", body: "Mantiene los árboles sanos y lejos del techo."}
+    - {title: "Extracción de tocones", body: "Remoción completa, no solo el corte."}
+    - {title: "Evaluación de riesgo", body: "Qué árboles son un problema antes de la próxima tormenta."}
+  name_prefixes: ["Reliable", "Precision", "Summit", "Apex", "Trusted", "Superior", "Family", "Straightforward", "Ironwood", "Canopy"]
+  name_suffixes: ["Tree Service", "Tree Care", "Tree Experts", "Land & Tree"]
+  sample_reviews_en:
+    - "Huge limb came down in the storm, blocking the driveway. They had it cleared same day."
+    - "Ground the stump out completely, you would never know a tree was there."
+    - "Told us which two trees were a real risk instead of trying to sell us a full clear-cut."
+
+- key: painter
+  places_query: "painting contractor"
+  label_en: "painting contractor"
+  label_es: "pintor"
+  plural_en: "painting contractors"
+  plural_es: "pintores"
+  article_en: "a"
+  avg_ticket_usd: 2800   # estimado, guía de precios 2026
+  urgency: low            # compra meditada, no de emergencia
+  rank: 5
+  services_en:
+    - {title: "Interior painting", body: "Clean lines, no drips, furniture protected."}
+    - {title: "Exterior painting", body: "Prepped and sealed against the weather."}
+    - {title: "Cabinet refinishing", body: "Looks like new cabinets for a fraction of the cost."}
+    - {title: "Color consultation", body: "Samples on your actual walls before committing."}
+  services_es:
+    - {title: "Pintura interior", body: "Líneas limpias, sin chorreados, muebles protegidos."}
+    - {title: "Pintura exterior", body: "Preparado y sellado contra el clima."}
+    - {title: "Renovación de muebles de cocina", body: "Muebles como nuevos por una fracción del costo."}
+    - {title: "Asesoramiento de color", body: "Muestras en tus propias paredes antes de decidir."}
+  name_prefixes: ["Precision", "Reliable", "Superior", "Family", "First Choice", "Straightforward", "Clean Line", "Trusted"]
+  name_suffixes: ["Painting", "Painting Co", "Paint & Finish", "Coatings"]
+  sample_reviews_en:
+    - "Zero drips, zero overspray on the trim. Cleaned up like they were never here."
+    - "Matched the exact color from a photo of the old house. Impressive."
+    - "Fast crew, showed up when they said they would, finished a day early."
+
+- key: fencing
+  places_query: "fence company"
+  label_en: "fence company"
+  label_es: "empresa de cercos"
+  plural_en: "fence companies"
+  plural_es: "empresas de cercos"
+  article_en: "a"
+  avg_ticket_usd: 2500   # estimado, guía de precios 2026
+  urgency: low
+  rank: 6
+  services_en:
+    - {title: "Fence installation", body: "Wood, vinyl or chain-link, set to code."}
+    - {title: "Repairs", body: "Storm damage and rot fixed without a full rebuild."}
+    - {title: "Gates", body: "Manual or automated, matched to your fence."}
+    - {title: "Property line surveys", body: "Know exactly where the fence goes before it goes there."}
+  services_es:
+    - {title: "Instalación de cercos", body: "Madera, vinilo o alambrado, según norma."}
+    - {title: "Reparaciones", body: "Daño por tormenta y podredumbre, sin reconstruir todo."}
+    - {title: "Portones", body: "Manuales o automáticos, a juego con el cerco."}
+    - {title: "Relevamiento de límites", body: "Saber exactamente dónde va el cerco antes de instalarlo."}
+  name_prefixes: ["Reliable", "Precision", "Superior", "Family", "First Choice", "Straightforward", "Property Line", "Trusted"]
+  name_suffixes: ["Fencing", "Fence Co", "Fence & Gate", "Fence Systems"]
+  sample_reviews_en:
+    - "Fence survived the last two storms without a single panel loose."
+    - "Automated gate install was clean, no exposed wiring, works perfectly."
+    - "They flagged a property line issue before digging a single post hole."
+
+- key: garage_door
+  places_query: "garage door repair"
+  label_en: "garage door company"
+  label_es: "empresa de puertas de garaje"
+  plural_en: "garage door companies"
+  plural_es: "empresas de puertas de garaje"
+  article_en: "a"
+  avg_ticket_usd: 500
+  urgency: high            # no poder sacar el auto, o la puerta como riesgo de seguridad
+  rank: 7
+  services_en:
+    - {title: "Emergency repair", body: "Broken spring or stuck door, same-day service."}
+    - {title: "Opener install", body: "Quiet, modern openers with rolling-code security."}
+    - {title: "Panel replacement", body: "Fix the dent without replacing the whole door."}
+    - {title: "Tune-ups", body: "Catch the spring before it snaps, not after."}
+  services_es:
+    - {title: "Reparación de emergencia", body: "Resorte roto o puerta trabada, el mismo día."}
+    - {title: "Instalación de motor", body: "Motores silenciosos y modernos, con seguridad de código rotativo."}
+    - {title: "Reemplazo de paneles", body: "Arreglamos la abolladura sin cambiar la puerta entera."}
+    - {title: "Mantenimiento", body: "Detectamos el resorte antes de que se rompa, no después."}
+  name_prefixes: ["Reliable", "Precision", "Superior", "Family", "First Choice", "Straightforward", "Quick Fix", "Trusted"]
+  name_suffixes: ["Garage Doors", "Overhead Door", "Door & Opener", "Door Systems"]
+  sample_reviews_en:
+    - "Spring snapped at 6am and I had a truck out before 9. Door works better than new."
+    - "New opener is so much quieter, and the app actually works."
+    - "Fixed the dent instead of trying to sell me a whole new door."
+
+- key: electrician
+  places_query: "electrician"
+  label_en: "electrician"
+  label_es: "electricista"
+  plural_en: "electricians"
+  plural_es: "electricistas"
+  article_en: "an"
+  avg_ticket_usd: 750    # estimado, la muestra HVAC/plumbing lo describe como "el más bajo de los oficios"
+  urgency: medium         # sin luz en parte de la casa es apremiante, un panel nuevo no
+  rank: 8
+  services_en:
+    - {title: "Troubleshooting", body: "Dead outlets, tripping breakers, flickering lights."}
+    - {title: "Panel upgrades", body: "Safe capacity for modern loads and EV charging."}
+    - {title: "Lighting", body: "Indoor and outdoor fixtures, switches and dimmers."}
+    - {title: "Safety inspections", body: "Written findings you can actually act on."}
+  services_es:
+    - {title: "Diagnóstico", body: "Tomas muertas, disyuntores que saltan, luces que titilan."}
+    - {title: "Actualización de tablero", body: "Capacidad segura para cargas modernas y carga de autos eléctricos."}
+    - {title: "Iluminación", body: "Artefactos interiores y exteriores, llaves y dimmers."}
+    - {title: "Inspecciones de seguridad", body: "Un informe escrito que podés usar de verdad."}
+  name_prefixes: ["Sonoran", "Reliable", "Precision", "Trusted", "Superior", "Family", "First Choice", "Power Solutions", "Straightforward"]
+  name_suffixes: ["Electric", "Electrical Services", "Electric & Solar", "Power Solutions"]
+  sample_reviews_en:
+    - "Traced a dead circuit that two other electricians gave up on."
+    - "Upgraded our panel for the EV charger. Permitted, inspected, done in a day."
+    - "Explained the safety issue without trying to scare me into a bigger job."
+
+- key: landscaper
+  places_query: "landscaping company"
+  label_en: "landscaper"
+  label_es: "paisajista"
+  plural_en: "landscapers"
+  plural_es: "paisajistas"
+  article_en: "a"
+  avg_ticket_usd: 900    # estimado
+  urgency: low
+  rank: 9
+  services_en:
+    - {title: "Yard maintenance", body: "Scheduled service that actually shows up."}
+    - {title: "Irrigation", body: "Install and repair, with water use in mind."}
+    - {title: "Cleanups", body: "Seasonal and one-time property cleanups."}
+    - {title: "Design & install", body: "Planting plans suited to the local climate."}
+  services_es:
+    - {title: "Mantenimiento de jardín", body: "Servicio programado que realmente aparece."}
+    - {title: "Riego", body: "Instalación y reparación, pensando en el consumo de agua."}
+    - {title: "Limpiezas", body: "Limpiezas estacionales o puntuales del predio."}
+    - {title: "Diseño e instalación", body: "Planes de plantación adaptados al clima local."}
+  name_prefixes: ["Reliable", "Precision", "Superior", "Family", "First Choice", "Straightforward", "Green Thumb", "Trusted"]
+  name_suffixes: ["Landscaping", "Lawn & Landscape", "Outdoor Services", "Grounds Care"]
+  sample_reviews_en:
+    - "Same crew every two weeks, always shows up when scheduled."
+    - "Redid the irrigation and our water bill actually went down."
+    - "Fall cleanup was thorough, hauled everything away same day."
+
+- key: gutter
+  places_query: "gutter installation"
+  label_en: "gutter company"
+  label_es: "empresa de canaletas"
+  plural_en: "gutter companies"
+  plural_es: "empresas de canaletas"
+  article_en: "a"
+  avg_ticket_usd: 800    # estimado
+  urgency: low
+  rank: 10
+  services_en:
+    - {title: "Gutter installation", body: "Seamless gutters sized to your roofline."}
+    - {title: "Gutter guards", body: "Less climbing a ladder to clean them out."}
+    - {title: "Repairs", body: "Sagging or leaking sections fixed, not replaced whole."}
+    - {title: "Cleaning", body: "Scheduled clearing before the rainy season."}
+  services_es:
+    - {title: "Instalación de canaletas", body: "Canaletas sin uniones, a medida del techo."}
+    - {title: "Protectores de canaleta", body: "Menos veces subiendo a la escalera para limpiarlas."}
+    - {title: "Reparaciones", body: "Tramos hundidos o con pérdidas, sin reemplazar todo."}
+    - {title: "Limpieza", body: "Limpieza programada antes de la temporada de lluvias."}
+  name_prefixes: ["Reliable", "Precision", "Superior", "Family", "First Choice", "Straightforward", "Seamless", "Trusted"]
+  name_suffixes: ["Gutters", "Gutter Co", "Gutter Systems", "Rain Solutions"]
+  sample_reviews_en:
+    - "Seamless gutters look great and we have not had an overflow since."
+    - "Guards actually work, no more climbing up every month."
+    - "Fixed the sagging section instead of trying to sell a full replacement."
+
+- key: pest_control
+  places_query: "pest control service"
+  label_en: "pest control company"
+  label_es: "empresa de control de plagas"
+  plural_en: "pest control companies"
+  plural_es: "empresas de control de plagas"
+  article_en: "a"
+  avg_ticket_usd: 375    # estimado
+  urgency: medium         # una plaga activa apremia, el servicio preventivo no
+  rank: 11
+  services_en:
+    - {title: "Emergency treatment", body: "Active infestations handled fast."}
+    - {title: "Termite protection", body: "Inspection and treatment before structural damage."}
+    - {title: "Quarterly service", body: "Scheduled visits that keep pests from coming back."}
+    - {title: "Wildlife removal", body: "Humane removal and entry-point sealing."}
+  services_es:
+    - {title: "Tratamiento de emergencia", body: "Infestaciones activas, resueltas rápido."}
+    - {title: "Protección contra termitas", body: "Inspección y tratamiento antes del daño estructural."}
+    - {title: "Servicio trimestral", body: "Visitas programadas que evitan que la plaga vuelva."}
+    - {title: "Remoción de fauna", body: "Remoción humanitaria y sellado de los puntos de entrada."}
+  name_prefixes: ["Reliable", "Precision", "Superior", "Family", "First Choice", "Straightforward", "Shield", "Trusted"]
+  name_suffixes: ["Pest Control", "Pest Solutions", "Exterminating", "Pest Management"]
+  sample_reviews_en:
+    - "Found the actual entry point instead of just spraying and leaving."
+    - "Quarterly visits and we have not seen a single roach in a year."
+    - "Sealed up the attic properly, no more raccoons."
+
+- key: pool_service
+  places_query: "pool service"
+  label_en: "pool service company"
+  label_es: "empresa de mantenimiento de piletas"
+  plural_en: "pool service companies"
+  plural_es: "empresas de mantenimiento de piletas"
+  article_en: "a"
+  avg_ticket_usd: 450    # estimado, recurrente
+  urgency: low
+  rank: 12
+  services_en:
+    - {title: "Weekly service", body: "Chemicals balanced, skimmed, filter checked."}
+    - {title: "Equipment repair", body: "Pumps, heaters and filters fixed, not replaced by default."}
+    - {title: "Green pool recovery", body: "Back to swimmable, not just clear."}
+    - {title: "Opening & closing", body: "Seasonal service done on schedule."}
+  services_es:
+    - {title: "Servicio semanal", body: "Balance químico, desnatado y revisión de filtro."}
+    - {title: "Reparación de equipos", body: "Bombas, calefactores y filtros reparados, no reemplazados por default."}
+    - {title: "Recuperación de pileta verde", body: "Vuelve a estar apta para nadar, no solo transparente."}
+    - {title: "Apertura y cierre", body: "Servicio estacional en fecha."}
+  name_prefixes: ["Reliable", "Precision", "Superior", "Family", "First Choice", "Straightforward", "Crystal Clear", "Trusted"]
+  name_suffixes: ["Pool Service", "Pool Care", "Pool & Spa", "Pool Solutions"]
+  sample_reviews_en:
+    - "Pool went from swamp-green to swimmable in three days."
+    - "Same tech every week, always leaves a note on what he checked."
+    - "Fixed the pump instead of pushing a full replacement."
+
+- key: appliance_repair
+  places_query: "appliance repair service"
+  label_en: "appliance repair company"
+  label_es: "empresa de reparación de electrodomésticos"
+  plural_en: "appliance repair companies"
+  plural_es: "empresas de reparación de electrodomésticos"
+  article_en: "an"
+  avg_ticket_usd: 325    # estimado
+  urgency: medium         # heladera rota apremia, secarropas no tanto
+  rank: 13
+  services_en:
+    - {title: "Refrigerator repair", body: "Diagnosed same-day before the food spoils."}
+    - {title: "Washer & dryer", body: "Most repairs done in a single visit."}
+    - {title: "Oven & range", body: "Gas and electric, safety-checked."}
+    - {title: "Dishwasher", body: "Leaks and drainage fixed at the source."}
+  services_es:
+    - {title: "Reparación de heladeras", body: "Diagnóstico el mismo día antes de que se eche a perder la comida."}
+    - {title: "Lavarropas y secarropas", body: "La mayoría de las reparaciones se resuelven en una sola visita."}
+    - {title: "Horno y cocina", body: "A gas o eléctrico, con revisión de seguridad."}
+    - {title: "Lavavajillas", body: "Pérdidas y drenaje resueltos en el origen."}
+  name_prefixes: ["Reliable", "Precision", "Superior", "Family", "First Choice", "Straightforward", "Same Day", "Trusted"]
+  name_suffixes: ["Appliance Repair", "Appliance Service", "Appliance Solutions", "Appliance Pros"]
+  sample_reviews_en:
+    - "Fridge died on a Friday, they had it running again same afternoon."
+    - "One visit, one part, done. No return trips needed."
+    - "Told us the dishwasher was not worth fixing instead of charging for a bad repair."
+
+- key: locksmith
+  places_query: "locksmith"
+  label_en: "locksmith"
+  label_es: "cerrajero"
+  plural_en: "locksmiths"
+  plural_es: "cerrajeros"
+  article_en: "a"
+  avg_ticket_usd: 200    # estimado
+  urgency: high           # quedarse afuera es la definición de urgente
+  rank: 14
+  services_en:
+    - {title: "Lockout service", body: "Locked out of your home, car or business, fast."}
+    - {title: "Rekeying", body: "New key control without replacing the whole lock."}
+    - {title: "Lock installation", body: "Deadbolts and smart locks, set correctly."}
+    - {title: "Commercial security", body: "Access control for businesses and offices."}
+  services_es:
+    - {title: "Servicio de apertura", body: "Quedaste afuera de tu casa, auto o local — rápido."}
+    - {title: "Cambio de combinación", body: "Control de llaves nuevo sin cambiar toda la cerradura."}
+    - {title: "Instalación de cerraduras", body: "Cerrojos y cerraduras inteligentes, bien instalados."}
+    - {title: "Seguridad comercial", body: "Control de acceso para negocios y oficinas."}
+  name_prefixes: ["Reliable", "Precision", "Superior", "Family", "First Choice", "Straightforward", "Quick Response", "Trusted"]
+  name_suffixes: ["Locksmith", "Lock & Key", "Locksmith Services", "Security & Locks"]
+  sample_reviews_en:
+    - "Locked out at midnight, they were there in 20 minutes."
+    - "Rekeyed the whole house after we moved in, same day."
+    - "Installed a smart lock and actually walked us through the app."
+
+- key: junk_removal
+  places_query: "junk removal service"
+  label_en: "junk removal company"
+  label_es: "empresa de remoción de escombros"
+  plural_en: "junk removal companies"
+  plural_es: "empresas de remoción de escombros"
+  article_en: "a"
+  avg_ticket_usd: 300    # estimado
+  urgency: low
+  rank: 15
+  services_en:
+    - {title: "Same-day pickup", body: "Furniture, appliances and yard debris, gone today."}
+    - {title: "Estate cleanouts", body: "Full property cleared, donations sorted out."}
+    - {title: "Construction debris", body: "Post-renovation haul-away, dumpster not required."}
+    - {title: "Donation drop-off", body: "Usable items go to local charities, not the landfill."}
+  services_es:
+    - {title: "Retiro el mismo día", body: "Muebles, electrodomésticos y restos de jardín, hoy."}
+    - {title: "Vaciado de propiedades", body: "Propiedad completa despejada, donaciones separadas."}
+    - {title: "Escombros de obra", body: "Retiro post-renovación, sin necesidad de contenedor."}
+    - {title: "Entrega a donación", body: "Lo que sirve va a organizaciones locales, no al relleno sanitario."}
+  name_prefixes: ["Reliable", "Precision", "Superior", "Family", "First Choice", "Straightforward", "Clear Out", "Trusted"]
+  name_suffixes: ["Junk Removal", "Hauling", "Junk & Debris", "Cleanout Services"]
+  sample_reviews_en:
+    - "Cleared out the whole garage in under an hour, hauled it all away."
+    - "Donated half of what they took instead of dumping it, and told us so."
+    - "Booked same-day and they actually showed up on time."

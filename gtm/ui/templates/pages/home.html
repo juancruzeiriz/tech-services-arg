@@ -1,0 +1,222 @@
+{% extends "base.html" %}
+{% block title %}Nueva corrida{% endblock %}
+{% block content %}
+<div class="page-header flex justify-between items-center">
+  <div>
+    <h1>Nueva corrida</h1>
+    <p>Parámetros ordenados por beneficio esperado ÷ costo de elaboración. "Otro…" habilita texto libre donde el desplegable no alcanza.</p>
+  </div>
+  {% if preset_names %}
+  <form method="get" action="/" class="flex gap-1 items-center">
+    <select name="preset" style="width:auto">
+      <option value="">Preset…</option>
+      {% for name in preset_names %}
+      <option value="{{ name }}" {{ 'selected' if preset_loaded_name == name else '' }}>{{ name }}</option>
+      {% endfor %}
+    </select>
+    <button class="btn btn-secondary btn-sm" type="submit">Cargar</button>
+  </form>
+  {% endif %}
+</div>
+
+{% if busy %}
+<div class="card mb-2">
+  <span class="badge badge-warn">Hay una corrida en curso</span>
+  <p class="text-sm text-muted mt-1">Un solo operador no gana nada corriendo dos pipelines a la vez. <a href="/runs">Ver corridas</a>.</p>
+</div>
+{% endif %}
+
+{% if missing_places and mode_default != 'simulate' %}
+<div class="card mb-2">
+  <span class="badge badge-danger">Falta GOOGLE_PLACES_API_KEY</span>
+  <p class="text-sm text-muted mt-1">Sin esto, el modo real no puede correr. <a href="/settings">Ver configuración</a> — mientras tanto podés simular.</p>
+</div>
+{% endif %}
+
+<form method="post" action="/runs" x-data="runForm()" @submit="submitting = true">
+  <div class="grid grid-2">
+    <div class="card">
+      <div class="card-title">1 · Oficio</div>
+      <div class="field">
+        <label for="vertical">Oficio</label>
+        <select name="vertical" id="vertical" x-model="vertical">
+          {% for trade in trades %}
+          <option value="{{ trade.key }}">{{ trade.label_es }} — USD {{ trade.avg_ticket_usd | thousands }} · urgencia {{ {"high": "alta", "medium": "media", "low": "baja"}[trade.urgency] }}</option>
+          {% endfor %}
+          <option value="__other__">Otro (texto libre)…</option>
+        </select>
+        <div class="field-hint">Orden: ticket promedio × urgencia — la aproximación más barata a "mayor ganancia esperada" sin haber vendido nada todavía.</div>
+      </div>
+      <div class="field" x-show="vertical === '__other__'" x-cloak>
+        <label for="vertical_other">Oficio (texto libre)</label>
+        <input type="text" name="vertical_other" id="vertical_other" value="{{ preset.vertical_other | default('') }}" placeholder='ej: &quot;locksmith&quot;'>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">2 · Metro</div>
+      <div class="field">
+        <label for="metro">Metro</label>
+        <select name="metro" id="metro" x-model="metro">
+          {% for m in metros %}
+          <option value="{{ m.key }}">{{ m.display }} — {{ m.population | thousands }} hab. · {{ m.hispanic_pct }}% hispano{% if m.mini_tcpa_risk %} · riesgo legal{% endif %}</option>
+          {% endfor %}
+          <option value="__other__">Otro (texto libre)…</option>
+        </select>
+        <div class="field-hint">Orden: pool de prospectos × %hispano ÷ riesgo legal (mini-TCPA estatal).</div>
+      </div>
+      <div class="field" x-show="metro === '__other__'" x-cloak>
+        <label for="metro_other">Metro (texto libre)</label>
+        <input type="text" name="metro_other" id="metro_other" value="{{ preset.metro_other | default('') }}" placeholder='ej: &quot;Chandler, AZ&quot;'>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid grid-2 mt-2">
+    <div class="card">
+      <div class="card-title">3 · Idioma</div>
+      <div class="field radio-row">
+        <label><input type="radio" name="language" value="en" {{ 'checked' if preset.language | default('en') == 'en' else '' }}> Inglés</label>
+        <label><input type="radio" name="language" value="es" {{ 'checked' if preset.language | default('en') == 'es' else '' }}> Español</label>
+      </div>
+      <div class="field-hint">Español elimina la barrera de acento/confianza en la llamada — la única ventaja competitiva estructural que tenés.</div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">4 · Modo</div>
+      <div class="field radio-row">
+        <label><input type="radio" name="mode" value="simulate" x-model="mode"> Simulación (datos sintéticos, gratis)</label>
+        <label><input type="radio" name="mode" value="real" x-model="mode"> Real (gasta cuota de Google Places)</label>
+      </div>
+      <div class="field-hint" x-show="mode === 'real'" x-cloak>Places Text Search devuelve como máximo 60 resultados por consulta, sin importar el límite que pidas.</div>
+    </div>
+  </div>
+
+  <div class="grid grid-4 mt-2">
+    <div class="card">
+      <div class="card-title">5 · Límite</div>
+      <select name="limit">
+        {% for value in [10, 20, 30, 40, 60] %}
+        <option value="{{ value }}" {{ 'selected' if preset.limit | default(20) | int == value else '' }}>{{ value }}{{ ' (tope de la API)' if value == 60 else '' }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="card">
+      <div class="card-title">6 · Reseñas mínimas</div>
+      <select name="min_reviews">
+        {% for value, label in [(10,'10'),(25,'25'),(50,'50'),(100,'100'),(200,'200'),(0,'Sin filtro')] %}
+        <option value="{{ value }}" {{ 'selected' if preset.min_reviews | default(50) | int == value else '' }}>{{ label }}</option>
+        {% endfor %}
+      </select>
+      <div class="field-hint">Bajarlo agranda el pool y debilita la señal de solvencia.</div>
+    </div>
+    <div class="card">
+      <div class="card-title">7 · Rating mínimo</div>
+      <select name="min_rating">
+        {% for value in ["3.0", "3.5", "4.0", "4.3", "4.5"] %}
+        <option value="{{ value }}" {{ 'selected' if (preset.min_rating | default('4.0') | string) == value else '' }}>{{ value }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="card">
+      <div class="card-title">Semilla</div>
+      <div x-show="mode === 'simulate'">
+        <input type="number" name="seed" value="42">
+      </div>
+      <span class="text-sm text-muted" x-show="mode !== 'simulate'" x-cloak>No aplica en modo real.</span>
+    </div>
+  </div>
+
+  <div class="grid grid-3 mt-2">
+    <div class="card">
+      <div class="card-title">8 · Contacto</div>
+      <label class="flex items-center gap-1"><input type="checkbox" name="probe_site" value="1" {{ 'checked' if preset.probe_site | default(true) else '' }} style="width:auto"> Buscar formulario de contacto en el sitio</label>
+      <div class="field-hint">Si no, todos los que tienen sitio caen a teléfono igual.</div>
+    </div>
+    <div class="card">
+      <div class="card-title">9 · Publicación</div>
+      <label class="flex items-center gap-1"><input type="checkbox" name="publish" value="1" {{ 'checked' if preset.publish | default(false) else '' }} style="width:auto"> Publicar de verdad (si no, dry-run)</label>
+      <div class="field field-hint mt-1">Dry-run calcula URLs sin escribir nada — es el default seguro.</div>
+    </div>
+    <div class="card">
+      <div class="card-title">Base URL de demos</div>
+      <input type="url" name="base_url" value="{{ preset.base_url | default(base_url_default) }}" placeholder="https://demos.tudominio.com">
+    </div>
+  </div>
+
+  <div class="grid grid-3 mt-2">
+    <div class="card">
+      <div class="card-title">10 · Concurrencia de red</div>
+      <select name="concurrency">
+        {% for value, label in [(3,'3 (conservador)'),(5,'5'),(8,'8'),(15,'15 (agresivo)')] %}
+        <option value="{{ value }}" {{ 'selected' if preset.concurrency | default(5) | int == value else '' }}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="card">
+      <div class="card-title">11 · Precio de la oferta</div>
+      <select name="price_usd" x-model="price">
+        <option value="490">USD 490</option>
+        <option value="690">USD 690</option>
+        <option value="950">USD 950 (default)</option>
+        <option value="1450">USD 1.450</option>
+        <option value="__other__">Personalizado…</option>
+      </select>
+      <div class="field-hint">Define el experimento — ver <code>decision_criteria.yaml</code>.</div>
+      <div class="field mt-1" x-show="price === '__other__'" x-cloak>
+        <input type="number" name="price_usd_other" min="1" value="{{ preset.price_usd_other | default('') }}" placeholder="ej: 1200">
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">12 · Outreach por email</div>
+      <label class="flex items-center gap-1"><input type="checkbox" name="with_outreach" value="1" style="width:auto"> Armar también los emails</label>
+      {% if missing_sender %}
+        <div class="field-hint" style="color:var(--danger)">Falta configurar: {{ missing_sender | join(', ') }}</div>
+      {% else %}
+        <div class="field-hint">Remitente configurado en <code>.env.personal</code>.</div>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="grid grid-2 mt-2">
+    <div class="card">
+      <div class="card-title">Autor</div>
+      <div class="field">
+        <label for="author_name">Nombre</label>
+        <input type="text" name="author_name" id="author_name" value="{{ author_name_default }}">
+      </div>
+      <div class="field">
+        <label for="author_url">URL</label>
+        <input type="url" name="author_url" id="author_url" value="{{ author_url_default }}">
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">Guardar como preset</div>
+      <label class="flex items-center gap-1"><input type="checkbox" name="save_preset" value="1" style="width:auto"> Guardar esta configuración</label>
+      <input type="text" name="preset_name" placeholder="nombre del preset, ej: hvac-az-es" class="mt-1">
+    </div>
+  </div>
+
+  <div class="card mt-2 flex justify-between items-center">
+    <p class="text-sm text-muted">La corrida queda aislada en su propio directorio — no pisa otras corridas ni el estado global del repo.</p>
+    <button class="btn" type="submit" :disabled="submitting || {{ 'true' if busy else 'false' }}">
+      <span x-show="!submitting">Correr</span>
+      <span x-show="submitting" x-cloak>Iniciando…</span>
+    </button>
+  </div>
+</form>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function runForm() {
+  return {
+    vertical: "{{ preset.vertical | default(trades[0].key if trades else '__other__') }}",
+    metro: "{{ preset.metro | default(metros[0].key if metros else '__other__') }}",
+    mode: "{{ preset.mode | default('simulate') }}",
+    price: "{{ preset.price_usd | default('950') | string }}",
+    submitting: false,
+  };
+}
+</script>
+{% endblock %}

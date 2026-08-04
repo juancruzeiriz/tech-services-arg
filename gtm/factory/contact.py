@@ -22,14 +22,15 @@ from __future__ import annotations
 
 import argparse
 import asyncio
-import json
 import sys
+from collections.abc import Callable
 from urllib.parse import urljoin, urlparse
 
 import httpx
 from bs4 import BeautifulSoup
 
-from gtm.factory import config
+from gtm.catalog import city_of
+from gtm.factory import artifacts, config
 from gtm.factory.ledger import SuppressionList
 from gtm.factory.logs import get_logger
 from gtm.factory.net import DEFAULT_CONCURRENCY, async_client, fetch_text_async, gather_limited
@@ -37,6 +38,7 @@ from gtm.factory.types import (
     ContactChannel,
     ContactPlan,
     Demo,
+    Language,
     PainScore,
     Prospect,
     WebPresence,
@@ -186,24 +188,49 @@ async def resolve_contact(
     )
 
 
-def build_form_message(prospect: Prospect, demo: Demo, author_name: str) -> str:
+def build_form_message(
+    prospect: Prospect,
+    demo: Demo,
+    author_name: str,
+    *,
+    language: Language = Language.EN,
+    link_url: str | None = None,
+    price_usd: int = 950,
+) -> str:
     """Mensaje corto para pegar en un formulario de contacto.
 
     No es el email recortado: un formulario no admite firma, dirección postal ni link
     de baja, y suele truncar. Va directo al link, que es lo único que importa.
+
+    `link_url`: ver el docstring de `outreach.build_body` — el link de
+    redirección con token, si hay uno, reemplaza a `demo.url` en el texto.
+    `price_usd`: ídem, el precio de la oferta.
     """
     if not demo.is_live:
         raise ValueError(f"La demo de {prospect.name!r} no tiene URL pública")
+    link = link_url or demo.url
 
-    message = (
-        f"Hi — I build websites for {vertical_plural(prospect.vertical)} and I made one for "
-        f"{prospect.name} as a sample. It is already online here:\n\n"
-        f"{demo.url}\n\n"
-        "It uses your real phone number, your Google reviews and your service area. "
-        "It also texts back automatically when you miss a call.\n\n"
-        "Free to look at, yours to keep either way. If you want it pointed at your "
-        f"domain it is $950 with a 14-day full refund.\n\n{author_name}"
-    )
+    if language is Language.ES:
+        message = (
+            f"Hola — hago sitios web para {vertical_plural(prospect.vertical, language)} y "
+            f"armé uno de muestra para {prospect.name}. Ya está online acá:\n\n"
+            f"{link}\n\n"
+            "Usa tu número de teléfono real, tus reseñas de Google y tu zona de servicio. "
+            "También responde con un mensaje de texto automático cuando se te escapa "
+            "una llamada.\n\n"
+            "Es gratis para ver, tuyo lo quieras o no. Si lo querés apuntado a tu dominio "
+            f"son USD {price_usd} con reembolso completo a 14 días.\n\n{author_name}"
+        )
+    else:
+        message = (
+            f"Hi — I build websites for {vertical_plural(prospect.vertical, language)} and "
+            f"I made one for {prospect.name} as a sample. It is already online here:\n\n"
+            f"{link}\n\n"
+            "It uses your real phone number, your Google reviews and your service area. "
+            "It also texts back automatically when you miss a call.\n\n"
+            "Free to look at, yours to keep either way. If you want it pointed at your "
+            f"domain it is ${price_usd} with a 14-day full refund.\n\n{author_name}"
+        )
 
     if len(message) > FORM_MESSAGE_MAX_CHARS:
         raise ValueError(
@@ -213,16 +240,36 @@ def build_form_message(prospect: Prospect, demo: Demo, author_name: str) -> str:
     return message
 
 
-def build_call_script(prospect: Prospect, demo: Demo) -> str:
-    """Guion de la llamada. Corto a propósito: el objetivo es mandar el link, no vender."""
-    city = prospect.metro.split(",")[0].strip()
+def build_call_script(
+    prospect: Prospect,
+    demo: Demo,
+    *,
+    language: Language = Language.EN,
+    link_url: str | None = None,
+) -> str:
+    """Guion de la llamada. Corto a propósito: el objetivo es mandar el link, no vender.
+
+    `link_url`: ver el docstring de `outreach.build_body`.
+    """
+    city = city_of(prospect.metro)
+    link = link_url or demo.url
+    if language is Language.ES:
+        return (
+            f"Hola, ¿hablo con {prospect.name}? — No soy cliente, esto dura 20 segundos.\n"
+            f"Hago sitios web para {vertical_plural(prospect.vertical, language)} en {city} "
+            f"y ya te armé uno de muestra. Está online ahora mismo.\n"
+            f"¿Te puedo mandar el link por mensaje para que lo mires más tarde? … Genial, "
+            f"va a este número.\n"
+            f"[Enviar SMS: {link}]\n"
+            f"Sin compromiso — si te gusta lo apunto a tu dominio, si no te lo quedás igual."
+        )
     return (
         f"Hi, is this {prospect.name}? — I am not a customer, this will take 20 seconds.\n"
-        f"I build websites for {vertical_plural(prospect.vertical)} in {city} and I "
+        f"I build websites for {vertical_plural(prospect.vertical, language)} in {city} and I "
         f"already built one for you as a sample. It is online right now.\n"
         f"Can I text you the link so you can look at it later? … Great, it is going to "
         f"this number.\n"
-        f"[Enviar SMS: {demo.url}]\n"
+        f"[Enviar SMS: {link}]\n"
         f"No obligation — if you like it I can point it at your domain, if not keep it."
     )
 
@@ -232,21 +279,34 @@ async def resolve_all(
     scores: dict[str, PainScore],
     probe_site: bool = True,
     concurrency: int = DEFAULT_CONCURRENCY,
+    *,
+    on_item: Callable[[str], None] | None = None,
 ) -> list[ContactPlan]:
     """Resuelve el canal de todos los prospectos, ordenados por dolor descendente.
 
     Los sitios se descargan en paralelo: son N fetches independientes, y en serie
     50 prospectos son varios minutos de espera de red.
+
+    `on_item`, igual que en `score.score_all`: un callback sincrónico, llamado una
+    vez por prospecto resuelto, para progreso en vivo sin acoplar esta función a
+    cómo lo consume quien llama.
     """
+
+    async def _one(prospect: Prospect, client: httpx.AsyncClient | None) -> ContactPlan:
+        plan = await resolve_contact(prospect, scores.get(prospect.place_id), client)
+        if on_item is not None:
+            on_item(prospect.place_id)
+        return plan
+
     if probe_site:
         async with async_client(concurrency=concurrency) as client:
             plans = await gather_limited(
-                [resolve_contact(p, scores.get(p.place_id), client) for p in prospects],
+                [_one(p, client) for p in prospects],
                 concurrency,
             )
     else:
         plans = await gather_limited(
-            [resolve_contact(p, scores.get(p.place_id), None) for p in prospects],
+            [_one(p, None) for p in prospects],
             concurrency,
         )
 
@@ -335,23 +395,9 @@ def render_queue(
 
 def _load_scores(path: str) -> dict[str, PainScore]:
     try:
-        with open(path, encoding="utf-8") as handle:
-            payload = json.load(handle)
+        return {s.place_id: s for s in artifacts.read_scores(path)}
     except FileNotFoundError:
         return {}
-
-    return {
-        item["place_id"]: PainScore(
-            place_id=item["place_id"],
-            performance=item.get("performance"),
-            seo=item.get("seo"),
-            accessibility=item.get("accessibility"),
-            mobile_friendly=item.get("mobile_friendly"),
-            has_web_presence=item.get("has_web_presence", True),
-            reachable=item.get("reachable", True),
-        )
-        for item in payload
-    }
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -380,19 +426,11 @@ def main(argv: list[str] | None = None) -> int:
     demos_path = args.demos or str(config.DATA_DIR / "demos.json")
     author_name = args.author_name or config.require_env("GTM_FROM_NAME")
 
-    with open(prospects_path, encoding="utf-8") as handle:
-        prospects = {p["place_id"]: Prospect.from_dict(p) for p in json.load(handle)}
+    prospects = {p.place_id: p for p in artifacts.read_prospects(prospects_path)}
 
     demos: dict[str, Demo] = {}
     try:
-        with open(demos_path, encoding="utf-8") as handle:
-            for item in json.load(handle):
-                demos[item["place_id"]] = Demo(
-                    place_id=item["place_id"],
-                    slug=item["slug"],
-                    html_path=item["html_path"],
-                    url=item.get("url"),
-                )
+        demos = {d.place_id: d for d in artifacts.read_demos(demos_path)}
     except FileNotFoundError:
         _logger.warning("sin demos publicadas", extra={"event": "no_demos"})
 
@@ -411,12 +449,11 @@ def main(argv: list[str] | None = None) -> int:
     )
 
     contacts_path = config.DATA_DIR / "contacts.json"
-    with open(contacts_path, "w", encoding="utf-8") as handle:
-        json.dump([plan.to_dict() for plan in plans], handle, ensure_ascii=False, indent=2)
+    artifacts.write_contacts(contacts_path, plans)
 
     queue = render_queue(plans, prospects, demos, author_name)
     queue_path = config.BUILD_DIR / "queue.md"
-    queue_path.write_text(queue, encoding="utf-8")
+    artifacts.write_queue(queue_path, queue)
 
     if args.queue:
         print(queue)

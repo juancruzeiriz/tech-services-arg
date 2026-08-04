@@ -1,0 +1,140 @@
+{% extends "base.html" %}
+{% block title %}Embudo{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1>Embudo</h1>
+  <p>Contra el criterio pre-registrado en <code>decision_criteria.yaml</code>. Los rangos entre paréntesis son el intervalo de Wilson al 95% — con pocos datos, léelo a él, no a la tasa puntual.</p>
+</div>
+
+<form method="get" action="/dashboard/funnel" class="card mb-2 grid grid-4">
+  <div class="field">
+    <label for="vertical">Oficio</label>
+    <select name="vertical" id="vertical">
+      <option value="">Todos</option>
+      {% for trade in trades %}
+      <option value="{{ trade.key }}" {{ 'selected' if filters.vertical == trade.key else '' }}>{{ trade.label_es }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="field">
+    <label for="metro">Metro</label>
+    <select name="metro" id="metro">
+      <option value="">Todos</option>
+      {% for m in metros %}
+      <option value="{{ m.key }}" {{ 'selected' if filters.metro == m.key else '' }}>{{ m.display }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="field">
+    <label for="channel">Canal</label>
+    <select name="channel" id="channel">
+      <option value="">Todos</option>
+      {% for c in channels %}
+      <option value="{{ c.value }}" {{ 'selected' if filters.channel == c.value else '' }}>{{ 'Teléfono' if c.value == 'phone' else 'Formulario' if c.value == 'contact_form' else c.value }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="field">
+    <label for="language">Idioma</label>
+    <select name="language" id="language">
+      <option value="">Todos</option>
+      {% for lang in languages %}
+      <option value="{{ lang.value }}" {{ 'selected' if filters.language == lang.value else '' }}>{{ 'Inglés' if lang.value == 'en' else 'Español' }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div style="grid-column: 1 / -1"><button class="btn btn-sm" type="submit">Filtrar</button> <a class="btn btn-sm btn-secondary" href="/dashboard/funnel">Limpiar</a></div>
+</form>
+
+{% if report.contacted == 0 %}
+<div class="empty-state">
+  <h3>Todavía no hay datos</h3>
+  <p>El embudo se llena registrando eventos desde la <a href="/queue">cola de contacto</a> — "Contactado", "Respondió", "Llamada agendada", "Pagó".</p>
+</div>
+{% else %}
+
+<div class="card mb-2">
+  {% if report.has_winner %}
+    <span class="badge badge-ok">GANADOR — se cumplió el criterio pre-registrado</span>
+  {% elif kill_triggered %}
+    <span class="badge badge-danger">KILL — {{ kill_reason }}</span>
+    <p class="text-sm text-muted mt-1">Acción: cambiar de vertical u oferta, no de redacción (así lo fija <code>decision_criteria.yaml</code>).</p>
+  {% else %}
+    <span class="badge badge-warn">En curso</span>
+    <p class="text-sm text-muted mt-1">Faltan {{ [0, kill_target - report.contacted] | max }} contactados de {{ kill_target }} para poder evaluar el criterio de kill (0 ventas y &lt;5 respuestas).</p>
+  {% endif %}
+</div>
+
+<div class="grid grid-3 mb-2">
+  <div class="card">
+    <div class="card-title">Nivel 1 · Contactados</div>
+    <div class="stat-value">{{ report.contacted }}</div>
+    <div class="stat-label">de {{ kill_target }} del criterio de kill</div>
+  </div>
+  <div class="card">
+    <div class="card-title">Nivel 5 · Pagaron</div>
+    <div class="stat-value">{{ report.paid }}</div>
+    <div class="stat-label">USD {{ report.revenue_usd | thousands }} de ingresos</div>
+  </div>
+  <div class="card">
+    <div class="card-title">Contactado → pagó (global)</div>
+    <div class="stat-value">{{ steps.overall.rate | pct }}</div>
+    <div class="stat-label">({{ steps.overall.low | pct }} – {{ steps.overall.high | pct }})</div>
+  </div>
+</div>
+
+<div class="card mb-2">
+  <div class="card-title">Escalón a escalón</div>
+  <table>
+    <thead><tr><th>Paso</th><th>n</th><th>Tasa</th><th>IC 95% (Wilson)</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>Contactado → respondió</td>
+        <td>{{ steps.replied.n }} / {{ steps.replied.base }}</td>
+        <td>{{ steps.replied.rate | pct }}</td>
+        <td>{{ steps.replied.low | pct }} – {{ steps.replied.high | pct }}</td>
+      </tr>
+      <tr>
+        <td>Respondió → llamada agendada</td>
+        <td>{{ steps.calls_booked.n }} / {{ steps.calls_booked.base }}</td>
+        <td>{{ steps.calls_booked.rate | pct }}</td>
+        <td>{{ steps.calls_booked.low | pct }} – {{ steps.calls_booked.high | pct }}</td>
+      </tr>
+      <tr>
+        <td>Llamada → propuesta enviada</td>
+        <td>{{ steps.proposal_sent.n }} / {{ steps.proposal_sent.base }}</td>
+        <td>{{ steps.proposal_sent.rate | pct }}</td>
+        <td>{{ steps.proposal_sent.low | pct }} – {{ steps.proposal_sent.high | pct }}</td>
+      </tr>
+      <tr>
+        <td>Propuesta → pagó</td>
+        <td>{{ steps.paid.n }} / {{ steps.paid.base }}</td>
+        <td>{{ steps.paid.rate | pct }}</td>
+        <td>{{ steps.paid.low | pct }} – {{ steps.paid.high | pct }}</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="card">
+  <div class="card-title">Corte temprano por costo</div>
+  {% if not projection.ready %}
+    <p class="text-sm text-muted">Faltan {{ projection.calibracion - report.contacted }} contactados para tener los {{ projection.calibracion }} de calibración — antes de eso, proyectar horas es ruido con forma de dato.</p>
+  {% elif projection.contacts_per_hour is none %}
+    <p class="text-sm text-muted">Hay {{ report.contacted }} contactados pero 0 horas cargadas en <a href="/queue">el cronómetro de la cola</a> — sin eso no se puede proyectar.</p>
+  {% else %}
+    <p>Ritmo real: <strong>{{ projection.contacts_per_hour | round(1) }}</strong> contactados/hora ({{ projection.hours_spent | round(1) }} h cargadas hasta ahora).</p>
+    <p>Para llegar a {{ kill_target }} faltan {{ projection.remaining_contacts }} contactados ≈ <strong>{{ projection.projected_remaining_hours | round(1) }} h</strong> más.</p>
+    <p class="text-sm text-muted">Presupuesto del horizonte de 8 semanas: {{ projection.budget_min | round(0) | int }}–{{ projection.budget_max | round(0) | int }} h totales; ya cargaste {{ projection.hours_spent | round(1) }} h.</p>
+    {% if projection.over_budget %}
+      <span class="badge badge-danger mt-1">No entra en el horizonte al ritmo actual — considerar corte por costo.</span>
+    {% else %}
+      <span class="badge badge-ok mt-1">Entra en el horizonte al ritmo actual.</span>
+    {% endif %}
+  {% endif %}
+</div>
+
+<p class="text-sm text-muted mt-2">Gasto acumulado (Postgres, <code>costs</code>): USD {{ total_cost | round(2) }}{% if report.cost_per_call is not none %} · costo por llamada agendada: USD {{ report.cost_per_call | round(0) | int }}{% endif %}.</p>
+
+{% endif %}
+{% endblock %}

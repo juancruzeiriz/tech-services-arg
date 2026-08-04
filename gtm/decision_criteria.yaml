@@ -1,4 +1,34 @@
-# Criterio de decisión PRE-REGISTRADO.
+# Criterio de decisión PRE-REGISTRADO — v2.
+#
+# ESTE ES UN RE-REGISTRO LEGÍTIMO, NO UNA VIOLACIÓN DE LA REGLA DURA DE ABAJO: se hace
+# antes de la primera llamada real. Al momento de este cambio `gtm/funnel.jsonl` no
+# existe — cero datos fueron observados. v1 tenía un error de potencia estadística: a
+# n=60 contactados, el kill por "menos de 3 respuestas" se disparaba con:
+#
+#   tasa real de respuesta   P(kill se dispara)
+#   2% (mala)                  88%
+#   5% (buena, top-quartile)   42%
+#
+# Y la vía alternativa de "ganador" por 3 llamadas agendadas era estadísticamente
+# inalcanzable a ese volumen (esperado ≈ 1 llamada). El experimento solo podía
+# terminar en "kill" o "no concluyente" — nunca en "ganador" por esa vía. Es el mismo
+# error de potencia que este mismo repo usó, correctamente, para descartar los
+# anuncios pagos (ver README.md) — colado sin querer en el propio criterio de outreach.
+#
+# v2 ancla el kill en el objetivo real (¿esto genera un ingreso extra?) en vez de en
+# una intuición sobre cuántas respuestas "se sienten pocas":
+#
+#   Para ~USD 1.500/mes hacen falta ~1,6 ventas/mes de USD 950. Con 8-10 hs/semana de
+#   llamado y una tasa de entrega de link estimada en ~14%, la tasa contactado→venta
+#   necesaria es ~1,3%. A n=200 contactados:
+#
+#   tasa real contactado→venta   P(0 ventas en 200, falso kill)
+#   0,5% (inviable)                37%
+#   1,3% (justo lo necesario)       7%
+#
+# 7% de falso kill sobre un negocio que sí alcanzaba el objetivo es un riesgo
+# aceptable; 42-88% no lo era. Después de este commit, el archivo vuelve a estar
+# sujeto a la regla dura.
 #
 # Se commitea ANTES del primer envío. El hash del commit es la prueba de que el
 # criterio no se escribió después de ver los resultados.
@@ -13,8 +43,8 @@
 experimento: "Demos no solicitadas a home services de USA"
 horizonte_semanas: 8
 
-# Escalera de compromiso. El nivel 1 (clic) se registra pero NO decide nada:
-# mide curiosidad, no disposición a pagar.
+# Escalera de compromiso. El nivel 1 (clic) se registra en `demo_views` — NO en el
+# embudo de abajo — y no decide nada: mide curiosidad, no disposición a pagar.
 niveles:
   1: clic en el link de la demo
   2: responde el email
@@ -23,17 +53,33 @@ niveles:
   5: paga
 
 ganador:
-  # Cualquiera de las dos condiciones alcanza. Nivel 5 es terminal: una venta
-  # cobrada supera a cualquier cantidad de señal blanda.
+  # Nivel 5 es terminal: una venta cobrada es la única señal sin ambigüedad. La vía
+  # alternativa de v1 ("3 llamadas agendadas") se elimina en v2: a n=200 contactados,
+  # con una tasa de booking plausible de 0,5-2%, esperar 3 llamadas ya exige el
+  # extremo optimista del rango. No es una señal de "ganador" a ese volumen — es
+  # ruido con forma de señal, y mantenerla como vía alternativa habría repetido el
+  # mismo error de potencia que motivó este re-registro.
   - ventas_cobradas >= 1
-  - llamadas_agendadas >= 3
 
 kill:
-  # Si se cumple, el problema es la OFERTA o el VERTICAL, no el copy del email.
-  # Cambiar el asunto por décima vez es la forma más común de no aceptar un no.
-  - demos_enviadas >= 60 and respuestas < 3
-  # Interés que nunca llega a plata: el precio o el paquete están mal.
+  # Ver la aritmética completa arriba. 200 contactados con 0 ventas y menos de 5
+  # respuestas: interés insuficiente Y conversión a plata insuficiente a la vez.
+  - contactados >= 200 and ventas_cobradas == 0 and respuestas < 5
+  # Interés que nunca llega a conversación: el precio o el paquete están mal, no la
+  # redacción del mensaje.
   - respuestas >= 10 and llamadas_agendadas == 0
+
+# NO es un umbral de kill del experimento — es un límite operativo sobre el tiempo
+# disponible, nuevo en v2. v1 no tenía ninguna forma de cortar por costo: solo medía
+# señal, nunca cuánto costaba conseguirla. Con las primeras ~50 llamadas se mide la
+# tasa real de conexión y de entrega de link (no la asumida) y se recalcula cuántas
+# horas cuesta llegar a los 200 contactados del criterio de arriba. Si esa proyección
+# no entra en el horizonte de 8 semanas al ritmo de horas disponible, se corta por
+# costo sin necesidad de terminar el experimento estadístico.
+corte_temprano_por_costo:
+  llamadas_de_calibracion: 50
+  horas_disponibles_semana_min: 5
+  horas_disponibles_semana_max: 10
 
 accion_si_kill: "cambiar de vertical u oferta, no de redacción"
 
@@ -47,9 +93,8 @@ regla_dura: "este criterio no se modifica después de ver datos"
 # código después de ver los datos, que es exactamente lo que hay que evitar.
 umbrales:
   ganador_ventas_cobradas: 1
-  ganador_llamadas_agendadas: 3
-  kill_demos_enviadas: 60
-  kill_respuestas_minimas: 3
+  kill_contactados: 200
+  kill_respuestas_minimas: 5
   kill_respuestas_sin_llamada: 10
 
 # Segundo eje, para el desempate. Sin esto, el experimento optimiza demanda sola
@@ -58,6 +103,15 @@ desempate_por_mantenibilidad:
   - horas_mes_por_cliente        # menor es mejor
   - requiere_on_call             # descalifica
   - dependencia_de_normativa     # penaliza (cambia sola, mantenimiento infinito)
+
+# Nuevo en v2. Toda métrica del embudo se registra segmentada por canal (teléfono /
+# formulario) e idioma (en / es), no solo agregada. Sin esto, un resultado de "pocas
+# respuestas" no se puede diagnosticar: "nadie atiende el teléfono" y "nadie llena el
+# formulario" son problemas distintos con arreglos distintos, y "no responden en
+# inglés" y "no responden en español" son hipótesis de vertical distintas.
+segmentacion_obligatoria:
+  - channel
+  - language
 
 restricciones_no_negociables:
   - "sin on-call"

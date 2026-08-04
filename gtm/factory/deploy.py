@@ -21,13 +21,12 @@ Uso:
 from __future__ import annotations
 
 import argparse
-import json
 import shutil
 import sys
 from datetime import UTC, datetime
 from pathlib import Path
 
-from gtm.factory import config
+from gtm.factory import artifacts, config
 from gtm.factory.logs import get_logger
 from gtm.factory.types import Demo, DeploymentError
 
@@ -128,20 +127,11 @@ def main(argv: list[str] | None = None) -> int:
     input_path = args.input or str(config.DATA_DIR / "demos.json")
     base_url = args.base_url or config.demo_base_url()
 
-    with open(input_path, encoding="utf-8") as handle:
-        demos = [
-            Demo(
-                place_id=item["place_id"],
-                slug=item["slug"],
-                html_path=item["html_path"],
-            )
-            for item in json.load(handle)
-        ]
+    demos = artifacts.read_demos(input_path)
 
     published = deploy(demos, base_url, dry_run=args.dry_run)
 
-    with open(input_path, "w", encoding="utf-8") as handle:
-        json.dump([d.to_dict() for d in published], handle, ensure_ascii=False, indent=2)
+    artifacts.write_demos(input_path, published)
 
     prefix = "[dry-run] " if args.dry_run else ""
     print(f"{prefix}{len(published)} demos -> {PUBLIC_DIR}")

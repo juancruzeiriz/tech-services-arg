@@ -18,15 +18,15 @@ Uso:
 from __future__ import annotations
 
 import argparse
-import json
 import sys
 from datetime import datetime
 
-from gtm.factory import config
+from gtm.factory import artifacts, config
 from gtm.factory.logs import get_logger
 from gtm.factory.types import (
     ComplianceError,
     Demo,
+    Language,
     OutreachEmail,
     PainScore,
     Prospect,
@@ -36,21 +36,40 @@ from gtm.factory.types import (
 
 _logger = get_logger(__name__)
 
-# Frase que identifica el mensaje como comunicación comercial (CAN-SPAM).
-_AD_DISCLOSURE = "This is a commercial message from an independent web developer."
+# Frase que identifica el mensaje como comunicación comercial (CAN-SPAM). CAN-SPAM
+# aplica sin importar el idioma del mensaje, así que hace falta un equivalente
+# fielmente exacto en español, no una paráfrasis.
+#
+# Deliberadamente DOS constantes de texto plano, no un dict {Language: str}: el test
+# de compliance (`tests/gtm/test_outreach.py::TestCanspamCompliance`, el gate de CI)
+# importa `_AD_DISCLOSURE` directo y hace `in email.body` — si esto fuera un dict esa
+# importación seguiría funcionando pero la comparación fallaría en silencio.
+_AD_DISCLOSURE_EN = "This is a commercial message from an independent web developer."
+_AD_DISCLOSURE_ES = "Este es un mensaje comercial de un desarrollador web independiente."
+_AD_DISCLOSURE = _AD_DISCLOSURE_EN  # nombre histórico; ver el comentario de arriba.
+
+# weekday(): lunes=0 ... domingo=6. No se usa strftime("%A") en español porque
+# depende del locale del sistema operativo -- exactamente el tipo de bug de "%-I"
+# que ya rompió esto una vez en Windows (ver build_body).
+_DIAS_ES = ("lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo")
 
 
-def build_subject(prospect: Prospect) -> str:
+def _ad_disclosure(language: Language) -> str:
+    return _AD_DISCLOSURE_ES if language is Language.ES else _AD_DISCLOSURE_EN
+
+
+def build_subject(prospect: Prospect, *, language: Language = Language.EN) -> str:
     """Asunto descriptivo y verdadero.
 
     Sin clickbait ni falsos "Re:" — un asunto engañoso es una violación de CAN-SPAM
     por sí solo, y además destruye la conversión cuando el prospecto abre.
     """
+    if language is Language.ES:
+        return f"Hice un sitio de muestra para {prospect.name}"
     return f"Built a preview site for {prospect.name}"
 
 
-def _pain_line(score: PainScore | None) -> str:
-    """Una línea concreta y verificable sobre el estado actual del prospecto."""
+def _pain_line_en(score: PainScore | None) -> str:
     if score is None:
         return "I noticed your business does not have much of a website."
 
@@ -74,33 +93,120 @@ def _pain_line(score: PainScore | None) -> str:
     return "I think your site could convert a lot more of the calls you already get."
 
 
+def _pain_line_es(score: PainScore | None) -> str:
+    if score is None:
+        return "Noté que tu negocio no tiene mucho sitio web."
+
+    if not score.has_web_presence:
+        return "Noté que no tenés sitio web — todo pasa por tu ficha de Google."
+    if not score.reachable:
+        return "Intenté abrir tu sitio y no cargó."
+    if score.performance is not None and score.performance < 50:
+        return (
+            f"Tu sitio saca {score.performance}/100 en el test de velocidad móvil de "
+            "Google — lo podés verificar vos mismo en pagespeed.web.dev."
+        )
+    if score.seo is not None and score.seo < 70:
+        return (
+            f"Tu sitio saca {score.seo}/100 en el chequeo de SEO de Google — "
+            "lo podés verificar en pagespeed.web.dev."
+        )
+    return "Creo que tu sitio podría convertir muchas más de las llamadas que ya recibís."
+
+
+def _pain_line(score: PainScore | None, language: Language = Language.EN) -> str:
+    """Una línea concreta y verificable sobre el estado actual del prospecto."""
+    return _pain_line_es(score) if language is Language.ES else _pain_line_en(score)
+
+
 def build_body(
     prospect: Prospect,
     demo: Demo,
     sender: SenderIdentity,
     score: PainScore | None = None,
     missed_call_at: datetime | None = None,
+    *,
+    language: Language = Language.EN,
+    link_url: str | None = None,
+    price_usd: int = 950,
 ) -> str:
-    """Redacta el cuerpo del email, con todos los elementos exigidos por CAN-SPAM."""
+    """Redacta el cuerpo del email, con todos los elementos exigidos por CAN-SPAM.
+
+    `price_usd`: el precio de la oferta, la única variable que de verdad define
+    el experimento (ver `gtm/decision_criteria.yaml`) — 950 es el default
+    porque es el que ya estaba hardcodeado acá, no una preferencia.
+
+    `link_url`, si se pasa, reemplaza a `demo.url` como el link que efectivamente
+    ve el prospecto — es el hueco por el que entra el link de redirección con
+    token (`gtm/store/links.py`) que registra la apertura sin que la demo en sí
+    tenga que hacer ni un request externo. `demo.is_live` sigue siendo lo que
+    determina si hay algo que mandar; `link_url` solo cambia qué URL se escribe.
+    """
     if not demo.is_live:
         raise ComplianceError(
             f"La demo de {prospect.name!r} no tiene URL pública: un mockup adjunto no "
             "es prueba de trabajo y es el pitch que el prospecto ya descartó veinte veces."
         )
+    link = link_url or demo.url
 
     if missed_call_at is not None:
-        hook = (
-            f"I called {missed_call_at.strftime('%A at %-I:%M %p')} and nobody picked "
-            "up. No voicemail either."
-        )
+        # "%-I" (sin cero a la izquierda) es una extensión de glibc: no existe en el
+        # strftime de Windows ("%#I" ahí, ninguna de las dos es portable). Se arma a
+        # mano para que corra igual en CI (Linux) y en desarrollo (Windows).
+        hour_12 = int(missed_call_at.strftime("%I"))
+        if language is Language.ES:
+            dia = _DIAS_ES[missed_call_at.weekday()]
+            hook = (
+                f"Te llamé el {dia} a las {hour_12}{missed_call_at.strftime(':%M')} y "
+                "no atendió nadie. Tampoco había buzón de voz."
+            )
+        else:
+            hook = (
+                f"I called {missed_call_at.strftime('%A at')} {hour_12}"
+                f"{missed_call_at.strftime(':%M %p')} and nobody picked up. No voicemail either."
+            )
     else:
-        hook = _pain_line(score)
+        hook = _pain_line(score, language)
+
+    if language is Language.ES:
+        vertical = vertical_label(prospect.vertical, language)
+        return f"""Hola — {hook}
+
+Te armé un sitio nuevo y lo subí:
+
+{link}
+
+Está online ahora mismo. Abrilo desde el celular. Usa tu número de teléfono real,
+tus reseñas reales de Google y tu zona de servicio — no hay nada inventado.
+
+Dos cosas que hace que tu configuración actual no hace:
+
+  1. Carga al instante en el celular, que es donde están tus clientes.
+  2. Cuando se te escapa una llamada, quien llamó recibe un mensaje de texto en
+     segundos preguntando qué necesita, así el trabajo no se va al próximo
+     {vertical} de la lista.
+
+Si lo querés, son USD {price_usd} por única vez y lo puedo apuntar a tu dominio en 48
+horas. Reembolso completo dentro de los 14 días, sin preguntas. Si no lo querés,
+quedate con el link igual — no me costó nada hacerlo y es tuyo.
+
+¿Vale una llamada de 10 minutos?
+
+{sender.from_name}
+{sender.from_email}
+
+--
+{_ad_disclosure(language)} Recibiste esto en la dirección de contacto pública de tu
+negocio. Para que no te vuelva a escribir, usá este link y te voy a sacar de la
+lista dentro de los 10 días hábiles: {sender.unsubscribe_url}
+{sender.physical_address}
+"""
 
     return f"""Hi — {hook}
 
 So I built you a new site and put it online:
 
-{demo.url}
+{link}
 
 It is live right now. Open it on your phone. It uses your real phone number,
 your actual Google reviews and your service area — nothing is made up.
@@ -112,7 +218,7 @@ Two things it does that your current setup does not:
      what they need, so the job does not go to the next {vertical_label(prospect.vertical)}
      on the list.
 
-If you want it, it is $950 one time and I can point it at your domain within
+If you want it, it is ${price_usd} one time and I can point it at your domain within
 48 hours. Full refund within 14 days, no questions. If you do not want it,
 keep the link anyway — it cost me nothing to make and it is yours.
 
@@ -122,7 +228,7 @@ Worth a 10-minute call?
 {sender.from_email}
 
 --
-{_AD_DISCLOSURE} You received this at your publicly listed business address.
+{_ad_disclosure(language)} You received this at your publicly listed business address.
 To never hear from me again, use this link and I will remove you within
 10 business days: {sender.unsubscribe_url}
 {sender.physical_address}
@@ -151,7 +257,7 @@ def validate_compliance(email: OutreachEmail) -> None:
     if email.sender.unsubscribe_url not in email.body:
         raise ComplianceError("el cuerpo no incluye el mecanismo de baja")
 
-    if _AD_DISCLOSURE not in email.body:
+    if _ad_disclosure(email.language) not in email.body:
         raise ComplianceError("el cuerpo no se identifica como comunicación comercial")
 
     if email.demo_url and email.demo_url not in email.body:
@@ -165,15 +271,29 @@ def build_email(
     score: PainScore | None = None,
     missed_call_at: datetime | None = None,
     to_email: str | None = None,
+    *,
+    language: Language = Language.EN,
+    link_url: str | None = None,
+    price_usd: int = 950,
 ) -> OutreachEmail:
-    """Construye y valida un email de prospección listo para enviar."""
+    """Construye y valida un email de prospección listo para enviar.
+
+    `link_url`: ver el docstring de `build_body`. Se guarda también en
+    `OutreachEmail.demo_url` (mismo valor) para que `validate_compliance` siga
+    verificando, sin cambios, que el link que se manda está en el cuerpo.
+    """
+    link = link_url or demo.url
     email = OutreachEmail(
         place_id=prospect.place_id,
         to_email=to_email,
-        subject=build_subject(prospect),
-        body=build_body(prospect, demo, sender, score, missed_call_at),
+        subject=build_subject(prospect, language=language),
+        body=build_body(
+            prospect, demo, sender, score, missed_call_at,
+            language=language, link_url=link_url, price_usd=price_usd,
+        ),
         sender=sender,
-        demo_url=demo.url,
+        demo_url=link,
+        language=language,
     )
     validate_compliance(email)
     return email
@@ -195,34 +315,12 @@ def main(argv: list[str] | None = None) -> int:
 
     sender = config.load_sender_identity()
 
-    with open(prospects_path, encoding="utf-8") as handle:
-        prospects = {p["place_id"]: Prospect.from_dict(p) for p in json.load(handle)}
-
-    with open(demos_path, encoding="utf-8") as handle:
-        demos = [
-            Demo(
-                place_id=item["place_id"],
-                slug=item["slug"],
-                html_path=item["html_path"],
-                url=item.get("url"),
-            )
-            for item in json.load(handle)
-        ]
+    prospects = {p.place_id: p for p in artifacts.read_prospects(prospects_path)}
+    demos = artifacts.read_demos(demos_path)
 
     scores: dict[str, PainScore] = {}
     try:
-        with open(scores_path, encoding="utf-8") as handle:
-            for item in json.load(handle):
-                scores[item["place_id"]] = PainScore(
-                    place_id=item["place_id"],
-                    performance=item.get("performance"),
-                    seo=item.get("seo"),
-                    accessibility=item.get("accessibility"),
-                    mobile_friendly=item.get("mobile_friendly"),
-                    has_web_presence=item.get("has_web_presence", True),
-                    reachable=item.get("reachable", True),
-                    notes=tuple(item.get("notes", ())),
-                )
+        scores = {s.place_id: s for s in artifacts.read_scores(scores_path)}
     except FileNotFoundError:
         _logger.warning("sin scores; se usa el ángulo genérico", extra={"event": "no_scores"})
 
@@ -243,8 +341,7 @@ def main(argv: list[str] | None = None) -> int:
                 },
             )
 
-    with open(output_path, "w", encoding="utf-8") as handle:
-        json.dump([e.to_dict() for e in emails], handle, ensure_ascii=False, indent=2)
+    artifacts.write_emails(output_path, emails)
 
     print(f"{len(emails)}/{len(demos)} emails conformes -> {output_path}")
     return 0

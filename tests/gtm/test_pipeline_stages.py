@@ -227,6 +227,53 @@ class TestScore:
         lighthouse = {"categories": {"performance": {"score": 0.42}}}
         assert score_mod._category_score(lighthouse, "performance") == 42
 
+    async def test_on_item_se_llama_una_vez_por_prospecto(self, monkeypatch):
+        """El callback de progreso: sin él, la UI no tiene forma de mostrar avance
+        durante los 30-60s por sitio que tarda esta etapa."""
+
+        async def _up(*_args, **_kwargs):
+            return True
+
+        async def _fast(*_args, **_kwargs):
+            return PainScore(place_id="", performance=50, seo=50)
+
+        monkeypatch.setattr(score_mod, "probe_url_async", _up)
+        monkeypatch.setattr(score_mod, "score_website", _fast)
+
+        prospects = [
+            Prospect(
+                place_id=f"p{i}", name=f"Co {i}", vertical="plumber", metro="Tucson, AZ",
+                website=f"https://s{i}.example",
+            )
+            for i in range(4)
+        ]
+        seen: list[str] = []
+        await score_mod.score_all(prospects, on_item=seen.append)
+
+        assert sorted(seen) == [p.place_id for p in prospects]
+
+    async def test_on_item_se_llama_tambien_si_el_prospecto_falla(self, monkeypatch):
+        """Un prospecto que no se pudo puntuar también cuenta como "terminado"
+        para la barra de progreso — si no, el contador se queda pegado."""
+
+        async def _up(*_args, **_kwargs):
+            return True
+
+        async def _unanalyzable(*_args, **_kwargs):
+            return None
+
+        monkeypatch.setattr(score_mod, "probe_url_async", _up)
+        monkeypatch.setattr(score_mod, "score_website", _unanalyzable)
+
+        prospect = Prospect(
+            place_id="broken", name="Broken", vertical="plumber", metro="Tucson, AZ",
+            website="https://x.example",
+        )
+        seen: list[str] = []
+        await score_mod.score_all([prospect], on_item=seen.append)
+
+        assert seen == ["broken"]
+
     def test_category_score_ausente_es_none(self):
         assert score_mod._category_score({"categories": {}}, "seo") is None
 

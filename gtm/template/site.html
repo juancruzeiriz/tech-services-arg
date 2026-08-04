@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="$lang">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -7,7 +7,7 @@
      ni ser confundida con él. Se saca solo cuando el cliente compra y pasa a su dominio. -->
 <meta name="robots" content="noindex,nofollow">
 <title>$business_name — $city $vertical_label</title>
-<meta name="description" content="$business_name: $vertical_label serving $city. Call $phone.">
+<meta name="description" content="$meta_description">
 <style>
 /* Todo el CSS va inline: cero requests externos = carga inmediata. El contraste con
    el sitio actual del prospecto es literalmente el argumento de venta. */
@@ -57,14 +57,14 @@ footer{padding:30px 0;color:#64748b;font-size:14px;text-align:center}
 <body>
 
 <div class="demo-flag">
-  <strong>Preview site</strong> — built for $business_name by $author_name. Not affiliated with,
-  or published by, $business_name. <a href="$author_url" style="color:#93c5fd">Who made this</a>
+  <strong>$flag_label</strong> — $flag_text
+  <a href="$author_url" style="color:#93c5fd">$flag_link_text</a>
 </div>
 
 <header>
   <div class="wrap bar">
     <span class="brand">$business_name</span>
-    <a class="call" href="tel:$phone_href">Call $phone</a>
+    <a class="call" href="tel:$phone_href">$call_label $phone</a>
   </div>
 </header>
 
@@ -72,43 +72,41 @@ footer{padding:30px 0;color:#64748b;font-size:14px;text-align:center}
   <div class="wrap">
     <h1>$headline</h1>
     <p>$subheadline</p>
-    <a class="call" href="tel:$phone_href">Call $phone</a>
+    <a class="call" href="tel:$phone_href">$call_label $phone</a>
     <div class="trust">
-      <span><b>$rating★</b> from $review_count reviews</span>
-      <span><b>Serving</b> $city</span>
-      <span><b>Fast</b> response</span>
+      <span>$trust_rating</span>
+      <span><b>$trust_serving_label</b> $city</span>
+      <span><b>$trust_fast_label</b></span>
     </div>
   </div>
 </div>
 
 <section>
   <div class="wrap">
-    <h2>What we do</h2>
+    <h2>$services_heading</h2>
     <div class="grid">$services_html</div>
   </div>
 </section>
 
 <section>
   <div class="wrap">
-    <h2>What customers say</h2>
+    <h2>$reviews_heading</h2>
     $reviews_html
   </div>
 </section>
 
 <div class="cta">
   <div class="wrap">
-    <h2>Need $vertical_article $vertical_label now?</h2>
-    <p>Call and talk to a real person. If we miss you, you get a text back in
-       seconds — not tomorrow.</p>
-    <a class="call" href="tel:$phone_href">Call $phone</a>
+    <h2>$cta_heading</h2>
+    <p>$cta_body</p>
+    <a class="call" href="tel:$phone_href">$call_label $phone</a>
   </div>
 </div>
 
 <footer>
   <div class="wrap">
     <p>$business_name · $address</p>
-    <p>Preview built by $author_name. The business information shown here is public
-       data from Google Maps.</p>
+    <p>$footer_note</p>
   </div>
 </footer>
 

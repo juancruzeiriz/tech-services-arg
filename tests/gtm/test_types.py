@@ -7,6 +7,10 @@ import pytest
 from gtm.factory.types import (
     VERTICAL_LABELS,
     ComplianceError,
+    ContactChannel,
+    ContactPlan,
+    Demo,
+    OutreachEmail,
     PainScore,
     Prospect,
     SenderIdentity,
@@ -160,3 +164,59 @@ class TestIndefiniteArticle:
     def test_todas_las_etiquetas_del_catalogo_resuelven(self):
         for label in VERTICAL_LABELS.values():
             assert indefinite_article(label) in ("a", "an")
+
+
+class TestRoundtripDict:
+    """`from_dict(to_dict(x)) == x` para los modelos que antes se reconstruían a mano
+    en 5 lugares distintos, con cobertura de campos inconsistente entre ellos (p. ej.
+    `contact._load_scores` perdía `notes`; `deploy` perdía `url`/`deployed_at`). Un
+    único `from_dict` por tipo, verificado acá, es lo que hace seguro colapsarlos."""
+
+    def test_pain_score(self, slow_site_score):
+        assert PainScore.from_dict(slow_site_score.to_dict()) == slow_site_score
+
+    def test_pain_score_sin_web_presence(self):
+        original = PainScore(place_id="x", has_web_presence=False, notes=("sin sitio",))
+        assert PainScore.from_dict(original.to_dict()) == original
+
+    def test_demo(self, live_demo):
+        assert Demo.from_dict(live_demo.to_dict()) == live_demo
+
+    def test_demo_con_deployed_at(self):
+        from datetime import UTC, datetime
+
+        original = Demo(
+            place_id="p1",
+            slug="joes-plumbing-abc123",
+            html_path="/tmp/demo/index.html",
+            url="https://demos.example.com/joes-plumbing-abc123/",
+            deployed_at=datetime(2026, 8, 2, 12, 0, tzinfo=UTC),
+        )
+        assert Demo.from_dict(original.to_dict()) == original
+
+    def test_demo_sin_publicar(self):
+        original = Demo(place_id="p1", slug="joes-plumbing-abc123", html_path="/tmp/index.html")
+        assert Demo.from_dict(original.to_dict()) == original
+
+    def test_contact_plan_telefono(self):
+        original = ContactPlan(
+            place_id="p1",
+            channel=ContactChannel.PHONE,
+            target="(520) 555-0142",
+            rationale="dolor máximo, teléfono disponible",
+            pain_score=95,
+        )
+        assert ContactPlan.from_dict(original.to_dict()) == original
+
+    def test_contact_plan_no_accionable(self):
+        original = ContactPlan(
+            place_id="p1", channel=ContactChannel.UNREACHABLE, target=None, rationale="sin canal"
+        )
+        assert ContactPlan.from_dict(original.to_dict()) == original
+
+    def test_outreach_email(self, prospect, live_demo, sender):
+        from gtm.factory.outreach import build_email
+
+        original = build_email(prospect, live_demo, sender)
+        restored = OutreachEmail.from_dict(original.to_dict())
+        assert restored == original

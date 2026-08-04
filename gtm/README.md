@@ -100,6 +100,35 @@ python -m gtm.factory.generate --all --input gtm/examples/prospects.sample.json 
 python -m gtm.factory.deploy --base-url "https://demos.tusitio.com" --dry-run
 ```
 
+## UI
+
+```bash
+python -m gtm.ui                    # abre http://127.0.0.1:8787
+python -m gtm.ui --port 9000 --no-browser --reload
+```
+
+Corre el mismo pipeline que la CLI (`gtm/factory/pipeline.py` llama a las mismas
+funciones puras que usan los 8 `main()`, no las reimplementa) detrás de un
+formulario con todos los parámetros, en vez de pasarlos a mano por `argparse`
+corrida por corrida. Bind fijo a `127.0.0.1`: el proceso guarda credenciales en
+memoria y no tiene capa de autenticación, así que exponerlo a la red tiene que
+ser una decisión explícita de quien lo corre, nunca el default.
+
+| Ruta | Qué hace |
+|---|---|
+| `/` | Formulario de corrida (los ~15 parámetros del pipeline) + presets guardados |
+| `/runs`, `/runs/{id}` | Lista y detalle de corridas, con progreso en vivo por SSE |
+| `/queue` | Cola de contacto: guion listo para copiar, un clic por evento del embudo |
+| `/dashboard/funnel` | Embudo contra `decision_criteria.yaml`, con intervalos de Wilson y proyección de horas del corte temprano por costo |
+| `/dashboard/economics` | USD/hora efectivo, CAC, cohortes (oficio×metro×idioma), correlación dolor↔conversión |
+| `/settings` | Estado del entorno (qué falta por variable) + carga de costos |
+
+El ledger local (`funnel.jsonl`, `suppression.jsonl`) sigue siendo la fuente de
+verdad — se escribe siempre, primero. Postgres es un store analítico opcional:
+sin `SUPABASE_DB_URL`, o si la escritura falla, lo que no se pudo guardar queda
+en `gtm/build/outbox.jsonl` y se reintenta con `python -m gtm.store.backfill`.
+La UI nunca falla por esto — se degrada, no se rompe.
+
 ## Configuración
 
 En `.env.personal` (raíz del repo). Ninguna de estas variables va al código.
@@ -112,7 +141,8 @@ En `.env.personal` (raíz del repo). Ninguna de estas variables va al código.
 | `GTM_FROM_EMAIL` | outreach | sí |
 | `GTM_PHYSICAL_ADDRESS` | outreach | sí — CAN-SPAM |
 | `GTM_UNSUBSCRIBE_URL` | outreach | sí — CAN-SPAM |
-| `GTM_DEMO_BASE_URL` | deploy | sí |
+| `GTM_DEMO_BASE_URL` | deploy, UI | sí |
+| `SUPABASE_DB_URL` | UI, store, backfill | no — sin ella, degrada al outbox local |
 
 ## Reglas que el código hace cumplir
 

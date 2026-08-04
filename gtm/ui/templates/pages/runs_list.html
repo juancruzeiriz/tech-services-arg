@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}Corridas{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1>Corridas</h1>
+  <p>Historial de esta sesión — se pierde si reiniciás la UI, no lo que ya quedó escrito en disco o Postgres.</p>
+</div>
+
+{% if not handles %}
+<div class="empty-state">
+  <h3>Todavía no corriste nada</h3>
+  <p><a href="/">Armá tu primera corrida</a>.</p>
+</div>
+{% else %}
+<div class="table-wrap">
+  <table>
+    <thead><tr><th>Oficio</th><th>Metro</th><th>Idioma</th><th>Modo</th><th>Estado</th><th></th></tr></thead>
+    <tbody>
+      {% for handle in handles %}
+      <tr>
+        <td>{{ handle.ctx.vertical }}</td>
+        <td>{{ handle.ctx.metro }}</td>
+        <td>{{ handle.ctx.language.value }}</td>
+        <td class="text-sm text-muted">{{ 'simulación' if handle.ctx.simulated else 'real' }}</td>
+        <td><span class="badge {{ 'badge-ok' if handle.status == 'ok' else 'badge-danger' if handle.status == 'failed' else 'badge-info' }}">{{ handle.status }}</span></td>
+        <td><a href="/runs/{{ handle.ctx.run_id }}">Ver →</a></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+{% endblock %}

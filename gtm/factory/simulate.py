@@ -15,11 +15,11 @@ Uso:
 from __future__ import annotations
 
 import argparse
-import json
 import random
 import sys
 
-from gtm.factory import config
+from gtm.catalog import city_of, get_metro, get_metro_by_display, get_trade
+from gtm.factory import artifacts, config
 from gtm.factory.logs import get_logger
 from gtm.factory.types import PainScore, Prospect, WebPresence
 
@@ -35,60 +35,10 @@ _PRESENCE_WEIGHTS: dict[WebPresence, float] = {
 # De los que tienen sitio, qué fracción está directamente caída o inaccesible.
 _UNREACHABLE_RATE = 0.08
 
-_NAME_PARTS: dict[str, tuple[tuple[str, ...], tuple[str, ...]]] = {
-    "hvac": (
-        (
-            "Sonoran", "Desert Sky", "Catalina", "Saguaro", "Old Pueblo", "Tanque Verde",
-            "Rincon", "Santa Cruz", "Mission", "Copper State", "Agave", "Ocotillo",
-            "Pima", "Sabino", "Gates Pass", "Silverbell", "Ironwood", "Mesquite",
-        ),
-        ("Air Conditioning", "Cooling & Heating", "HVAC Services", "Air & Heat", "Climate Control"),
-    ),
-    "plumber": (
-        (
-            "Sonoran", "Desert", "Catalina", "Saguaro", "Old Pueblo", "Rincon",
-            "Santa Cruz", "Copper State", "Agave", "Pima", "Sabino", "Ironwood",
-        ),
-        ("Plumbing", "Plumbing & Drain", "Rooter & Plumbing", "Pipe Works"),
-    ),
-    "electrician": (
-        ("Sonoran", "Desert", "Catalina", "Old Pueblo", "Copper State", "Pima", "Sabino"),
-        ("Electric", "Electrical Services", "Electric & Solar", "Power Solutions"),
-    ),
-    "roofer": (
-        ("Sonoran", "Desert", "Catalina", "Old Pueblo", "Copper State", "Ironwood"),
-        ("Roofing", "Roofing & Coatings", "Roof Systems", "Exteriors"),
-    ),
-}
-
-_REVIEWS: dict[str, tuple[str, ...]] = {
-    "hvac": (
-        "AC died Saturday at 108 degrees. They had someone here in two hours and "
-        "running by dinner. Did not gouge us on the emergency call.",
-        "Honest about what needed fixing versus what could wait. Previous company "
-        "quoted me a whole new system for what turned out to be a capacitor.",
-        "Been servicing our unit for six years. Always on time, always explains what "
-        "they did. Wish every trade worked like this.",
-        "Called three places. They were the only one who picked up.",
-    ),
-    "plumber": (
-        "Showed up in 40 minutes on a Sunday and fixed the leak. Fair price, no upsell.",
-        "Found the actual source of the leak instead of just patching the drywall.",
-        "Clean, fast, and they put down mats. Small thing but it says a lot.",
-    ),
-    "electrician": (
-        "Traced a dead circuit that two other electricians gave up on.",
-        "Upgraded our panel for the EV charger. Permitted, inspected, done in a day.",
-        "Explained the safety issue without trying to scare me into a bigger job.",
-    ),
-    "roofer": (
-        "Hail damage after the August storm. Their photo report is what got the "
-        "insurance claim approved.",
-        "Full tear-off in two days, cleaned up every nail. Warranty in writing.",
-        "Came out for a leak inspection and told me I did not need a new roof yet.",
-    ),
-}
-
+# Nombres de calle de relleno para direcciones sintéticas. Con sabor a Tucson porque
+# es donde arrancó el pipeline; con 20 metros en el catálogo ya no son geográficamente
+# realistas para todos, pero el dato real (dirección real) sale de Places, no de
+# `simulate` — esto solo tiene que parecer una dirección, no serlo.
 _STREETS = (
     "E Speedway Blvd", "N Oracle Rd", "E Broadway Blvd", "N Campbell Ave",
     "E Grant Rd", "S Kolb Rd", "W Ina Rd", "E 22nd St", "N Swan Rd", "E Golf Links Rd",
@@ -151,8 +101,23 @@ def simulate(
 ) -> tuple[list[Prospect], list[PainScore]]:
     """Genera prospectos y sus scores. Determinista por `seed`."""
     rng = random.Random(seed)
-    prefixes, suffixes = _NAME_PARTS.get(vertical.lower(), _NAME_PARTS["hvac"])
-    reviews_pool = _REVIEWS.get(vertical.lower(), _REVIEWS["hvac"])
+    # "hvac" es el fallback para un vertical de texto libre que no está en el
+    # catálogo (garantizado presente: es el primer oficio agregado, ver test_catalog).
+    trade = get_trade(vertical) or get_trade("hvac")
+    assert trade is not None
+    prefixes, suffixes = trade.name_prefixes, trade.name_suffixes
+    reviews_pool = trade.sample_reviews_en
+    city = city_of(metro)
+    # Preferí el catálogo para el estado; si el metro es texto libre sin catálogo
+    # ("Chandler, AZ" no está en gtm/catalog/metros.yaml) se toma lo que venga
+    # después de la coma, y si no hay coma no se inventa un estado.
+    metro_entry = get_metro_by_display(metro) or get_metro(metro)
+    if metro_entry is not None:
+        address_locality = f"{city}, {metro_entry.state}"
+    elif "," in metro:
+        address_locality = f"{city}, {metro.split(',', 1)[1].strip()}"
+    else:
+        address_locality = city
 
     presences = list(_PRESENCE_WEIGHTS)
     weights = [_PRESENCE_WEIGHTS[p] for p in presences]
@@ -181,7 +146,7 @@ def simulate(
             website=_synth_website(rng, presence, slug_base),
             rating=round(rng.uniform(4.0, 5.0), 1),
             review_count=rng.randint(50, 620),
-            address=f"{rng.randint(100, 9999)} {rng.choice(_STREETS)}, Tucson, AZ",
+            address=f"{rng.randint(100, 9999)} {rng.choice(_STREETS)}, {address_locality}",
             top_reviews=tuple(rng.sample(reviews_pool, k=min(2, len(reviews_pool)))),
         )
         prospects.append(prospect)
@@ -217,10 +182,8 @@ def main(argv: list[str] | None = None) -> int:
     config.ensure_dirs()
     prospects, scores = simulate(args.vertical, args.metro, args.count, args.seed)
 
-    with open(config.DATA_DIR / "prospects.json", "w", encoding="utf-8") as handle:
-        json.dump([p.to_dict() for p in prospects], handle, ensure_ascii=False, indent=2)
-    with open(config.DATA_DIR / "scores.json", "w", encoding="utf-8") as handle:
-        json.dump([s.to_dict() for s in scores], handle, ensure_ascii=False, indent=2)
+    artifacts.write_prospects(config.DATA_DIR / "prospects.json", prospects)
+    artifacts.write_scores(config.DATA_DIR / "scores.json", scores)
 
     qualified = [s for s in scores if s.is_qualified]
     print(f"{len(prospects)} prospectos simulados, {len(qualified)} calificados\n")

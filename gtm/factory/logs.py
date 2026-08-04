@@ -10,9 +10,19 @@ import json
 import logging
 import sys
 from datetime import UTC, datetime
+from pathlib import PurePath
 from typing import Any
 
 _RESERVED = frozenset(logging.LogRecord("", 0, "", 0, "", (), None).__dict__) | {"message", "asctime"}
+
+
+def _json_default(value: Any) -> str:
+    """Serializa lo que `json` no sabe. Los `Path` van en formato POSIX siempre:
+    los logs se leen con `jq` en CI (Linux) aunque se generen en Windows, y una
+    barra invertida ahí es un separador de escape roto, no un separador de ruta."""
+    if isinstance(value, PurePath):
+        return value.as_posix()
+    return str(value)
 
 
 class JsonFormatter(logging.Formatter):
@@ -33,7 +43,7 @@ class JsonFormatter(logging.Formatter):
         if record.exc_info:
             payload["exception"] = self.formatException(record.exc_info)
 
-        return json.dumps(payload, ensure_ascii=False, default=str)
+        return json.dumps(payload, ensure_ascii=False, default=_json_default)
 
 
 def get_logger(name: str, level: int = logging.INFO) -> logging.Logger:

@@ -1,0 +1,236 @@
+# Catálogo de metros. `rank` = población × (%hispano/100) ÷ (1.5 si hay riesgo legal
+# mini-TCPA, si no 1.0), descendente = mejor primero — tamaño de pool esperado por la
+# ventaja de vender en español, penalizado por el riesgo legal de tener que ceñirse a
+# reglas de reintento más estrictas que el B2B federal.
+#
+# Cifras de población y %hispano son órdenes de magnitud de fuentes públicas
+# (Census/ACS, vintage 2023-2025), no una medición propia — confirmar antes de
+# tratarlas como algo más preciso que "aproximado" para decisiones legales.
+#
+# mini_tcpa_risk=true: el estado tiene su propia ley de telemarketing más estricta
+# que la exención B2B federal (FL/FTSA, OK, MD, WA, NJ, GA, CT, TX 2025-2026). No
+# descalifica el metro — el B2B a línea comercial sigue mayormente exento— pero pesa
+# menos en el orden y merece revisar la ley del estado antes de la primera llamada.
+#
+# language_default: "es" si %hispano >= 45, si no "en". Es el default que precarga
+# el formulario de la UI; el idioma real de la corrida siempre se puede cambiar.
+
+- key: houston-tx
+  city: "Houston"
+  state: "TX"
+  display: "Houston, TX"
+  timezone: "America/Chicago"
+  population: 2300000
+  hispanic_pct: 45.0
+  language_default: es
+  mini_tcpa_risk: true
+  rank: 1
+
+- key: phoenix-az
+  city: "Phoenix"
+  state: "AZ"
+  display: "Phoenix, AZ"
+  timezone: "America/Phoenix"
+  population: 1608000
+  hispanic_pct: 42.0
+  language_default: en
+  mini_tcpa_risk: false
+  rank: 2
+
+- key: san-antonio-tx
+  city: "San Antonio"
+  state: "TX"
+  display: "San Antonio, TX"
+  timezone: "America/Chicago"
+  population: 1500000
+  hispanic_pct: 64.0
+  language_default: es
+  mini_tcpa_risk: true
+  rank: 3
+
+- key: el-paso-tx
+  city: "El Paso"
+  state: "TX"
+  display: "El Paso, TX"
+  timezone: "America/Denver"
+  population: 680000
+  hispanic_pct: 81.0
+  language_default: es
+  mini_tcpa_risk: true
+  rank: 4
+
+- key: dallas-tx
+  city: "Dallas"
+  state: "TX"
+  display: "Dallas, TX"
+  timezone: "America/Chicago"
+  population: 1300000
+  hispanic_pct: 42.0
+  language_default: en
+  mini_tcpa_risk: true
+  rank: 5
+
+- key: albuquerque-nm
+  city: "Albuquerque"
+  state: "NM"
+  display: "Albuquerque, NM"
+  timezone: "America/Denver"
+  population: 560000
+  hispanic_pct: 49.0
+  language_default: es
+  mini_tcpa_risk: false
+  rank: 6
+
+- key: fresno-ca
+  city: "Fresno"
+  state: "CA"
+  display: "Fresno, CA"
+  timezone: "America/Los_Angeles"
+  population: 545000
+  hispanic_pct: 50.0
+  language_default: es
+  mini_tcpa_risk: false
+  rank: 7
+
+- key: tucson-az
+  city: "Tucson"
+  state: "AZ"
+  display: "Tucson, AZ"
+  timezone: "America/Phoenix"
+  population: 547000
+  hispanic_pct: 44.7
+  language_default: en
+  mini_tcpa_risk: false
+  rank: 8
+
+- key: bakersfield-ca
+  city: "Bakersfield"
+  state: "CA"
+  display: "Bakersfield, CA"
+  timezone: "America/Los_Angeles"
+  population: 410000
+  hispanic_pct: 54.0
+  language_default: es
+  mini_tcpa_risk: false
+  rank: 9
+
+- key: austin-tx
+  city: "Austin"
+  state: "TX"
+  display: "Austin, TX"
+  timezone: "America/Chicago"
+  population: 975000
+  hispanic_pct: 34.0
+  language_default: en
+  mini_tcpa_risk: true
+  rank: 10
+
+- key: las-vegas-nv
+  city: "Las Vegas"
+  state: "NV"
+  display: "Las Vegas, NV"
+  timezone: "America/Los_Angeles"
+  population: 650000
+  hispanic_pct: 33.0
+  language_default: en
+  mini_tcpa_risk: false
+  rank: 11
+
+- key: denver-co
+  city: "Denver"
+  state: "CO"
+  display: "Denver, CO"
+  timezone: "America/Denver"
+  population: 715000
+  hispanic_pct: 29.0
+  language_default: en
+  mini_tcpa_risk: false
+  rank: 12
+
+- key: miami-fl
+  city: "Miami"
+  state: "FL"
+  display: "Miami, FL"
+  timezone: "America/New_York"
+  population: 440000
+  hispanic_pct: 70.0
+  language_default: es
+  mini_tcpa_risk: true
+  rank: 13
+
+- key: riverside-ca
+  city: "Riverside"
+  state: "CA"
+  display: "Riverside, CA"
+  timezone: "America/Los_Angeles"
+  population: 330000
+  hispanic_pct: 52.0
+  language_default: es
+  mini_tcpa_risk: false
+  rank: 14
+
+- key: laredo-tx
+  city: "Laredo"
+  state: "TX"
+  display: "Laredo, TX"
+  timezone: "America/Chicago"
+  population: 260000
+  hispanic_pct: 95.0
+  language_default: es
+  mini_tcpa_risk: true
+  rank: 15
+
+- key: sacramento-ca
+  city: "Sacramento"
+  state: "CA"
+  display: "Sacramento, CA"
+  timezone: "America/Los_Angeles"
+  population: 525000
+  hispanic_pct: 29.0
+  language_default: en
+  mini_tcpa_risk: false
+  rank: 16
+
+- key: colorado-springs-co
+  city: "Colorado Springs"
+  state: "CO"
+  display: "Colorado Springs, CO"
+  timezone: "America/Denver"
+  population: 480000
+  hispanic_pct: 18.0
+  language_default: en
+  mini_tcpa_risk: false
+  rank: 17
+
+- key: mcallen-tx
+  city: "McAllen"
+  state: "TX"
+  display: "McAllen, TX"
+  timezone: "America/Chicago"
+  population: 143000
+  hispanic_pct: 85.0
+  language_default: es
+  mini_tcpa_risk: true
+  rank: 18
+
+- key: tampa-fl
+  city: "Tampa"
+  state: "FL"
+  display: "Tampa, FL"
+  timezone: "America/New_York"
+  population: 400000
+  hispanic_pct: 26.0
+  language_default: en
+  mini_tcpa_risk: true
+  rank: 19
+
+- key: orlando-fl
+  city: "Orlando"
+  state: "FL"
+  display: "Orlando, FL"
+  timezone: "America/New_York"
+  population: 310000
+  hispanic_pct: 30.0
+  language_default: en
+  mini_tcpa_risk: true
+  rank: 20

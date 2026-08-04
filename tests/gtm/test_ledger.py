@@ -14,7 +14,7 @@ from gtm.factory.ledger import (
     hash_key,
     prospect_keys,
 )
-from gtm.factory.types import FunnelEvent, Prospect, SuppressionReason
+from gtm.factory.types import ContactChannel, FunnelEvent, Language, Prospect, SuppressionReason
 
 PHONE = "(520) 555-0148"
 
@@ -176,6 +176,43 @@ class TestFunnelLedger:
         funnel.record("b", FunnelEvent.CONTACTED, vertical="plumber")
         assert funnel.report(vertical="hvac").contacted == 1
 
+    def test_filtra_por_metro(self, funnel):
+        funnel.record("a", FunnelEvent.CONTACTED, metro="Tucson, AZ")
+        funnel.record("b", FunnelEvent.CONTACTED, metro="Houston, TX")
+        assert funnel.report(metro="Tucson, AZ").contacted == 1
+
+    def test_filtra_por_canal(self, funnel):
+        """`decision_criteria.yaml` exige poder segmentar por canal: "nadie atiende
+        el teléfono" y "nadie llena el formulario" son diagnósticos distintos."""
+        funnel.record("a", FunnelEvent.CONTACTED, channel=ContactChannel.PHONE)
+        funnel.record("b", FunnelEvent.CONTACTED, channel=ContactChannel.CONTACT_FORM)
+        assert funnel.report(channel="phone").contacted == 1
+        assert funnel.report(channel="contact_form").contacted == 1
+
+    def test_filtra_por_idioma(self, funnel):
+        funnel.record("a", FunnelEvent.CONTACTED, language=Language.EN)
+        funnel.record("b", FunnelEvent.CONTACTED, language=Language.ES)
+        assert funnel.report(language="en").contacted == 1
+        assert funnel.report(language="es").contacted == 1
+
+    def test_acepta_enum_o_string_para_canal_e_idioma(self, funnel, tmp_path):
+        """El enum y el string equivalente producen el mismo valor persistido."""
+        by_enum = FunnelLedger(tmp_path / "a.jsonl")
+        by_enum.record("a", FunnelEvent.CONTACTED, channel=ContactChannel.PHONE, language=Language.ES)
+
+        by_str = FunnelLedger(tmp_path / "b.jsonl")
+        by_str.record("a", FunnelEvent.CONTACTED, channel="phone", language="es")
+
+        record_enum = json.loads((tmp_path / "a.jsonl").read_text().strip())
+        record_str = json.loads((tmp_path / "b.jsonl").read_text().strip())
+        assert record_enum["channel"] == record_str["channel"] == "phone"
+        assert record_enum["language"] == record_str["language"] == "es"
+
+    def test_run_id_se_persiste(self, funnel):
+        funnel.record("a", FunnelEvent.CONTACTED, run_id="run-123")
+        records = json.loads(funnel.path.read_text().strip())
+        assert records["run_id"] == "run-123"
+
     def test_reply_rate(self, funnel):
         for i in range(10):
             funnel.record(f"p{i}", FunnelEvent.CONTACTED)
@@ -202,31 +239,33 @@ class TestFunnelLedger:
 
 
 class TestCriterioPreRegistrado:
+    """Umbrales v2 (ver el comentario inicial de decision_criteria.yaml para el porqué
+    del re-registro): kill a 200 contactados sin ventas y con pocas respuestas; la vía
+    de "ganador por llamadas agendadas" de v1 se retiró por ser estadísticamente
+    inalcanzable al volumen del experimento."""
+
     def test_una_venta_es_ganador(self, funnel):
         funnel.record("a", FunnelEvent.PAID, amount_usd=950)
         assert funnel.report().has_winner
 
-    def test_tres_llamadas_es_ganador(self, funnel):
-        for pid in ("a", "b", "c"):
-            funnel.record(pid, FunnelEvent.CALL_BOOKED)
-        assert funnel.report().has_winner
-
-    def test_dos_llamadas_todavia_no(self, funnel):
-        for pid in ("a", "b"):
+    def test_llamadas_agendadas_solas_no_son_ganador(self, funnel):
+        """Vía retirada en v2: ninguna cantidad de llamadas agendadas, sin una venta
+        cobrada, alcanza para `has_winner`."""
+        for pid in ("a", "b", "c", "d", "e"):
             funnel.record(pid, FunnelEvent.CALL_BOOKED)
         assert not funnel.report().has_winner
 
-    def test_kill_por_falta_de_respuestas(self, funnel):
-        for i in range(60):
+    def test_kill_por_volumen_sin_ventas_ni_respuestas(self, funnel):
+        for i in range(200):
             funnel.record(f"p{i}", FunnelEvent.CONTACTED)
         funnel.record("p0", FunnelEvent.REPLIED)
 
         killed, motivo = funnel.report().kill_triggered
         assert killed
-        assert "60 contactados" in motivo
+        assert "200 contactados" in motivo
 
     def test_no_mata_antes_del_umbral(self, funnel):
-        for i in range(59):
+        for i in range(199):
             funnel.record(f"p{i}", FunnelEvent.CONTACTED)
         assert not funnel.report().kill_triggered[0]
 
@@ -240,7 +279,7 @@ class TestCriterioPreRegistrado:
         assert "ninguna llamada" in motivo
 
     def test_el_reporte_dice_cambiar_vertical_no_redaccion(self, funnel):
-        for i in range(60):
+        for i in range(200):
             funnel.record(f"p{i}", FunnelEvent.CONTACTED)
 
         output = format_report(funnel.report())
@@ -252,14 +291,17 @@ class TestCriterioPreRegistrado:
             funnel.record(f"p{i}", FunnelEvent.CONTACTED)
 
         output = format_report(funnel.report())
-        assert "Faltan 40 contactos" in output
+        assert "Faltan 180 contactos" in output
 
     def test_el_ganador_tiene_prioridad_sobre_el_kill(self, funnel):
-        """Con una venta cobrada, que falten respuestas es irrelevante."""
-        for i in range(60):
+        """Con una venta cobrada, que falten respuestas es irrelevante: la venta
+        también desactiva la rama de kill por volumen (exige `ventas_cobradas == 0`)."""
+        for i in range(200):
             funnel.record(f"p{i}", FunnelEvent.CONTACTED)
         funnel.record("p0", FunnelEvent.PAID, amount_usd=950)
 
-        output = format_report(funnel.report())
+        report = funnel.report()
+        assert not report.kill_triggered[0]
+        output = format_report(report)
         assert "GANADOR" in output
         assert "KILL" not in output

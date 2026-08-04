@@ -16,7 +16,7 @@ from gtm.factory.contact import (
     resolve_all,
     resolve_contact,
 )
-from gtm.factory.types import ContactChannel, Demo, PainScore, Prospect
+from gtm.factory.types import ContactChannel, Demo, Language, PainScore, Prospect
 
 AUTHOR = "Juan Cruz Eiriz"
 
@@ -197,8 +197,12 @@ class TestFindContactForm:
 
 
 class TestMensajes:
-    def test_mensaje_de_formulario_entra_en_el_limite(self):
-        assert len(build_form_message(_prospect(), _demo(), AUTHOR)) <= FORM_MESSAGE_MAX_CHARS
+    @pytest.mark.parametrize("language", list(Language))
+    def test_mensaje_de_formulario_entra_en_el_limite(self, language):
+        """Corre para los dos idiomas: el español suele ser ~15-20% más largo, así
+        que el límite se pisa antes ahí, no en inglés."""
+        message = build_form_message(_prospect(), _demo(), AUTHOR, language=language)
+        assert len(message) <= FORM_MESSAGE_MAX_CHARS
 
     def test_mensaje_de_formulario_lleva_el_link(self):
         message = build_form_message(_prospect(), _demo(), AUTHOR)
@@ -221,6 +225,33 @@ class TestMensajes:
         assert _demo().url in script
 
 
+class TestMensajesEnEspanol:
+    def test_mensaje_de_formulario_lleva_el_link_y_precio(self):
+        message = build_form_message(_prospect(), _demo(), AUTHOR, language=Language.ES)
+        assert _demo().url in message
+        assert "USD 950" in message
+
+    def test_mensaje_de_formulario_no_lleva_footer_de_email(self):
+        body = build_form_message(_prospect(), _demo(), AUTHOR, language=Language.ES).lower()
+        assert "unsubscribe" not in body
+
+    def test_guion_de_llamada_pide_permiso_antes_del_sms(self):
+        script = build_call_script(_prospect(), _demo(), language=Language.ES)
+        assert "¿Te puedo mandar el link" in script
+        assert _demo().url in script
+
+    def test_guion_de_llamada_usa_la_ciudad(self):
+        script = build_call_script(_prospect(metro="Miami, FL"), _demo(), language=Language.ES)
+        assert "Miami" in script
+
+    def test_no_mezcla_idiomas(self):
+        """El mensaje en español no debe traer texto en inglés que delate que se
+        armó pegando dos plantillas."""
+        message = build_form_message(_prospect(), _demo(), AUTHOR, language=Language.ES)
+        assert "sample" not in message.lower()
+        assert " the " not in message.lower()
+
+
 class TestPluralDelRubro:
     """Regresión: el guion decía "I build websites for hvacs", que delata la plantilla
     en la primera línea del mensaje."""
@@ -237,6 +268,15 @@ class TestPluralDelRubro:
         script = build_call_script(_prospect(vertical="roofer"), _demo())
         assert "roofing contractors" in script
         assert "roofers" not in script
+
+    def test_hvac_en_espanol_usa_el_plural_curado(self):
+        script = build_call_script(_prospect(vertical="hvac"), _demo(), language=Language.ES)
+        assert "técnicos de aire acondicionado" in script
+
+    def test_roofer_en_espanol_usa_el_plural_curado(self):
+        assert "techistas" in build_form_message(
+            _prospect(vertical="roofer"), _demo(), AUTHOR, language=Language.ES
+        )
 
 
 class TestColaDeTrabajo:
@@ -366,3 +406,27 @@ class TestConcurrencia:
         await resolve_all(prospects, {}, concurrency=3)
 
         assert pico <= 3, f"el semáforo no contuvo: pico de {pico} simultáneos"
+
+    async def test_on_item_se_llama_una_vez_por_prospecto(self, monkeypatch):
+        monkeypatch.setattr(contact_mod, "find_contact_form", _form_finder("https://s0.example/contact"))
+
+        prospects = [
+            _prospect(place_id=f"p{i}", name=f"Co {i}", website=f"https://s{i}.example")
+            for i in range(5)
+        ]
+        seen: list[str] = []
+        await resolve_all(prospects, {}, concurrency=5, on_item=seen.append)
+
+        assert sorted(seen) == [p.place_id for p in prospects]
+
+    async def test_on_item_se_llama_sin_probe(self):
+        """También cuando no se descargan sitios (--no-probe): el contador de
+        progreso de la UI no debe depender del canal que se termine usando."""
+        prospects = [
+            _prospect(place_id=f"p{i}", name=f"Co {i}", website=f"https://s{i}.example")
+            for i in range(3)
+        ]
+        seen: list[str] = []
+        await resolve_all(prospects, {}, probe_site=False, concurrency=3, on_item=seen.append)
+
+        assert sorted(seen) == [p.place_id for p in prospects]

@@ -1,0 +1,144 @@
+{% extends "base.html" %}
+{% block title %}Cola de contacto{% endblock %}
+{% block content %}
+<div class="page-header flex justify-between items-center">
+  <div>
+    <h1>Cola de contacto</h1>
+    <p>Ordenada por dolor descendente. {{ items | length }} pendientes{% if run_id %} de esta corrida{% endif %}.</p>
+  </div>
+  {% if run_id %}<a class="btn btn-secondary btn-sm" href="/queue">Ver todas las corridas</a>{% endif %}
+</div>
+
+<div class="card mb-2">
+  <p class="text-sm text-muted">Sin envío automatizado a propósito: a este volumen, mandar a mano convierte más y evita el harvesting de direcciones (CAN-SPAM) y el SMS en frío (TCPA). Copiá el mensaje, mandalo vos, y marcá qué pasó.</p>
+</div>
+
+<div class="card mb-2" x-data="workTimer()" x-init="tick()">
+  <div class="flex justify-between items-center">
+    <div>
+      <div class="card-title">Cronómetro de esta sesión</div>
+      <div class="stat-value mono" x-text="formatted"></div>
+      <div class="text-sm text-muted">Sin esto, USD/hora efectivo (panel de economía) no es un dato real — es el único costo que este negocio de verdad tiene.</div>
+    </div>
+    <div class="flex gap-1">
+      <button type="button" class="btn btn-sm" @click="toggle()" x-text="running ? 'Pausar' : (elapsed > 0 ? 'Reanudar' : 'Iniciar')"></button>
+      <button type="button" class="btn btn-sm btn-secondary" @click="reset()" x-show="elapsed > 0" x-cloak>Descartar</button>
+    </div>
+  </div>
+  <form method="post" action="/time-log" class="flex gap-1 items-center mt-2" x-show="elapsed > 0" x-cloak>
+    <input type="hidden" name="redirect_to" value="{{ '/queue?run_id=' + run_id if run_id else '/queue' }}">
+    <input type="hidden" name="run_id" value="{{ run_id or '' }}">
+    <input type="number" name="minutes" min="1" x-bind:value="minutesToSave" style="width:80px">
+    <select name="activity">
+      <option value="llamadas">Llamadas</option>
+      <option value="formularios">Formularios</option>
+      <option value="seguimiento">Seguimiento</option>
+      <option value="otro">Otro</option>
+    </select>
+    <button class="btn btn-sm" type="submit" @click="stopInterval()">Guardar</button>
+  </form>
+</div>
+
+{% if not items %}
+<div class="empty-state">
+  <h3>No hay nada pendiente</h3>
+  <p>Corré una <a href="/">nueva corrida</a> o revisá <a href="/runs">las que ya hiciste</a>.</p>
+</div>
+{% endif %}
+
+{% for item in items %}
+<div class="queue-item" id="item-{{ item.place_id }}">
+  <div class="queue-item-head">
+    <div>
+      <strong>{{ item.prospect.name }}</strong>
+      <span class="badge {{ 'badge-danger' if item.plan.pain_score >= 70 else 'badge-warn' if item.plan.pain_score >= 45 else 'badge-muted' }}">dolor {{ item.plan.pain_score }}</span>
+      <span class="badge badge-info">{{ 'teléfono' if item.plan.channel.value == 'phone' else 'formulario' }}</span>
+      <span class="badge badge-muted">{{ item.language }}</span>
+    </div>
+    <a href="{{ item.link_url }}" target="_blank" rel="noopener" class="text-sm">ver demo →</a>
+  </div>
+
+  <div class="text-sm text-muted">
+    {% if item.plan.channel.value == 'phone' %}
+      Marcar: <strong>{{ item.plan.target }}</strong>
+    {% else %}
+      Formulario: <a href="{{ item.plan.target }}" target="_blank" rel="noopener">{{ item.plan.target }}</a>
+    {% endif %}
+  </div>
+
+  <pre class="queue-script" id="msg-{{ item.place_id }}">{{ item.message }}</pre>
+  <button type="button" class="btn btn-secondary btn-sm" data-copy-target="#msg-{{ item.place_id }}">Copiar mensaje</button>
+
+  <div class="queue-actions">
+    <form method="post" action="/queue/{{ item.run_id }}/{{ item.place_id }}/event" style="display:inline">
+      <input type="hidden" name="event" value="contacted">
+      <button class="btn btn-sm" type="submit">Contactado</button>
+    </form>
+    <form method="post" action="/queue/{{ item.run_id }}/{{ item.place_id }}/event" style="display:inline">
+      <input type="hidden" name="event" value="replied">
+      <button class="btn btn-sm btn-secondary" type="submit">Respondió</button>
+    </form>
+    <form method="post" action="/queue/{{ item.run_id }}/{{ item.place_id }}/event" style="display:inline">
+      <input type="hidden" name="event" value="call_booked">
+      <button class="btn btn-sm btn-secondary" type="submit">Llamada agendada</button>
+    </form>
+    <form method="post" action="/queue/{{ item.run_id }}/{{ item.place_id }}/event" style="display:inline flex" class="flex gap-1">
+      <input type="hidden" name="event" value="paid">
+      <input type="number" name="amount_usd" placeholder="USD" style="width:90px" value="{{ 950 }}">
+      <button class="btn btn-sm" type="submit" style="background:var(--ok)">Pagó</button>
+    </form>
+    <form method="post" action="/queue/{{ item.run_id }}/{{ item.place_id }}/suppress" style="display:inline">
+      <input type="hidden" name="reason" value="not_interested">
+      <button class="btn btn-sm btn-secondary" type="submit">No le interesa</button>
+    </form>
+    <form method="post" action="/queue/{{ item.run_id }}/{{ item.place_id }}/suppress" style="display:inline">
+      <input type="hidden" name="reason" value="opted_out">
+      <button class="btn btn-sm btn-danger" type="submit">Pidió no ser contactado</button>
+    </form>
+  </div>
+</div>
+{% endfor %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+function workTimer() {
+  return {
+    running: false,
+    elapsed: 0,
+    startedAt: null,
+    intervalId: null,
+    formatted: "00:00:00",
+    minutesToSave: 1,
+    toggle() {
+      if (this.running) {
+        this.stopInterval();
+        return;
+      }
+      this.startedAt = Date.now() - this.elapsed * 1000;
+      this.intervalId = setInterval(() => this.tick(), 1000);
+      this.running = true;
+    },
+    tick() {
+      if (this.running) {
+        this.elapsed = Math.floor((Date.now() - this.startedAt) / 1000);
+      }
+      const h = String(Math.floor(this.elapsed / 3600)).padStart(2, "0");
+      const m = String(Math.floor((this.elapsed % 3600) / 60)).padStart(2, "0");
+      const s = String(this.elapsed % 60).padStart(2, "0");
+      this.formatted = h + ":" + m + ":" + s;
+      this.minutesToSave = Math.max(1, Math.round(this.elapsed / 60));
+    },
+    stopInterval() {
+      if (this.intervalId) clearInterval(this.intervalId);
+      this.running = false;
+    },
+    reset() {
+      this.stopInterval();
+      this.elapsed = 0;
+      this.tick();
+    },
+  };
+}
+</script>
+{% endblock %}

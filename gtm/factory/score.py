@@ -17,13 +17,13 @@ from __future__ import annotations
 
 import argparse
 import asyncio
-import json
 import sys
+from collections.abc import Callable
 from typing import Any
 
 import httpx
 
-from gtm.factory import config
+from gtm.factory import artifacts, config
 from gtm.factory.logs import get_logger
 from gtm.factory.net import (
     DEFAULT_CONCURRENCY,
@@ -163,12 +163,20 @@ async def score_all(
     prospects: list[Prospect],
     api_key: str | None = None,
     concurrency: int = DEFAULT_CONCURRENCY,
+    *,
+    on_item: Callable[[str], None] | None = None,
 ) -> list[PainScore]:
     """Puntúa una lista de prospectos en paralelo.
 
     Un fallo individual no aborta la corrida: `gather_limited` propagaría la primera
     excepción y perderíamos los 49 prospectos que sí se puntuaron, así que cada
     tarea captura su propio error y devuelve None.
+
+    `on_item`, si se pasa, se llama una vez por prospecto terminado (con su
+    place_id) — es lo que le permite a la UI mostrar progreso en vivo sin que
+    `score_all` sepa nada de SSE ni de la UI. Sincrónico a propósito: las tres
+    formas de consumirlo (CLI imprimiendo, un callback que hace
+    `queue.put_nowait`, una barra de progreso) no necesitan `await`.
     """
     async with async_client(timeout=_PAGESPEED_TIMEOUT, concurrency=concurrency) as client:
 
@@ -184,6 +192,8 @@ async def score_all(
                         "error": str(exc),
                     },
                 )
+                if on_item is not None:
+                    on_item(prospect.place_id)
                 return None
             _logger.info(
                 "prospecto puntuado",
@@ -196,6 +206,8 @@ async def score_all(
                     "qualified": score.is_qualified,
                 },
             )
+            if on_item is not None:
+                on_item(prospect.place_id)
             return score
 
         results = await gather_limited([_one(p) for p in prospects], concurrency)
@@ -225,14 +237,12 @@ def main(argv: list[str] | None = None) -> int:
     input_path = args.input or str(config.DATA_DIR / "prospects.json")
     output_path = args.output or str(config.DATA_DIR / "scores.json")
 
-    with open(input_path, encoding="utf-8") as handle:
-        prospects = [Prospect.from_dict(item) for item in json.load(handle)]
+    prospects = artifacts.read_prospects(input_path)
 
     api_key = config.optional_env("PAGESPEED_API_KEY") or None
     scores = asyncio.run(score_all(prospects, api_key, args.concurrency))
 
-    with open(output_path, "w", encoding="utf-8") as handle:
-        json.dump([s.to_dict() for s in scores], handle, ensure_ascii=False, indent=2)
+    artifacts.write_scores(output_path, scores)
 
     by_id = {p.place_id: p for p in prospects}
     qualified = [s for s in scores if s.is_qualified]

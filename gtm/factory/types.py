@@ -72,30 +72,74 @@ _SOCIAL_HOSTS: frozenset[str] = frozenset(
 )
 
 
+class Language(StrEnum):
+    """Idioma del mensaje enviado al prospecto.
+
+    Determina el texto de los tres builders de mensajes (`outreach.build_body`,
+    `contact.build_form_message`, `contact.build_call_script`) y de la demo. Se
+    registra en el embudo porque "no responden en inglés" y "no responden en
+    español" son hipótesis de vertical distintas — sin esto no se pueden separar.
+
+    Definido acá arriba (no junto a los otros StrEnum del archivo) porque
+    `vertical_label`/`vertical_plural`, un poco más abajo, lo usan como default de
+    parámetro — y un default se evalúa en el momento de definir la función, no de
+    llamarla, así que tiene que existir antes en el archivo pese a que
+    `from __future__ import annotations` difiere la evaluación de las anotaciones.
+    """
+
+    EN = "en"
+    ES = "es"
+
+
+def _catalog_vertical_labels() -> dict[str, str]:
+    """`VERTICAL_LABELS` derivado de `gtm/catalog/trades.yaml`. Función, no un
+    diccionario literal, para que quede claro que el catálogo es la fuente de
+    verdad y esto es una vista de compatibilidad hacia atrás."""
+    from gtm.catalog import trades
+
+    return {trade.key: trade.label_en for trade in trades()}
+
+
 # Cómo se nombra cada rubro en el inglés que usa el cliente final. Compartido entre
 # la demo y el email: si el sitio dice "HVAC contractor" y el email dice "hvac", el
-# prospecto nota que hay una plantilla atrás.
-VERTICAL_LABELS: dict[str, str] = {
-    "plumber": "plumber",
-    "hvac": "HVAC contractor",
-    "electrician": "electrician",
-    "roofer": "roofing contractor",
-    "landscaper": "landscaper",
-}
+# prospecto nota que hay una plantilla atrás. Antes era el propio catálogo (5
+# entradas hardcodeadas); ahora es una vista de `gtm/catalog/trades.yaml` (15).
+VERTICAL_LABELS: dict[str, str] = _catalog_vertical_labels()
 
 
-def vertical_label(vertical: str) -> str:
-    """Etiqueta legible del rubro; cae al valor crudo si no está mapeado."""
+def vertical_label(vertical: str, language: Language = Language.EN) -> str:
+    """Etiqueta legible del rubro.
+
+    Busca primero en el catálogo curado (`gtm/catalog/trades.yaml`); si el vertical
+    no está ahí —texto libre desde la UI, un oficio que todavía no se agregó— cae al
+    valor crudo. Ese fallback es lo que sostiene la opción "otro oficio": nunca
+    debe convertirse en un error.
+    """
+    from gtm.catalog import get_trade
+
+    trade = get_trade(vertical)
+    if trade is not None:
+        return trade.label(language.value)
     return VERTICAL_LABELS.get(vertical.lower(), vertical)
 
 
-def vertical_plural(vertical: str) -> str:
+def vertical_plural(vertical: str, language: Language = Language.EN) -> str:
     """Plural legible del rubro: "HVAC contractors", no "hvacs".
 
-    Existe porque interpolar el vertical crudo produce texto que delata la plantilla
-    en la primera línea del mensaje, que es exactamente donde no podés perder al lector.
+    Si el catálogo trae un plural curado a mano se usa ese; si no —oficio de texto
+    libre— cae a la heurística original (agregar "s" si no termina en una ya), que
+    es la que tiene la suite de regresión de "hvacs" -> "HVAC contractors". Existe
+    porque interpolar el vertical crudo produce texto que delata la plantilla en la
+    primera línea del mensaje, que es exactamente donde no podés perder al lector.
     """
-    label = vertical_label(vertical)
+    from gtm.catalog import get_trade
+
+    trade = get_trade(vertical)
+    if trade is not None:
+        plural = trade.plural(language.value)
+        if plural.strip():
+            return plural
+    label = vertical_label(vertical, language)
     return label if label.endswith("s") else f"{label}s"
 
 
@@ -257,6 +301,21 @@ class PainScore:
         data["is_qualified"] = self.is_qualified
         return data
 
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> PainScore:
+        """Reconstruye desde `to_dict()`. Ignora `score`/`is_qualified`: son
+        propiedades derivadas, no campos — pasarlas al constructor rompería."""
+        return cls(
+            place_id=data["place_id"],
+            performance=data.get("performance"),
+            seo=data.get("seo"),
+            accessibility=data.get("accessibility"),
+            mobile_friendly=data.get("mobile_friendly"),
+            has_web_presence=data.get("has_web_presence", True),
+            reachable=data.get("reachable", True),
+            notes=tuple(data.get("notes", ())),
+        )
+
 
 class ContactChannel(StrEnum):
     """Canal por el que se contacta a un prospecto.
@@ -308,6 +367,17 @@ class ContactPlan:
             "pain_score": self.pain_score,
             "is_actionable": self.is_actionable,
         }
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> ContactPlan:
+        """Reconstruye desde `to_dict()`. Ignora `is_actionable`: es derivado."""
+        return cls(
+            place_id=data["place_id"],
+            channel=ContactChannel(data["channel"]),
+            target=data.get("target"),
+            rationale=data.get("rationale", ""),
+            pain_score=data.get("pain_score", 0),
+        )
 
 
 class SuppressionReason(StrEnum):
@@ -384,6 +454,18 @@ class Demo:
             "is_live": self.is_live,
         }
 
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> Demo:
+        """Reconstruye desde `to_dict()`. Ignora `is_live`: es derivado."""
+        deployed_at = data.get("deployed_at")
+        return cls(
+            place_id=data["place_id"],
+            slug=data["slug"],
+            html_path=data["html_path"],
+            url=data.get("url"),
+            deployed_at=datetime.fromisoformat(deployed_at) if deployed_at else None,
+        )
+
 
 @dataclass(frozen=True, slots=True)
 class SenderIdentity:
@@ -426,6 +508,7 @@ class OutreachEmail:
     sender: SenderIdentity
     demo_url: str | None = None
     created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    language: Language = Language.EN
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -435,4 +518,30 @@ class OutreachEmail:
             "body": self.body,
             "demo_url": self.demo_url,
             "created_at": self.created_at.isoformat(),
+            "language": self.language.value,
+            # El sender iba ausente antes: el round-trip era con pérdida y
+            # `from_dict` no podía existir. Aditivo — nada en el repo leía este
+            # dict de vuelta, así que no hay formato previo que romper.
+            "from_name": self.sender.from_name,
+            "from_email": self.sender.from_email,
+            "physical_address": self.sender.physical_address,
+            "unsubscribe_url": self.sender.unsubscribe_url,
         }
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> OutreachEmail:
+        return cls(
+            place_id=data["place_id"],
+            to_email=data.get("to_email"),
+            subject=data["subject"],
+            body=data["body"],
+            sender=SenderIdentity(
+                from_name=data["from_name"],
+                from_email=data["from_email"],
+                physical_address=data["physical_address"],
+                unsubscribe_url=data["unsubscribe_url"],
+            ),
+            demo_url=data.get("demo_url"),
+            created_at=datetime.fromisoformat(data["created_at"]),
+            language=Language(data.get("language", Language.EN.value)),
+        )

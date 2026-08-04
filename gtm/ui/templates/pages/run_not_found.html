@@ -1,0 +1,8 @@
+{% extends "base.html" %}
+{% block title %}Corrida no encontrada{% endblock %}
+{% block content %}
+<div class="empty-state">
+  <h3>No existe la corrida {{ run_id }}</h3>
+  <p>Se perdió porque la UI se reinició, o el link está mal. <a href="/runs">Ver corridas</a> o <a href="/">armar una nueva</a>.</p>
+</div>
+{% endblock %}

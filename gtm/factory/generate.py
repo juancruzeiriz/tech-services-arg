@@ -22,61 +22,38 @@ import sys
 from pathlib import Path
 from string import Template
 
-from gtm.factory import config
+from gtm.catalog import city_of, get_trade
+from gtm.factory import artifacts, config
 from gtm.factory.ledger import SuppressionList
 from gtm.factory.logs import get_logger
 from gtm.factory.types import (
     Demo,
     GenerationError,
+    Language,
     Prospect,
     indefinite_article,
     vertical_label,
+    vertical_plural,
 )
 
 _logger = get_logger(__name__)
 
-# Servicios por vertical, en el lenguaje que usa el cliente final al buscar.
-# Places no devuelve el catálogo del negocio, así que partimos del estándar del
-# rubro; se ajusta a mano antes de enviar si el negocio tiene una especialidad.
-_SERVICES: dict[str, tuple[tuple[str, str], ...]] = {
-    "plumber": (
-        ("Emergency repairs", "Burst pipes, major leaks and backups, same day."),
-        ("Drain cleaning", "Slow or blocked drains cleared without guesswork."),
-        ("Water heaters", "Repair and replacement, gas or electric."),
-        ("Fixture install", "Sinks, toilets, faucets and shutoff valves."),
-    ),
-    "hvac": (
-        ("AC repair", "Diagnosis and repair when the cooling stops."),
-        ("Heating service", "Furnace and heat pump repair before it gets cold."),
-        ("System install", "Right-sized replacements, not upsells."),
-        ("Maintenance plans", "Seasonal tune-ups that prevent the emergency call."),
-    ),
-    "electrician": (
-        ("Troubleshooting", "Dead outlets, tripping breakers, flickering lights."),
-        ("Panel upgrades", "Safe capacity for modern loads and EV charging."),
-        ("Lighting", "Indoor and outdoor fixtures, switches and dimmers."),
-        ("Safety inspections", "Written findings you can actually act on."),
-    ),
-    "roofer": (
-        ("Leak repair", "Find the actual source, not just the wet spot."),
-        ("Roof replacement", "Full tear-off and install with written warranty."),
-        ("Storm damage", "Documentation your insurer will accept."),
-        ("Inspections", "Photo report of current condition."),
-    ),
-    "landscaper": (
-        ("Yard maintenance", "Scheduled service that actually shows up."),
-        ("Irrigation", "Install and repair, with water use in mind."),
-        ("Cleanups", "Seasonal and one-time property cleanups."),
-        ("Design & install", "Planting plans suited to the local climate."),
-    ),
-}
-
-_DEFAULT_SERVICES: tuple[tuple[str, str], ...] = (
+# Fallback cuando el vertical no está en gtm/catalog/trades.yaml — texto libre desde
+# la UI, un oficio que todavía no se agregó. Genérico a propósito: nunca es lo mejor
+# que se puede decir de un rubro, pero es mejor que una demo vacía.
+_DEFAULT_SERVICES_EN: tuple[tuple[str, str], ...] = (
     ("Repairs", "Fast diagnosis and honest pricing."),
     ("Installation", "Done right the first time."),
     ("Maintenance", "Scheduled service that prevents emergencies."),
     ("Emergency service", "When it cannot wait until Monday."),
 )
+_DEFAULT_SERVICES_ES: tuple[tuple[str, str], ...] = (
+    ("Reparaciones", "Diagnóstico rápido y precios honestos."),
+    ("Instalación", "Bien hecho la primera vez."),
+    ("Mantenimiento", "Servicio programado que evita las emergencias."),
+    ("Emergencias", "Cuando no puede esperar hasta el lunes."),
+)
+
 
 def _phone_href(phone: str) -> str:
     """Normaliza a formato tel: (solo dígitos y un + inicial opcional)."""
@@ -85,12 +62,18 @@ def _phone_href(phone: str) -> str:
 
 
 def _city(prospect: Prospect) -> str:
-    """Ciudad legible: el metro viene como 'Tucson, AZ'."""
-    return prospect.metro.split(",")[0].strip() or prospect.metro
+    """Ciudad legible: el metro viene como 'Tucson, AZ' o una clave del catálogo."""
+    return city_of(prospect.metro)
 
 
-def _services_html(vertical: str) -> str:
-    services = _SERVICES.get(vertical.lower(), _DEFAULT_SERVICES)
+def _services_html(vertical: str, language: Language) -> str:
+    trade = get_trade(vertical)
+    if trade is not None:
+        services: tuple[tuple[str, str], ...] = tuple(
+            (s.title, s.body) for s in trade.services(language.value)
+        )
+    else:
+        services = _DEFAULT_SERVICES_ES if language is Language.ES else _DEFAULT_SERVICES_EN
     return "\n".join(
         f'<div class="card"><h3>{html.escape(title)}</h3>'
         f"<p>{html.escape(body)}</p></div>"
@@ -98,11 +81,14 @@ def _services_html(vertical: str) -> str:
     )
 
 
-def _reviews_html(prospect: Prospect) -> str:
+def _reviews_html(prospect: Prospect, language: Language) -> str:
     """Renderiza reseñas reales. Se truncan para que no dominen la página."""
     if not prospect.top_reviews:
+        rating = prospect.rating
+        if language is Language.ES:
+            return f'<p class="quote">{rating}★ según {prospect.review_count} clientes en Google.</p>'
         return (
-            f'<p class="quote">Rated {prospect.rating}★ by {prospect.review_count} '
+            f'<p class="quote">Rated {rating}★ by {prospect.review_count} '
             "customers on Google.</p>"
         )
 
@@ -115,12 +101,21 @@ def _reviews_html(prospect: Prospect) -> str:
     return "\n".join(blocks)
 
 
-def _headline(prospect: Prospect, label: str) -> str:
+def _headline(prospect: Prospect, label: str, language: Language) -> str:
     city = _city(prospect)
+    if language is Language.ES:
+        return f"{label} en {city}, a una llamada"
     return f"{city}'s {label}, one call away"
 
 
-def _subheadline(prospect: Prospect) -> str:
+def _subheadline(prospect: Prospect, language: Language) -> str:
+    if language is Language.ES:
+        if prospect.review_count:
+            return (
+                f"{prospect.review_count} vecinos nos calificaron con {prospect.rating}★. "
+                "Llamá ahora y hablá con alguien que te puede dar un turno de verdad."
+            )
+        return "Llamá ahora y hablá con alguien que te puede dar un turno de verdad."
     if prospect.review_count:
         return (
             f"{prospect.review_count} neighbors have rated us {prospect.rating}★. "
@@ -129,7 +124,23 @@ def _subheadline(prospect: Prospect) -> str:
     return "Call now and speak to someone who can actually schedule you."
 
 
-def render(prospect: Prospect, author_name: str, author_url: str) -> str:
+def _cta_heading(vertical: str, label: str, language: Language) -> str:
+    """En inglés compone "Need a/an {label} now?" — el artículo depende de cómo
+    suena la etiqueta (ver `indefinite_article`, con su propia suite de regresión).
+    En español se evita a propósito construir "un/una {label}": el género
+    gramatical del sustantivo no está modelado en el catálogo, así que en vez de
+    arriesgar una concordancia mal hecha se usa el plural curado
+    (`vertical_plural`), que no necesita artículo y es una forma natural de
+    titular en español ("¿Necesitás plomeros ahora?")."""
+    if language is Language.ES:
+        return f"¿Necesitás {vertical_plural(vertical, language)} ahora?"
+    article = indefinite_article(label)
+    return f"Need {article} {label} now?"
+
+
+def render(
+    prospect: Prospect, author_name: str, author_url: str, language: Language = Language.EN
+) -> str:
     """Renderiza el HTML de la demo para un prospecto.
 
     Raises:
@@ -144,23 +155,84 @@ def render(prospect: Prospect, author_name: str, author_url: str) -> str:
             f"{prospect.name!r} no tiene teléfono: sin él no hay oferta que ofrecer"
         )
 
-    label = vertical_label(prospect.vertical)
+    label = vertical_label(prospect.vertical, language)
+    business_name = html.escape(prospect.name)
+    author_name_esc = html.escape(author_name)
+    city = html.escape(_city(prospect))
+    phone = html.escape(prospect.phone)
+    rating = prospect.rating if prospect.rating is not None else 5.0
+    review_count = prospect.review_count
+
+    if language is Language.ES:
+        meta_description = f"{business_name}: {html.escape(label)} en {city}. Llamá al {phone}."
+        flag_label = "Sitio de muestra"
+        flag_text = (
+            f"hecho para {business_name} por {author_name_esc}. No tiene afiliación con "
+            f"{business_name} ni fue publicado por ese negocio."
+        )
+        flag_link_text = "Quién hizo esto"
+        call_label = "Llamar"
+        trust_rating = f"<b>{rating}★</b> según {review_count} reseñas"
+        trust_serving_label = "Atendemos"
+        trust_fast_label = "Respuesta rápida"
+        services_heading = "Qué hacemos"
+        reviews_heading = "Lo que dicen los clientes"
+        cta_body = (
+            "Llamá y hablá con una persona real. Si no atendemos, te llega un mensaje "
+            "de texto en segundos — no mañana."
+        )
+        footer_note = (
+            f"Muestra hecha por {author_name_esc}. La información del negocio que ves "
+            "acá es pública, de Google Maps."
+        )
+    else:
+        meta_description = f"{business_name}: {html.escape(label)} serving {city}. Call {phone}."
+        flag_label = "Preview site"
+        flag_text = (
+            f"built for {business_name} by {author_name_esc}. Not affiliated with, "
+            f"or published by, {business_name}."
+        )
+        flag_link_text = "Who made this"
+        call_label = "Call"
+        trust_rating = f"<b>{rating}★</b> from {review_count} reviews"
+        trust_serving_label = "Serving"
+        trust_fast_label = "Fast response"
+        services_heading = "What we do"
+        reviews_heading = "What customers say"
+        cta_body = (
+            "Call and talk to a real person. If we miss you, you get a text back in "
+            "seconds — not tomorrow."
+        )
+        footer_note = (
+            f"Preview built by {author_name_esc}. The business information shown here "
+            "is public data from Google Maps."
+        )
 
     values = {
-        "business_name": html.escape(prospect.name),
-        "phone": html.escape(prospect.phone),
+        "lang": language.value,
+        "business_name": business_name,
+        "phone": phone,
         "phone_href": html.escape(_phone_href(prospect.phone)),
         "address": html.escape(prospect.address or _city(prospect)),
-        "city": html.escape(_city(prospect)),
-        "rating": html.escape(str(prospect.rating if prospect.rating is not None else "5.0")),
-        "review_count": html.escape(str(prospect.review_count)),
+        "city": city,
         "vertical_label": html.escape(label),
-        "vertical_article": indefinite_article(label),
-        "headline": html.escape(_headline(prospect, label)),
-        "subheadline": html.escape(_subheadline(prospect)),
-        "services_html": _services_html(prospect.vertical),
-        "reviews_html": _reviews_html(prospect),
-        "author_name": html.escape(author_name),
+        "meta_description": meta_description,
+        "flag_label": flag_label,
+        "flag_text": flag_text,
+        "flag_link_text": flag_link_text,
+        "call_label": call_label,
+        "headline": html.escape(_headline(prospect, label, language)),
+        "subheadline": html.escape(_subheadline(prospect, language)),
+        "trust_rating": trust_rating,
+        "trust_serving_label": trust_serving_label,
+        "trust_fast_label": trust_fast_label,
+        "services_heading": services_heading,
+        "services_html": _services_html(prospect.vertical, language),
+        "reviews_heading": reviews_heading,
+        "reviews_html": _reviews_html(prospect, language),
+        "cta_heading": html.escape(_cta_heading(prospect.vertical, label, language)),
+        "cta_body": cta_body,
+        "footer_note": footer_note,
         "author_url": html.escape(author_url),
     }
 
@@ -173,12 +245,24 @@ def render(prospect: Prospect, author_name: str, author_url: str) -> str:
         raise GenerationError(f"Placeholder sin valor en la plantilla: {exc}") from exc
 
 
-def generate(prospect: Prospect, author_name: str, author_url: str) -> Demo:
-    """Renderiza y escribe la demo en disco. Idempotente por slug."""
-    config.ensure_dirs()
-    markup = render(prospect, author_name, author_url)
+def generate(
+    prospect: Prospect,
+    author_name: str,
+    author_url: str,
+    language: Language = Language.EN,
+    *,
+    demos_dir: Path | None = None,
+) -> Demo:
+    """Renderiza y escribe la demo en disco. Idempotente por slug.
 
-    demo_dir = Path(config.DEMOS_DIR) / prospect.slug
+    `demos_dir` sobreescribe `config.DEMOS_DIR` — mismo patrón que `deploy()` con
+    `public_dir`. Sin esto, dos corridas de la UI en paralelo (o una corrida de
+    prueba y una real) se pisarían el mismo directorio global.
+    """
+    config.ensure_dirs()
+    markup = render(prospect, author_name, author_url, language)
+
+    demo_dir = (demos_dir or Path(config.DEMOS_DIR)) / prospect.slug
     demo_dir.mkdir(parents=True, exist_ok=True)
     html_path = demo_dir / "index.html"
     html_path.write_text(markup, encoding="utf-8")
@@ -193,11 +277,6 @@ def generate(prospect: Prospect, author_name: str, author_url: str) -> Demo:
         },
     )
     return Demo(place_id=prospect.place_id, slug=prospect.slug, html_path=str(html_path))
-
-
-def _load_prospects(path: str) -> list[Prospect]:
-    with open(path, encoding="utf-8") as handle:
-        return [Prospect.from_dict(item) for item in json.load(handle)]
 
 
 def load_qualified_ids(scores_path: str) -> set[str] | None:
@@ -239,7 +318,7 @@ def main(argv: list[str] | None = None) -> int:
     author_name = args.author_name or config.require_env("GTM_FROM_NAME")
     author_url = args.author_url or config.require_env("GTM_UNSUBSCRIBE_URL")
 
-    prospects = _load_prospects(input_path)
+    prospects = artifacts.read_prospects(input_path)
     if args.prospect:
         prospects = [p for p in prospects if p.place_id == args.prospect]
         if not prospects:
@@ -275,8 +354,7 @@ def main(argv: list[str] | None = None) -> int:
             )
 
     manifest = config.DATA_DIR / "demos.json"
-    with open(manifest, "w", encoding="utf-8") as handle:
-        json.dump([d.to_dict() for d in demos], handle, ensure_ascii=False, indent=2)
+    artifacts.write_demos(manifest, demos)
 
     reasons: list[str] = []
     if skipped_unqualified:

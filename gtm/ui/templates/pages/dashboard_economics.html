@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+{% block title %}Economía{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1>Economía</h1>
+  <p>La única pregunta que importa: ¿esto da un ingreso extra por hora, y de dónde?</p>
+</div>
+
+<div class="grid grid-4 mb-2">
+  <div class="card">
+    <div class="card-title">Ingresos</div>
+    <div class="stat-value">USD {{ report.revenue_usd | round(0) | int }}</div>
+    <div class="stat-label">{{ report.paid }} pagos</div>
+  </div>
+  <div class="card">
+    <div class="card-title">Costo (API/infra)</div>
+    <div class="stat-value">USD {{ total_cost | round(0) | int }}</div>
+    <div class="stat-label">cargado en /settings</div>
+  </div>
+  <div class="card">
+    <div class="card-title">Neto</div>
+    <div class="stat-value">USD {{ net | round(0) | int }}</div>
+    <div class="stat-label">ingresos − costo</div>
+  </div>
+  <div class="card">
+    <div class="card-title">USD/hora efectivo</div>
+    {% if effective_usd_hour is none %}
+      <div class="stat-value">—</div>
+      <div class="stat-label">sin horas cargadas todavía</div>
+    {% else %}
+      <div class="stat-value">USD {{ effective_usd_hour | round(1) }}</div>
+      <div class="stat-label">sobre {{ hours | round(1) }} h cargadas</div>
+    {% endif %}
+  </div>
+</div>
+
+<div class="card mb-2">
+  <div class="card-title">CAC (costo de adquisición por cliente)</div>
+  {% if cac is none %}
+    <p class="text-sm text-muted">Sin ventas todavía, CAC no es calculable.</p>
+  {% else %}
+    <div class="stat-value">USD {{ cac | round(0) | int }}</div>
+    <div class="stat-label">costo total ÷ {{ report.paid }} clientes</div>
+  {% endif %}
+</div>
+
+<div class="card mb-2">
+  <div class="card-title">Cohortes (oficio × metro × idioma)</div>
+  {% if not cohorts %}
+    <p class="text-sm text-muted">Sin datos segmentados todavía.</p>
+  {% else %}
+  <table>
+    <thead><tr><th>Oficio</th><th>Metro</th><th>Idioma</th><th>Contactados</th><th>Pagaron</th><th>Ingreso</th></tr></thead>
+    <tbody>
+      {% for row in cohorts %}
+      <tr>
+        <td>{{ row.vertical or '—' }}</td>
+        <td>{{ row.metro or '—' }}</td>
+        <td>{{ row.language or '—' }}</td>
+        <td>{{ row.contacted }}</td>
+        <td>{{ row.paid }}</td>
+        <td>USD {{ row.revenue | round(0) | int }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+</div>
+
+<div class="card mb-2">
+  <div class="card-title">¿El pain score predice conversión?</div>
+  <p class="text-sm text-muted">Tasa de pago entre los contactados de cada rango de dolor. Valida (o mata) la métrica central del repo.</p>
+  {% if pain_correlation | sum(attribute='n') == 0 %}
+    <p class="text-sm text-muted">Sin contactados todavía.</p>
+  {% else %}
+  <table>
+    <thead><tr><th>Dolor</th><th>n</th><th>Pagaron</th><th>Tasa</th><th>IC 95%</th></tr></thead>
+    <tbody>
+      {% for row in pain_correlation %}
+      <tr>
+        <td>{{ row.range }}</td>
+        <td>{{ row.n }}</td>
+        <td>{{ row.paid }}</td>
+        <td>{{ row.rate | pct }}</td>
+        <td>{{ row.low | pct }} – {{ row.high | pct }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+</div>
+
+<div class="card">
+  <div class="card-title">Salud de datos por corrida</div>
+  <p class="text-sm text-muted">Solo corridas que este proceso sigue conociendo — se vacía al reiniciar la UI, igual que <a href="/runs">Corridas</a>.</p>
+  {% if not data_health %}
+    <p class="text-sm text-muted">Sin corridas todavía.</p>
+  {% else %}
+  <table>
+    <thead><tr><th>Corrida</th><th>Oficio · Metro</th><th>Prospectos</th><th>Calificados</th><th>Sin canal</th></tr></thead>
+    <tbody>
+      {% for row in data_health %}
+      <tr>
+        <td><a href="/runs/{{ row.run_id }}">{{ row.run_id }}</a></td>
+        <td>{{ row.vertical }} · {{ row.metro }}</td>
+        <td>{{ row.prospects }}</td>
+        <td>{{ row.qualified }}</td>
+        <td>{{ row.no_channel }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+</div>
+{% endblock %}

@@ -57,7 +57,27 @@ comercial en frío bajo TCPA).
 python -m venv venv && source venv/bin/activate
 pip install -r requirements.txt
 cp .env.example .env.personal   # completar credenciales
+```
 
+### Opción A — UI (recomendada)
+
+```bash
+python -m gtm.ui
+```
+
+Abre `http://127.0.0.1:8787` (solo localhost, nunca expuesto a la red). Un
+formulario con los ~15 parámetros del pipeline (oficio, metro, idioma, modo
+simulado/real, precio de la oferta, etc.), progreso en vivo, cola de contacto
+con guion listo para copiar y cronómetro de sesión, y dos dashboards —
+embudo contra el criterio pre-registrado (con intervalos de Wilson) y
+economía real (USD/hora efectivo, CAC, cohortes, correlación dolor↔conversión).
+Sin `SUPABASE_DB_URL` configurada la UI funciona igual: lo que no se pudo
+escribir en Postgres queda en un outbox local y se reintenta después. Ver
+[`gtm/README.md`](gtm/README.md#ui) para el detalle.
+
+### Opción B — CLI
+
+```bash
 export PYTHONPATH=$(pwd)
 
 # Sin credenciales de Google, con datos sintéticos realistas:
@@ -99,6 +119,8 @@ mypy gtm/ --config-file mypy.ini
 
 ## Estado
 
-Pipeline completo, funcional end-to-end, con 188 tests. Falta la decisión que el código
-no puede tomar: elegir el oficio y el metro reales, y conseguir una API key de Google
-Places para la primera corrida con negocios de verdad.
+Pipeline completo, funcional end-to-end, con UI local, store en Postgres (con
+degradación elegante sin él) y dos dashboards, con 418 tests. Falta la decisión que el
+código no puede tomar: elegir el oficio y el metro reales, conseguir una API key de
+Google Places, y hacer las primeras ~50 llamadas de calibración con negocios de verdad
+— sin eso, "¿esto genera un ingreso extra?" sigue sin respuesta, sea cual sea la UI.

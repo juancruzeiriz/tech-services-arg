@@ -8,7 +8,7 @@ import json
 import pytest
 
 from gtm.factory.generate import _phone_href, generate, load_qualified_ids, render
-from gtm.factory.types import GenerationError, Prospect
+from gtm.factory.types import GenerationError, Language, Prospect
 
 AUTHOR = "Juan Cruz Eiriz"
 AUTHOR_URL = "https://example.com/about"
@@ -84,10 +84,13 @@ class TestRender:
             render(no_phone, AUTHOR, AUTHOR_URL)
 
     def test_vertical_desconocido_usa_servicios_por_defecto(self):
+        # "alpaca-shearer" a propósito: no puede terminar en el catálogo (a
+        # diferencia de "locksmith", que sí está desde que el catálogo creció a 15
+        # oficios) y el test dejaría de probar lo que dice probar.
         other = Prospect(
             place_id="p1",
             name="Generic Co",
-            vertical="locksmith",
+            vertical="alpaca-shearer",
             metro="Mesa, AZ",
             phone="(480) 555-0100",
         )
@@ -107,6 +110,79 @@ class TestRender:
         markup = render(wordy, AUTHOR, AUTHOR_URL)
         assert "…" in markup
         assert long_review not in markup
+
+
+class TestRenderEnEspanol:
+    """La demo en español: mismo template (`gtm/template/site.html`), mismos datos
+    reales, mismas garantías de seguridad — solo cambia el idioma inyectado en el
+    `values` dict de `render()`, nunca el archivo HTML."""
+
+    def test_usa_datos_reales_del_negocio(self, prospect):
+        markup = render(prospect, AUTHOR, AUTHOR_URL, Language.ES)
+        assert html.escape(prospect.name) in markup
+        assert prospect.phone in markup
+        assert "214" in markup
+        assert "4.8" in markup
+        assert "Tucson" in markup
+
+    def test_no_deja_placeholders_sin_resolver(self, prospect):
+        markup = render(prospect, AUTHOR, AUTHOR_URL, Language.ES)
+        assert "$business_name" not in markup
+        assert "$cta_heading" not in markup
+        assert "$flag_text" not in markup
+
+    def test_lang_del_html_es_es(self, prospect):
+        markup = render(prospect, AUTHOR, AUTHOR_URL, Language.ES)
+        assert '<html lang="es">' in markup
+
+    def test_lang_por_defecto_es_en(self, prospect):
+        """El default sin especificar idioma no puede cambiar: es el comportamiento
+        que ya usan todos los tests de TestRender."""
+        markup = render(prospect, AUTHOR, AUTHOR_URL)
+        assert '<html lang="en">' in markup
+
+    def test_no_hace_requests_externas(self, prospect):
+        """La velocidad es el argumento de venta en cualquier idioma."""
+        markup = render(prospect, AUTHOR, AUTHOR_URL, Language.ES)
+        for pattern in ("<script", "src=\"http", "@import", "<link rel=\"stylesheet\""):
+            assert pattern not in markup
+
+    def test_no_mezcla_idiomas(self, prospect):
+        """Ninguna de las cadenas fijas en inglés debe sobrevivir en la versión
+        en español -- señal de que algún placeholder quedó sin traducir."""
+        markup = render(prospect, AUTHOR, AUTHOR_URL, Language.ES)
+        for english_only in ("Preview site", "Not affiliated", "Who made this", "Call ", "Serving"):
+            assert english_only not in markup
+
+    def test_cta_heading_usa_el_plural_sin_articulo(self, prospect):
+        """Evita a propósito modelar género gramatical (un/una): usa el plural
+        curado del catálogo, que no lo necesita."""
+        markup = render(prospect, AUTHOR, AUTHOR_URL, Language.ES)
+        assert "¿Necesitás plumbers ahora?" not in markup  # no debe colarse la etiqueta cruda
+        assert "¿Necesitás plomeros ahora?" in markup
+
+    def test_vertical_desconocido_usa_servicios_por_defecto_en_espanol(self):
+        other = Prospect(
+            place_id="p1",
+            name="Generic Co",
+            vertical="alpaca-shearer",
+            metro="Mesa, AZ",
+            phone="(480) 555-0100",
+        )
+        markup = render(other, AUTHOR, AUTHOR_URL, Language.ES)
+        assert "Emergencias" in markup
+
+    def test_generate_acepta_idioma(self, prospect, tmp_path, monkeypatch):
+        from gtm.factory import config
+
+        monkeypatch.setattr(config, "DEMOS_DIR", tmp_path / "demos")
+        monkeypatch.setattr(config, "BUILD_DIR", tmp_path / "build")
+        monkeypatch.setattr(config, "DATA_DIR", tmp_path / "data")
+
+        demo = generate(prospect, AUTHOR, AUTHOR_URL, Language.ES)
+        written = (tmp_path / "demos" / prospect.slug / "index.html").read_text(encoding="utf-8")
+        assert '<html lang="es">' in written
+        assert demo.slug == prospect.slug
 
 
 class TestPhoneHref:
