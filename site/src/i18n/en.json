@@ -31,7 +31,7 @@
   },
   "about": {
     "title": "About me",
-    "body": "I'm a developer. I work with service businesses that depend on the phone to make money, and I measure the result with the same public tools you can run yourself: PageSpeed Insights, Chrome UX Report, and Lighthouse. Nothing I say about a site is an opinion — it's a number you can verify on the spot."
+    "body": "I'm a full-stack developer — Python, Django REST Framework, and React are my day-to-day. I work with service businesses that depend on the phone to make money, and I measure the result with the same public tools you can run yourself: PageSpeed Insights, Chrome UX Report, and Lighthouse. Nothing I say about a site is an opinion — it's a number you can verify on the spot."
   },
   "experience": {
     "title": "Experience",
@@ -53,7 +53,8 @@
     "lead": "I reply the same day.",
     "phone": "Phone",
     "email": "Email",
-    "linkedin": "LinkedIn"
+    "linkedin": "LinkedIn",
+    "github": "GitHub"
   },
   "footer": {
     "rights": "All rights reserved."

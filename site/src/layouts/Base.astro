@@ -55,7 +55,7 @@ const canonical = new URL(Astro.url.pathname, Astro.site);
       url: canonical.toString(),
       email: `mailto:${profile.email}`,
       telephone: profile.phoneTel,
-      sameAs: [profile.linkedinUrl],
+      sameAs: [profile.linkedinUrl, profile.githubUrl],
     })} />
 
     <slot name="head" />

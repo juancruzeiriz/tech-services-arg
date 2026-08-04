@@ -1,0 +1,12 @@
+# Sin esto, core.autocrlf=true (default en checkouts de Windows) intenta
+# convertir finales de línea en CUALQUIER archivo que no reconozca como
+# binario -- y ya avisó que iba a hacerlo sobre los PDF de site/public/cv/.
+# Un PDF/PNG con bytes de línea reescritos queda corrupto.
+*.pdf -text binary
+*.png -text binary
+*.jpg -text binary
+*.jpeg -text binary
+*.webp -text binary
+*.ico -text binary
+*.woff -text binary
+*.woff2 -text binary

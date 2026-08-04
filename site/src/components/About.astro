@@ -1,5 +1,8 @@
 ---
+import { Image } from "astro:assets";
+import portrait from "../assets/retrato.png";
 import Experience from "./Experience.astro";
+import { profile } from "../data/profile";
 import { getLangFromUrl, useTranslations } from "../i18n/utils";
 
 const lang = getLangFromUrl(Astro.url);
@@ -8,6 +11,14 @@ const t = useTranslations(lang);
 <section class="section" id="about">
   <div class="section-inner about-grid">
     <div>
+      <Image
+        class="about-portrait"
+        src={portrait}
+        alt={profile.name}
+        width={128}
+        height={128}
+        data-reveal
+      />
       <h2 data-split data-reveal>{t("about.title")}</h2>
       <p class="about-body" data-reveal>{t("about.body")}</p>
     </div>
@@ -20,6 +31,13 @@ const t = useTranslations(lang);
     display: grid;
     grid-template-columns: 1fr;
     gap: 3rem;
+  }
+  .about-portrait {
+    width: 5.5rem;
+    height: 5.5rem;
+    border-radius: 999px;
+    object-fit: cover;
+    border: 1px solid var(--border);
   }
   .about-body {
     margin-top: 1.5rem;
