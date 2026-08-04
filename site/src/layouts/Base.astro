@@ -56,5 +56,15 @@ const canonical = new URL(Astro.url.pathname, Astro.site);
       <slot />
     </main>
     <Footer />
+
+    <script>
+      import { mountCursor } from "../scripts/cursor";
+      import { mountReveal } from "../scripts/reveal";
+      import { mountScroll } from "../scripts/lenis";
+
+      mountScroll();
+      mountReveal();
+      mountCursor();
+    </script>
   </body>
 </html>

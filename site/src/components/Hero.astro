@@ -1,0 +1,132 @@
+---
+import HeroCanvas from "./HeroCanvas.astro";
+import { getLangFromUrl, useTranslations } from "../i18n/utils";
+
+const lang = getLangFromUrl(Astro.url);
+const t = useTranslations(lang);
+---
+<section class="hero">
+  <HeroCanvas />
+
+  <div class="hero-content">
+    <p class="hero-eyebrow" data-reveal>{t("hero.eyebrow")}</p>
+
+    <h1 class="hero-title">
+      <span class="hero-line" data-reveal>{t("hero.line1")}</span>
+      <span class="hero-line" data-reveal>{t("hero.line2")}</span>
+      <span class="hero-line hero-line-accent" data-reveal>{t("hero.line3")}</span>
+    </h1>
+
+    <p class="hero-sub" data-reveal>{t("hero.sub")}</p>
+
+    <div class="hero-cta" data-reveal>
+      <a class="btn btn-primary" href="#work" data-magnetic>{t("hero.cta")}</a>
+      <a class="btn btn-ghost" href="#contact" data-magnetic>{t("hero.ctaSecondary")}</a>
+    </div>
+  </div>
+
+  <a class="hero-scroll" href="#work" aria-label={t("hero.scroll")}>
+    <span></span>
+  </a>
+</section>
+
+<style>
+  .hero {
+    position: relative;
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: clamp(6rem, 14vh, 10rem) clamp(1.25rem, 6vw, 4rem) 4rem;
+  }
+
+  .hero-content {
+    max-width: 64rem;
+  }
+
+  .hero-eyebrow {
+    font-size: 0.85rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--fg-muted);
+    margin-bottom: 1.5rem;
+  }
+
+  .hero-title {
+    font-size: var(--text-display);
+    margin: 0;
+  }
+
+  .hero-line { display: block; }
+  .hero-line-accent { color: var(--color-accent); }
+
+  .hero-sub {
+    max-width: 34rem;
+    margin-top: 2rem;
+    font-size: clamp(1rem, 1.6vw, 1.2rem);
+    color: var(--fg-muted);
+    line-height: 1.6;
+  }
+
+  .hero-cta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    margin-top: 2.5rem;
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.85rem 1.6rem;
+    border-radius: 999px;
+    font-weight: 600;
+    font-size: 0.95rem;
+    text-decoration: none;
+    transition: transform 0.25s var(--ease-out-expo), background-color 0.2s ease, border-color 0.2s ease;
+  }
+  .btn:hover { transform: translateY(-2px); }
+
+  .btn-primary {
+    background: var(--color-accent);
+    color: #08090a;
+  }
+  .btn-primary:hover { background: var(--color-accent-soft); }
+
+  .btn-ghost {
+    border: 1px solid var(--border);
+    color: var(--fg);
+  }
+  .btn-ghost:hover { border-color: var(--color-accent); }
+
+  .hero-scroll {
+    position: absolute;
+    left: 50%;
+    bottom: 2rem;
+    transform: translateX(-50%);
+    width: 1.5rem;
+    height: 2.5rem;
+    border: 1.5px solid var(--border);
+    border-radius: 999px;
+    display: grid;
+    place-items: start center;
+    padding-top: 0.4rem;
+  }
+  .hero-scroll span {
+    width: 0.3rem;
+    height: 0.3rem;
+    border-radius: 50%;
+    background: var(--color-accent);
+    animation: scroll-dot 1.8s ease-in-out infinite;
+  }
+
+  @keyframes scroll-dot {
+    0%, 100% { transform: translateY(0); opacity: 1; }
+    50% { transform: translateY(0.6rem); opacity: 0.3; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .hero-scroll span { animation: none; }
+  }
+</style>

@@ -103,6 +103,29 @@ a { color: inherit; }
   font-weight: 600;
 }
 
+/* Cursor a medida: un punto que sigue con lerp, además del cursor nativo
+   (no lo reemplaza — un cursor 100% custom complica la selección de texto y
+   la precisión, que en un portfolio profesional importa más que el efecto). */
+.cursor-dot {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 0.5rem;
+  height: 0.5rem;
+  margin: -0.25rem;
+  border-radius: 50%;
+  background: var(--color-accent);
+  pointer-events: none;
+  z-index: 200;
+  mix-blend-mode: difference;
+  will-change: transform;
+}
+
+.has-cursor-dot [data-magnetic] {
+  display: inline-flex;
+  transition: transform 0.15s ease-out;
+}
+
 /* Estado inicial de las revelaciones controladas por GSAP. La clase .js-reveal
    la pone reveal.ts al montar: si el script no corre (JS deshabilitado, error),
    esta regla nunca se aplica y el contenido queda visible por defecto. */

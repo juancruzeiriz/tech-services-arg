@@ -1,7 +1,8 @@
 ---
-// Contenido completo en la Tarea 1.8 — por ahora solo verifica el andamiaje
-// de rutas y el layout base (Nav, Footer, switches de idioma/tema).
+// Las demás secciones (Work, About, Certs, CV, Contact) se agregan en la
+// Tarea 1.8 — por ahora Hero ya es contenido real, no placeholder.
 import Base from "../../layouts/Base.astro";
+import Hero from "../../components/Hero.astro";
 import { languages } from "../../i18n/utils";
 
 export function getStaticPaths() {
@@ -9,7 +10,8 @@ export function getStaticPaths() {
 }
 ---
 <Base>
-  <section style="padding: 10rem 2rem 6rem; min-height: 60vh;">
-    <p>placeholder — Tarea 1.8 completa el contenido real</p>
+  <Hero />
+  <section style="padding: 4rem 2rem 6rem; min-height: 40vh;">
+    <p>placeholder — Tarea 1.8 completa el resto del contenido</p>
   </section>
 </Base>

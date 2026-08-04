@@ -1,0 +1,44 @@
+---
+// Gradiente CSS siempre presente como fondo; el <canvas> se dibuja encima
+// solo si mountHeroGL logra un contexto WebGL. Si falla o hay
+// prefers-reduced-motion, el canvas queda transparente y el gradiente de
+// abajo es el resultado final — no hace falta que el script decida nada
+// sobre visibilidad, es puro apilado de capas.
+---
+<div class="hero-canvas-wrap" aria-hidden="true">
+  <div class="hero-fallback"></div>
+  <canvas data-hero-gl></canvas>
+</div>
+
+<style>
+  .hero-canvas-wrap {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    z-index: -1;
+  }
+  .hero-fallback {
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(ellipse 60% 50% at 50% 30%, color-mix(in srgb, var(--color-accent) 35%, transparent), transparent 70%),
+      var(--bg);
+  }
+  .hero-canvas-wrap canvas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    display: block;
+  }
+</style>
+
+<script>
+  import { mountHeroGL } from "../scripts/hero-gl";
+
+  const canvas = document.querySelector<HTMLCanvasElement>("[data-hero-gl]");
+  if (canvas) {
+    const idle = window.requestIdleCallback ?? ((cb: IdleRequestCallback) => setTimeout(() => cb({} as IdleDeadline), 200));
+    idle(() => mountHeroGL(canvas));
+  }
+</script>
