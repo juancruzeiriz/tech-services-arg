@@ -115,7 +115,17 @@ def _pain_line_es(score: PainScore | None) -> str:
 
 
 def _pain_line(score: PainScore | None, language: Language = Language.EN) -> str:
-    """Una línea concreta y verificable sobre el estado actual del prospecto."""
+    """Una línea concreta y verificable sobre el estado actual del prospecto.
+
+    Con hallazgos forenses/de campo (`score.findings`), el gancho es el más
+    grave de ellos, citando su propia evidencia — "tu sitio no cambia desde
+    marzo de 2016" convence más que cualquiera de las cuatro frases fijas de
+    abajo, que solo cubren lo que Lighthouse por sí solo puede medir. Sin
+    hallazgos (corridas viejas, o un sitio sin nada forense que reportar), el
+    comportamiento es exactamente el de siempre.
+    """
+    if score is not None and score.findings:
+        return score.sales_lines(language)[0]
     return _pain_line_es(score) if language is Language.ES else _pain_line_en(score)
 
 

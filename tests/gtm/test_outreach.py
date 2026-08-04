@@ -10,6 +10,7 @@ from datetime import UTC, datetime
 
 import pytest
 
+from gtm.factory.findings import FINDINGS, Finding
 from gtm.factory.outreach import (
     _AD_DISCLOSURE,
     _AD_DISCLOSURE_ES,
@@ -203,6 +204,44 @@ class TestHonestidadDelMensaje:
         score = PainScore(place_id=prospect.place_id, reachable=False)
         body = build_body(prospect, live_demo, sender, score)
         assert "did not load" in body
+
+
+class TestGanchoConHallazgos:
+    """Con hallazgos forenses/de campo, el gancho cita el más grave con su
+    propia evidencia en vez de las cuatro frases fijas de Lighthouse."""
+
+    def test_el_gancho_cita_el_hallazgo_mas_severo_en_espanol(self, prospect, live_demo, sender):
+        score = PainScore(
+            place_id=prospect.place_id,
+            findings=(
+                Finding(code="stale_copyright", evidence="© 2014", weight=FINDINGS["stale_copyright"].weight),
+                Finding(code="no_tel_link", evidence="teléfono en texto plano", weight=FINDINGS["no_tel_link"].weight),
+            ),
+        )
+        body = build_body(prospect, live_demo, sender, score, language=Language.ES)
+        assert "teléfono en texto plano" in body  # CRITICAL, no el © 2014 (MEDIUM)
+
+    def test_el_gancho_cita_el_hallazgo_mas_severo_en_ingles(self, prospect, live_demo, sender):
+        score = PainScore(
+            place_id=prospect.place_id,
+            findings=(Finding(code="no_https", evidence="http://x.com", weight=FINDINGS["no_https"].weight),),
+        )
+        body = build_body(prospect, live_demo, sender, score, language=Language.EN)
+        assert "http://x.com" in body
+
+    def test_sin_hallazgos_cae_al_gancho_de_lighthouse_de_siempre(self, prospect, live_demo, sender):
+        score = PainScore(place_id=prospect.place_id, performance=34)
+        body = build_body(prospect, live_demo, sender, score, language=Language.EN)
+        assert "34/100" in body
+
+    def test_hallazgos_no_rompen_el_gate_de_canspam(self, prospect, live_demo, sender):
+        # El gancho cambia; los requisitos legales del cuerpo, no.
+        score = PainScore(
+            place_id=prospect.place_id,
+            findings=(Finding(code="no_https", evidence="http://x.com", weight=FINDINGS["no_https"].weight),),
+        )
+        email = build_email(prospect, live_demo, sender, score)
+        validate_compliance(email)  # no debe lanzar
 
 
 class TestDemoViva:
