@@ -6,6 +6,7 @@ fallo puntual no tumbe el loop."""
 from __future__ import annotations
 
 import asyncio
+import json
 
 import pytest
 
@@ -13,6 +14,20 @@ from gtm.factory.types import ComplianceError, SenderIdentity
 from gtm.send import worker as worker_mod
 from gtm.send.bounces import BounceReport, InboundClassification
 from gtm.send.types import FailureKind, OutreachMessage, SendResult, SmtpSettings
+
+
+@pytest.fixture(autouse=True)
+def _isolate_ledger(tmp_path, monkeypatch):
+    """`_send_one`/`_process_inbound` escriben en el ledger local de verdad
+    (`FunnelLedger`/`SuppressionList` sin `path` explícito) -- sin esto, correr
+    estos tests escribiría en `gtm/funnel.jsonl`/`gtm/suppression.jsonl`, el
+    mismo ledger que se commitea a git y del que depende el criterio
+    pre-registrado en `gtm/decision_criteria.yaml`."""
+    from gtm.factory import ledger as ledger_mod
+
+    monkeypatch.setattr(ledger_mod, "FUNNEL_PATH", tmp_path / "funnel.jsonl")
+    monkeypatch.setattr(ledger_mod, "SUPPRESSION_PATH", tmp_path / "suppression.jsonl")
+    return tmp_path
 
 _SENDER = SenderIdentity(
     from_name="Juan Cruz", from_email="juan@envio.example",
@@ -202,6 +217,34 @@ class TestSendOne:
 
         assert marked[0]["error"] == "timeout"
 
+    async def test_envio_exitoso_registra_contactado_en_el_embudo(self, monkeypatch, _isolate_ledger):
+        # Con envío automático el clic manual de "Contactado" en /queue sobra
+        # -- sin este registro automático, el embudo subregistraría cada
+        # mensaje que salió por el worker en vez de por la cola manual.
+        monkeypatch.setattr(worker_mod.smtp, "revalidate_before_send", lambda *_a, **_k: None)
+        monkeypatch.setattr(worker_mod.smtp, "send_async", _async_return(SendResult(success=True, provider_message_id="<x@y>")))
+        monkeypatch.setattr(worker_mod.outbox, "mark_sent", _async_return(None))
+
+        w = worker_mod.Worker(pool=object())
+        await w._send_one(_message(place_id="p1", channel="email", run_id="r1"), _SETTINGS, _SENDER)
+
+        funnel_path = _isolate_ledger / "funnel.jsonl"
+        assert funnel_path.exists()
+        record = json.loads(funnel_path.read_text(encoding="utf-8").strip())
+        assert record["event"] == "contacted"
+        assert record["run_id"] == "r1"
+        assert record["channel"] == "email"
+
+    async def test_envio_fallido_no_registra_contactado(self, monkeypatch, _isolate_ledger):
+        monkeypatch.setattr(worker_mod.smtp, "revalidate_before_send", lambda *_a, **_k: None)
+        monkeypatch.setattr(worker_mod.smtp, "send_async", _async_return(SendResult(success=False, error="timeout")))
+        monkeypatch.setattr(worker_mod.outbox, "mark_failed", _async_return(None))
+
+        w = worker_mod.Worker(pool=object())
+        await w._send_one(_message(), _SETTINGS, _SENDER)
+
+        assert not (_isolate_ledger / "funnel.jsonl").exists()
+
 
 def _record(sink, label):
     async def _inner(_pool, message, **kwargs):
@@ -251,6 +294,50 @@ class TestRunBounceCheck:
         await w.run_bounce_check()
 
         assert marked[0]["hard"] is True
+
+    async def test_un_rebote_duro_suprime_al_prospecto(self, monkeypatch, _isolate_ledger):
+        # Reintentar contra una dirección muerta sube la tasa de rebote, que
+        # es lo que más rápido quema la reputación del dominio de envío.
+        from gtm.factory.ledger import hash_key
+
+        message = _message(place_id="p-bounced")
+        classification = InboundClassification(
+            is_dsn=True, is_human_reply=False,
+            bounce=BounceReport(kind=FailureKind.HARD_BOUNCE, recipient="x@y.com", detail="550", smtp_code=550),
+            verp_tag="tag123", in_reply_to=None,
+        )
+        monkeypatch.setattr(worker_mod.config, "load_imap_settings", lambda: _imap_settings())
+        monkeypatch.setattr(worker_mod.asyncio, "to_thread", _async_return(["mensaje crudo"]))
+        monkeypatch.setattr(worker_mod.bounces, "classify_inbound", lambda _raw: classification)
+        monkeypatch.setattr(worker_mod.outbox, "get_by_verp_tag", _async_return(message))
+        monkeypatch.setattr(worker_mod.outbox, "mark_bounced", _async_return(message))
+
+        w = worker_mod.Worker(pool=object())
+        await w.run_bounce_check()
+
+        suppression_path = _isolate_ledger / "suppression.jsonl"
+        assert suppression_path.exists()
+        record = json.loads(suppression_path.read_text(encoding="utf-8").strip())
+        assert record["key"] == hash_key("place_id", "p-bounced")
+        assert record["reason"] == "bounced"
+
+    async def test_un_rebote_suave_no_suprime(self, monkeypatch, _isolate_ledger):
+        message = _message(place_id="p-soft")
+        classification = InboundClassification(
+            is_dsn=True, is_human_reply=False,
+            bounce=BounceReport(kind=FailureKind.SOFT_BOUNCE, recipient="x@y.com", detail="450", smtp_code=450),
+            verp_tag="tag123", in_reply_to=None,
+        )
+        monkeypatch.setattr(worker_mod.config, "load_imap_settings", lambda: _imap_settings())
+        monkeypatch.setattr(worker_mod.asyncio, "to_thread", _async_return(["mensaje crudo"]))
+        monkeypatch.setattr(worker_mod.bounces, "classify_inbound", lambda _raw: classification)
+        monkeypatch.setattr(worker_mod.outbox, "get_by_verp_tag", _async_return(message))
+        monkeypatch.setattr(worker_mod.outbox, "mark_bounced", _async_return(message))
+
+        w = worker_mod.Worker(pool=object())
+        await w.run_bounce_check()
+
+        assert not (_isolate_ledger / "suppression.jsonl").exists()
 
 
 def _record_bounced(sink):

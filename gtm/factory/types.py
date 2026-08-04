@@ -519,6 +519,11 @@ class SuppressionReason(StrEnum):
     INVALID = "invalid"
     """Datos incorrectos o el negocio cerró."""
 
+    BOUNCED = "bounced"
+    """Un email a esta dirección rebotó duro (5xx): la dirección no existe.
+    Reintentar solo sube la tasa de rebote, que es lo que más rápido quema la
+    reputación del dominio de envío -- ver docs/CHANNELS.md."""
+
     @property
     def is_permanent(self) -> bool:
         """OPTED_OUT no vence nunca. CONTACTED sí puede reintentarse más adelante."""

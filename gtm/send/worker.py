@@ -18,8 +18,9 @@ from collections.abc import Awaitable, Callable
 from psycopg_pool import AsyncConnectionPool
 
 from gtm.factory import config
+from gtm.factory.ledger import FunnelLedger, SuppressionList
 from gtm.factory.logs import get_logger
-from gtm.factory.types import ComplianceError, SenderIdentity
+from gtm.factory.types import ComplianceError, FunnelEvent, SenderIdentity, SuppressionReason
 from gtm.send import bounces, outbox, smtp
 from gtm.send.types import FailureKind, OutreachMessage, SmtpSettings
 
@@ -121,6 +122,18 @@ class Worker:
             await outbox.mark_sent(
                 self.pool, message, provider_message_id=result.provider_message_id, verp_tag=verp_tag
             )
+            # Con envío automático el clic manual de "Contactado" en /queue
+            # sobra y se convierte en una fuente de subregistro -- se
+            # registra acá, en el único lugar donde "salió de verdad" es un
+            # hecho, no una promesa. Sin vertical/metro/pain_score a mano en
+            # este punto (el mensaje no los lleva): la segmentación de
+            # decision_criteria.yaml pierde ese detalle para los envíos
+            # automáticos, que es la misma degradación que ya acepta
+            # `queue.py` cuando faltan.
+            FunnelLedger().record(
+                message.place_id, FunnelEvent.CONTACTED,
+                channel=message.channel, run_id=message.run_id or "",
+            )
         else:
             await outbox.mark_failed(
                 self.pool, message, error=result.error or "error desconocido", verp_tag=verp_tag
@@ -159,6 +172,13 @@ class Worker:
 
         hard = classification.bounce.kind is FailureKind.HARD_BOUNCE
         await outbox.mark_bounced(self.pool, message, hard=hard, detail=classification.bounce.detail)
+        if hard:
+            # Reintentar contra una dirección que no existe solo sube la tasa
+            # de rebote -- lo que más rápido quema la reputación del dominio
+            # de envío (ver docs/CHANNELS.md). `mark_bounced` ya deja el
+            # mensaje en estado terminal; esto evita que una corrida futura
+            # sobre el mismo metro vuelva a intentarlo con este prospecto.
+            SuppressionList().add("place_id", message.place_id, SuppressionReason.BOUNCED)
 
     # --- confirmación de entrega --------------------------------------------
 
