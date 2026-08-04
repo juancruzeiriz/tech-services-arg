@@ -1,0 +1,41 @@
+---
+import { getLangFromUrl, useTranslations } from "../i18n/utils";
+
+const lang = getLangFromUrl(Astro.url);
+const t = useTranslations(lang);
+const year = new Date().getFullYear();
+---
+<footer class="site-footer no-print">
+  <div class="site-footer-inner">
+    <span>© {year} Juan Cruz Eiriz. {t("footer.rights")}</span>
+    <a href="#top" data-magnetic>↑</a>
+  </div>
+</footer>
+
+<style>
+  .site-footer {
+    padding: 2rem clamp(1.25rem, 4vw, 3rem) 3rem;
+    border-top: 1px solid var(--border);
+  }
+  .site-footer-inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    max-width: 84rem;
+    margin-inline: auto;
+    font-size: 0.8rem;
+    color: var(--fg-muted);
+  }
+  .site-footer-inner a {
+    text-decoration: none;
+    color: var(--fg);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    width: 2.25rem;
+    height: 2.25rem;
+    display: grid;
+    place-items: center;
+    transition: border-color 0.2s var(--ease-out-expo), transform 0.2s var(--ease-out-expo);
+  }
+  .site-footer-inner a:hover { border-color: var(--color-accent); transform: translateY(-2px); }
+</style>

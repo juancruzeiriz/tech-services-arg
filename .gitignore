@@ -27,6 +27,13 @@ gtm/public/
 # suppression.jsonl y funnel.jsonl SÍ se commitean: son la memoria del sistema y
 # guardan solo hashes, ningún dato de contacto recuperable. No se ignoran.
 
+# --- site/: portfolio estático en Astro ---
+# node_modules y caches deberían quedar dentro de site/ (site/.gitignore los
+# cubre), pero algunas herramientas escriben cache relativo al cwd del proceso
+# en vez de a --root; esta entrada es red de seguridad si eso vuelve a pasar.
+node_modules/
+.astro/
+
 # Editor / OS
 .DS_Store
 .vscode/

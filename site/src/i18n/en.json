@@ -1,0 +1,67 @@
+{
+  "meta": {
+    "title": "Juan Cruz Eiriz — Web development for businesses that live on the phone",
+    "description": "Fast, measurable websites built to convert calls. Web development and lead capture for service businesses."
+  },
+  "nav": {
+    "work": "Work",
+    "about": "About",
+    "certs": "Certifications",
+    "contact": "Contact",
+    "cv": "Download CV"
+  },
+  "hero": {
+    "eyebrow": "Web developer",
+    "line1": "Sites that",
+    "line2": "load in",
+    "line3": "one second",
+    "sub": "Web development built around one number: how many calls come in. Measured with the same public tools you can run yourself — no smoke.",
+    "cta": "See the work",
+    "ctaSecondary": "Let's talk",
+    "scroll": "Scroll"
+  },
+  "work": {
+    "title": "Work",
+    "lead": "Real work, with the number it moved.",
+    "viewProject": "View project",
+    "sourceCode": "Source code",
+    "noLink": "Private",
+    "metricLabel": "Result",
+    "stackLabel": "Stack"
+  },
+  "about": {
+    "title": "About me",
+    "body": "I'm a developer. I work with service businesses that depend on the phone to make money, and I measure the result with the same public tools you can run yourself: PageSpeed Insights, Chrome UX Report, and Lighthouse. Nothing I say about a site is an opinion — it's a number you can verify on the spot."
+  },
+  "experience": {
+    "title": "Experience",
+    "present": "Present"
+  },
+  "certs": {
+    "title": "Certifications",
+    "lead": "Verifiable: each one links to the public credential on Credly.",
+    "verify": "Verify credential"
+  },
+  "cv": {
+    "title": "Résumé",
+    "lead": "The full detail, in your language.",
+    "downloadEs": "Download CV (Spanish)",
+    "downloadEn": "Download CV (English)"
+  },
+  "contact": {
+    "title": "Let's talk",
+    "lead": "I reply the same day.",
+    "phone": "Phone",
+    "email": "Email",
+    "linkedin": "LinkedIn"
+  },
+  "footer": {
+    "rights": "All rights reserved."
+  },
+  "a11y": {
+    "toggleTheme": "Toggle theme",
+    "switchLang": "Cambiar a español",
+    "skip": "Skip to content",
+    "openInNewTab": "Opens in a new tab"
+  }
+}

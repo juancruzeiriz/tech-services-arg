@@ -1,0 +1,48 @@
+---
+import { getLangFromUrl, useTranslations } from "../i18n/utils";
+
+const t = useTranslations(getLangFromUrl(Astro.url));
+---
+<button type="button" class="theme-toggle" data-theme-toggle aria-label={t("a11y.toggleTheme")}>
+  <svg data-icon-dark viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+    <circle cx="12" cy="12" r="4"/>
+    <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/>
+  </svg>
+  <svg data-icon-light viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79Z"/>
+  </svg>
+</button>
+
+<style>
+  .theme-toggle {
+    display: grid;
+    place-items: center;
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--fg);
+    cursor: pointer;
+    transition: border-color 0.2s var(--ease-out-expo), transform 0.2s var(--ease-out-expo);
+  }
+  .theme-toggle:hover { border-color: var(--color-accent); transform: translateY(-1px); }
+  [data-icon-light] { display: none; }
+  :root.theme-light [data-icon-dark] { display: none; }
+  :root.theme-light [data-icon-light] { display: block; }
+</style>
+
+<script>
+  const KEY = "theme";
+  const btn = document.querySelector<HTMLButtonElement>("[data-theme-toggle]");
+
+  function apply(theme: "dark" | "light") {
+    document.documentElement.classList.toggle("theme-light", theme === "light");
+    localStorage.setItem(KEY, theme);
+  }
+
+  btn?.addEventListener("click", () => {
+    const current = document.documentElement.classList.contains("theme-light") ? "light" : "dark";
+    apply(current === "dark" ? "light" : "dark");
+  });
+</script>

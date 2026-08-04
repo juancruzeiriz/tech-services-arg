@@ -1,0 +1,60 @@
+---
+import "../styles/global.css";
+import Footer from "../components/Footer.astro";
+import Nav from "../components/Nav.astro";
+import { alternateUrl, getLangFromUrl, useTranslations } from "../i18n/utils";
+
+interface Props {
+  title?: string;
+  description?: string;
+}
+
+const { title, description } = Astro.props;
+const lang = getLangFromUrl(Astro.url);
+const t = useTranslations(lang);
+const pageTitle = title ?? t("meta.title");
+const pageDescription = description ?? t("meta.description");
+const canonical = new URL(Astro.url.pathname, Astro.site);
+---
+<!doctype html>
+<html lang={lang}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{pageTitle}</title>
+    <meta name="description" content={pageDescription} />
+    <link rel="canonical" href={canonical} />
+    <link rel="alternate" hreflang="es" href={new URL(alternateUrl(Astro.url, "es"), Astro.site)} />
+    <link rel="alternate" hreflang="en" href={new URL(alternateUrl(Astro.url, "en"), Astro.site)} />
+    <link rel="alternate" hreflang="x-default" href={new URL("/es/", Astro.site)} />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+
+    <meta property="og:title" content={pageTitle} />
+    <meta property="og:description" content={pageDescription} />
+    <meta property="og:type" content="profile" />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:image" content={new URL(`/img/og-${lang}.svg`, Astro.site)} />
+    <meta name="twitter:card" content="summary_large_image" />
+
+    <!-- El tema se fija antes del primer paint: sin esto hay un flash de tema
+         equivocado al cargar con "light" ya guardado en localStorage. -->
+    <script is:inline>
+      try {
+        if (localStorage.getItem("theme") === "light") {
+          document.documentElement.classList.add("theme-light");
+        }
+      } catch {}
+    </script>
+
+    <slot name="head" />
+  </head>
+  <body>
+    <a href="#main" class="sr-only focus:not-sr-only">{t("a11y.skip")}</a>
+    <div id="top"></div>
+    <Nav />
+    <main id="main">
+      <slot />
+    </main>
+    <Footer />
+  </body>
+</html>

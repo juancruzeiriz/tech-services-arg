@@ -1,0 +1,21 @@
+<svg viewBox="0 0 800 500" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="GTM Factory">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0f1113"/>
+      <stop offset="100%" stop-color="#08090a"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="50%" cy="35%" r="60%">
+      <stop offset="0%" stop-color="#ff4d18" stop-opacity="0.35"/>
+      <stop offset="100%" stop-color="#ff4d18" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="800" height="500" fill="url(#bg)"/>
+  <rect width="800" height="500" fill="url(#glow)"/>
+  <g fill="none" stroke="#ff4d18" stroke-width="1.5" opacity="0.5">
+    <circle cx="400" cy="250" r="70"/>
+    <circle cx="400" cy="250" r="120"/>
+    <circle cx="400" cy="250" r="170"/>
+  </g>
+  <text x="400" y="260" text-anchor="middle" font-family="system-ui, sans-serif" font-size="42" font-weight="700" fill="#f4f4f2" letter-spacing="-1">GTM</text>
+  <text x="400" y="292" text-anchor="middle" font-family="system-ui, sans-serif" font-size="15" fill="#8a8f98" letter-spacing="2">PROSPECTING FACTORY</text>
+</svg>

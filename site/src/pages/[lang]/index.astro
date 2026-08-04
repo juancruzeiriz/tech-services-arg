@@ -1,0 +1,15 @@
+---
+// Contenido completo en la Tarea 1.8 — por ahora solo verifica el andamiaje
+// de rutas y el layout base (Nav, Footer, switches de idioma/tema).
+import Base from "../../layouts/Base.astro";
+import { languages } from "../../i18n/utils";
+
+export function getStaticPaths() {
+  return Object.keys(languages).map((lang) => ({ params: { lang } }));
+}
+---
+<Base>
+  <section style="padding: 10rem 2rem 6rem; min-height: 60vh;">
+    <p>placeholder — Tarea 1.8 completa el contenido real</p>
+  </section>
+</Base>

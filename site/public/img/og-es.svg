@@ -1,0 +1,13 @@
+<svg viewBox="0 0 1200 630" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <radialGradient id="g" cx="30%" cy="20%" r="80%">
+      <stop offset="0%" stop-color="#ff4d18" stop-opacity="0.30"/>
+      <stop offset="100%" stop-color="#ff4d18" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="1200" height="630" fill="#08090a"/>
+  <rect width="1200" height="630" fill="url(#g)"/>
+  <text x="80" y="300" font-family="system-ui, sans-serif" font-size="72" font-weight="800" fill="#f4f4f2" letter-spacing="-2">Juan Cruz Eiriz</text>
+  <text x="80" y="370" font-family="system-ui, sans-serif" font-size="34" fill="#8a8f98">Sitios que cargan en un segundo</text>
+  <rect x="80" y="420" width="56" height="6" fill="#ff4d18"/>
+</svg>

@@ -1,0 +1,28 @@
+---
+import { alternateUrl, getLangFromUrl, otherLang, useTranslations } from "../i18n/utils";
+
+const lang = getLangFromUrl(Astro.url);
+const target = otherLang(lang);
+const t = useTranslations(lang);
+---
+<a class="lang-switch" href={alternateUrl(Astro.url, target)} aria-label={t("a11y.switchLang")}>
+  {target.toUpperCase()}
+</a>
+
+<style>
+  .lang-switch {
+    display: grid;
+    place-items: center;
+    min-width: 2.5rem;
+    height: 2.5rem;
+    padding-inline: 0.5rem;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    font-size: 0.8rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    text-decoration: none;
+    transition: border-color 0.2s var(--ease-out-expo), transform 0.2s var(--ease-out-expo);
+  }
+  .lang-switch:hover { border-color: var(--color-accent); transform: translateY(-1px); }
+</style>

@@ -1,0 +1,67 @@
+{
+  "meta": {
+    "title": "Juan Cruz Eiriz — Desarrollo web para negocios que viven del teléfono",
+    "description": "Sitios rápidos, medibles y hechos para convertir llamadas. Desarrollo web y captura de leads para negocios de servicios."
+  },
+  "nav": {
+    "work": "Proyectos",
+    "about": "Sobre mí",
+    "certs": "Certificaciones",
+    "contact": "Contacto",
+    "cv": "Descargar CV"
+  },
+  "hero": {
+    "eyebrow": "Desarrollador web",
+    "line1": "Sitios que",
+    "line2": "cargan en",
+    "line3": "un segundo",
+    "sub": "Desarrollo web orientado a un solo número: cuántas llamadas entran. Medible con las mismas herramientas públicas que usás vos, sin humo.",
+    "cta": "Ver proyectos",
+    "ctaSecondary": "Hablemos",
+    "scroll": "Bajá"
+  },
+  "work": {
+    "title": "Proyectos",
+    "lead": "Trabajo real, con el número que movió.",
+    "viewProject": "Ver proyecto",
+    "sourceCode": "Código fuente",
+    "noLink": "Privado",
+    "metricLabel": "Resultado",
+    "stackLabel": "Stack"
+  },
+  "about": {
+    "title": "Sobre mí",
+    "body": "Soy desarrollador. Trabajo con negocios de servicios que dependen del teléfono para facturar, y mido el resultado con las mismas herramientas públicas que podés correr vos: PageSpeed Insights, Chrome UX Report y Lighthouse. Nada de lo que digo sobre un sitio es una opinión — es un número que se puede verificar en el momento."
+  },
+  "experience": {
+    "title": "Trayectoria",
+    "present": "Actualidad"
+  },
+  "certs": {
+    "title": "Certificaciones",
+    "lead": "Verificables: cada una enlaza a la credencial pública en Credly.",
+    "verify": "Verificar credencial"
+  },
+  "cv": {
+    "title": "Currículum",
+    "lead": "El detalle completo, en tu idioma.",
+    "downloadEs": "Descargar CV (Español)",
+    "downloadEn": "Descargar CV (English)"
+  },
+  "contact": {
+    "title": "Hablemos",
+    "lead": "Respondo el mismo día.",
+    "phone": "Teléfono",
+    "email": "Email",
+    "linkedin": "LinkedIn"
+  },
+  "footer": {
+    "rights": "Todos los derechos reservados."
+  },
+  "a11y": {
+    "toggleTheme": "Cambiar tema",
+    "switchLang": "Switch to English",
+    "skip": "Saltar al contenido",
+    "openInNewTab": "Se abre en una pestaña nueva"
+  }
+}
