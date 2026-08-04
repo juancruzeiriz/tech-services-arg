@@ -10,6 +10,7 @@ from __future__ import annotations
 import pytest
 
 from gtm.factory import config
+from gtm.send.types import SmtpSettings
 
 
 @pytest.fixture(autouse=True)
@@ -22,6 +23,11 @@ def _entorno_limpio(monkeypatch):
         "GTM_PHYSICAL_ADDRESS",
         "GTM_UNSUBSCRIBE_URL",
         "GTM_DEMO_BASE_URL",
+        "GTM_SMTP_HOST",
+        "GTM_SMTP_PORT",
+        "GTM_SMTP_USER",
+        "GTM_SMTP_PASSWORD",
+        "GTM_BOUNCE_ADDRESS",
     ):
         monkeypatch.delenv(name, raising=False)
 
@@ -60,6 +66,44 @@ class TestCheckConfig:
         assert "GOOGLE_PLACES_API_KEY" in config.check_config(
             need_places=True, need_sender=False
         )
+
+    def test_smtp_no_se_pide_por_defecto(self):
+        missing = config.check_config(need_places=False, need_sender=False)
+        assert "GTM_SMTP_HOST" not in missing
+
+    def test_puede_pedir_smtp(self):
+        missing = config.check_config(need_places=False, need_sender=False, need_smtp=True)
+        assert set(missing) == {
+            "GTM_SMTP_HOST", "GTM_SMTP_USER", "GTM_SMTP_PASSWORD", "GTM_BOUNCE_ADDRESS",
+        }
+
+
+class TestLoadSmtpSettings:
+    def test_construye_settings_con_los_valores_del_entorno(self, monkeypatch):
+        monkeypatch.setenv("GTM_SMTP_HOST", "smtp.zoho.com")
+        monkeypatch.setenv("GTM_SMTP_PORT", "465")
+        monkeypatch.setenv("GTM_SMTP_USER", "bounces@dominio.com")
+        monkeypatch.setenv("GTM_SMTP_PASSWORD", "secreto")
+        monkeypatch.setenv("GTM_BOUNCE_ADDRESS", "bounces@dominio.com")
+
+        settings = config.load_smtp_settings()
+
+        assert settings == SmtpSettings(
+            host="smtp.zoho.com", port=465, username="bounces@dominio.com",
+            password="secreto", bounce_address="bounces@dominio.com",
+        )
+
+    def test_puerto_por_defecto_465(self, monkeypatch):
+        monkeypatch.setenv("GTM_SMTP_HOST", "smtp.zoho.com")
+        monkeypatch.setenv("GTM_SMTP_USER", "u")
+        monkeypatch.setenv("GTM_SMTP_PASSWORD", "p")
+        monkeypatch.setenv("GTM_BOUNCE_ADDRESS", "b@dominio.com")
+
+        assert config.load_smtp_settings().port == 465
+
+    def test_sin_host_levanta_missing_config_error(self):
+        with pytest.raises(config.MissingConfigError):
+            config.load_smtp_settings()
 
 
 class TestReloadEnv:

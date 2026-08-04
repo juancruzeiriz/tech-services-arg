@@ -7,6 +7,11 @@ Variables de entorno (cargadas desde `.env.personal` en la raíz del repo):
     CRUX_API_KEY            Opcional en `score`, para datos de campo (Chrome UX
                              Report). Si falta, cae a PAGESPEED_API_KEY: es el
                              mismo proyecto de Google Cloud el que habilita las dos APIs.
+    GTM_SMTP_HOST           Requerida por `gtm.send` para enviar de verdad.
+    GTM_SMTP_PORT           Puerto SMTP sobre TLS implícito (default 465).
+    GTM_SMTP_USER           Usuario de la casilla de envío.
+    GTM_SMTP_PASSWORD       Contraseña o app password de la casilla de envío.
+    GTM_BOUNCE_ADDRESS      Casilla que recibe los rebotes (VERP y lectura IMAP).
     GTM_FROM_NAME           Remitente real (CAN-SPAM).
     GTM_FROM_EMAIL          Email de respuesta real y monitoreado (CAN-SPAM).
     GTM_PHYSICAL_ADDRESS    Dirección postal física (CAN-SPAM, obligatoria).
@@ -23,6 +28,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 from gtm.factory.types import GTMError, SenderIdentity
+from gtm.send.types import SmtpSettings
 
 ROOT = Path(__file__).resolve().parents[2]
 GTM_DIR = ROOT / "gtm"
@@ -67,6 +73,7 @@ load_dotenv(ROOT / ".env.personal")
 _PLACES_VARS = ("GOOGLE_PLACES_API_KEY",)
 _SENDER_VARS = ("GTM_FROM_NAME", "GTM_FROM_EMAIL", "GTM_PHYSICAL_ADDRESS", "GTM_UNSUBSCRIBE_URL")
 _DEMO_BASE_URL_VARS = ("GTM_DEMO_BASE_URL",)
+_SMTP_VARS = ("GTM_SMTP_HOST", "GTM_SMTP_USER", "GTM_SMTP_PASSWORD", "GTM_BOUNCE_ADDRESS")
 
 
 class MissingConfigError(GTMError):
@@ -92,6 +99,7 @@ def check_config(
     need_places: bool = True,
     need_sender: bool = True,
     need_demo_base_url: bool = False,
+    need_smtp: bool = False,
 ) -> list[str]:
     """Nombres de variables de entorno faltantes, sin levantar nunca.
 
@@ -107,6 +115,8 @@ def check_config(
         wanted += _SENDER_VARS
     if need_demo_base_url:
         wanted += _DEMO_BASE_URL_VARS
+    if need_smtp:
+        wanted += _SMTP_VARS
     return [name for name in wanted if not optional_env(name)]
 
 
@@ -136,6 +146,18 @@ def load_sender_identity() -> SenderIdentity:
     )
     sender.validate()
     return sender
+
+
+def load_smtp_settings() -> SmtpSettings:
+    """Construye la config SMTP, o falla ruidosamente si falta algo -- igual
+    que `load_sender_identity`, ver ese docstring para el porqué."""
+    return SmtpSettings(
+        host=require_env("GTM_SMTP_HOST"),
+        port=int(optional_env("GTM_SMTP_PORT", "465")),
+        username=require_env("GTM_SMTP_USER"),
+        password=require_env("GTM_SMTP_PASSWORD"),
+        bounce_address=require_env("GTM_BOUNCE_ADDRESS"),
+    )
 
 
 def ensure_dirs() -> None:

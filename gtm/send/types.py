@@ -111,3 +111,18 @@ class SendResult:
     success: bool
     provider_message_id: str | None = None
     error: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class SmtpSettings:
+    """Credenciales de la casilla de envío. `bounce_address` es la casilla
+    que actúa como remitente VERP (`gtm/send/smtp.py`) -- normalmente la
+    misma casilla que `gtm/send/bounces.py` lee por IMAP, aunque ese módulo
+    tiene su propia configuración de host/puerto porque IMAP y SMTP suelen
+    vivir en subdominios distintos del mismo proveedor."""
+
+    host: str
+    port: int
+    username: str
+    password: str
+    bounce_address: str
