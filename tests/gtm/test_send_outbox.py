@@ -318,6 +318,117 @@ class TestMarkDelivered:
         assert updated.delivered_at is not None
 
 
+class TestEnqueueManual:
+    async def test_pone_status_manual_pending_no_queued(self):
+        # A diferencia de enqueue(): el worker ignora phone/contact_form a
+        # propósito, así que dejarlos en 'queued' los colgaría en 'sending'
+        # para siempre en cuanto claim_due los reclame.
+        cursor = _FakeCursor()
+        pool = _FakePool(cursor)
+        msg = _message(channel="phone")
+
+        n = await outbox.enqueue_manual(pool, [msg])
+
+        assert n == 1
+        _, rows = cursor.executed[0]
+        assert rows[0]["status"] == "manual_pending"
+        assert rows[0]["queued_at"] is not None
+
+    async def test_vacio_no_toca_el_pool(self):
+        cursor = _FakeCursor()
+        pool = _FakePool(cursor)
+        assert await outbox.enqueue_manual(pool, []) == 0
+        assert cursor.executed == []
+
+
+class TestMarkManualDone:
+    async def test_marca_manual_done_con_timestamp(self):
+        cursor = _FakeCursor()
+        pool = _FakePool(cursor)
+        msg = _message(status=MessageStatus.MANUAL_PENDING)
+
+        updated = await outbox.mark_manual_done(pool, msg)
+
+        assert updated.status is MessageStatus.MANUAL_DONE
+        assert updated.sent_at is not None
+
+    async def test_no_se_puede_marcar_enviado_algo_en_draft(self):
+        pool = _FakePool(_FakeCursor())
+        msg = _message(status=MessageStatus.DRAFT)
+        with pytest.raises(ValueError):
+            await outbox.mark_manual_done(pool, msg)
+
+
+class TestCancel:
+    async def test_cancela_uno_encolado(self):
+        cursor = _FakeCursor()
+        pool = _FakePool(cursor)
+        msg = _message(status=MessageStatus.QUEUED)
+
+        updated = await outbox.cancel(pool, msg)
+
+        assert updated.status is MessageStatus.CANCELLED
+
+    async def test_no_se_puede_cancelar_algo_ya_entregado(self):
+        pool = _FakePool(_FakeCursor())
+        msg = _message(status=MessageStatus.DELIVERED)
+        with pytest.raises(ValueError):
+            await outbox.cancel(pool, msg)
+
+
+class TestGetById:
+    _ROW = (
+        1, "c1", None, "p1", "email", "to@x.com", "asunto", "cuerpo", None,
+        "sent", 1, 3, None, "<abc@x>", "tag123",
+        datetime(2026, 8, 1, tzinfo=UTC), None, datetime(2026, 8, 1, tzinfo=UTC), None, None, None, None, None,
+    )
+
+    async def test_encuentra_por_id(self):
+        cursor = _FakeCursor(fetchone_result=self._ROW)
+        pool = _FakePool(cursor)
+
+        found = await outbox.get_by_id(pool, 1)
+
+        assert found is not None
+        assert found.id == 1
+        _, params = cursor.executed[0]
+        assert params["id"] == 1
+
+    async def test_sin_match_devuelve_none(self):
+        cursor = _FakeCursor(fetchone_result=None)
+        pool = _FakePool(cursor)
+        assert await outbox.get_by_id(pool, 999) is None
+
+
+class TestListMessages:
+    _ROW = (
+        1, "c1", None, "p1", "phone", None, None, "cuerpo", None,
+        "manual_pending", 0, 1, None, None, None,
+        datetime(2026, 8, 1, tzinfo=UTC), None, None, None, None, None, None, None,
+    )
+
+    async def test_lista_los_mas_recientes_primero(self):
+        cursor = _FakeCursor(fetchall_result=[self._ROW])
+        pool = _FakePool(cursor)
+
+        found = await outbox.list_messages(pool)
+
+        assert len(found) == 1
+        sql, params = cursor.executed[0]
+        assert "order by created_at desc" in sql.lower()
+        assert params["status"] is None
+
+    async def test_filtra_por_estado(self):
+        cursor = _FakeCursor(fetchall_result=[])
+        pool = _FakePool(cursor)
+
+        await outbox.list_messages(pool, status=MessageStatus.FAILED)
+
+        sql, params = cursor.executed[0]
+        assert "where status" in sql.lower()
+        assert params["status"] == "failed"
+
+
 class TestRequeue:
     async def test_reencola_un_fallido(self):
         cursor = _FakeCursor()

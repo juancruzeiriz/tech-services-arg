@@ -1,0 +1,56 @@
+{% set badge_by_status = {
+  "draft": "badge-muted", "queued": "badge-info", "sending": "badge-warn",
+  "sent": "badge-ok", "delivered": "badge-ok", "bounced": "badge-danger",
+  "failed": "badge-danger", "manual_pending": "badge-muted",
+  "manual_done": "badge-ok", "cancelled": "badge-muted",
+} %}
+{% set label_by_status = {
+  "draft": "borrador", "queued": "encolado", "sending": "enviando",
+  "sent": "enviado", "delivered": "entregado ✓", "bounced": "rebotado",
+  "failed": "falló", "manual_pending": "a mano: pendiente",
+  "manual_done": "a mano: enviado", "cancelled": "cancelado",
+} %}
+<div id="outbox-table" class="table-wrap">
+  {% if not messages %}
+  <p class="text-sm text-muted">Todavía no se encoló ningún mensaje.</p>
+  {% else %}
+  <table>
+    <thead>
+      <tr><th>Prospecto</th><th>Canal</th><th>Destino</th><th>Estado</th><th>Intentos</th><th></th></tr>
+    </thead>
+    <tbody>
+      {% for message in messages %}
+      <tr>
+        <td class="text-sm">{{ message.place_id }}</td>
+        <td class="text-sm text-muted">{{ 'teléfono' if message.channel == 'phone' else 'formulario' if message.channel == 'contact_form' else message.channel }}</td>
+        <td class="text-sm mono">{{ message.to_address or '—' }}</td>
+        <td>
+          <span class="badge {{ badge_by_status.get(message.status.value, 'badge-muted') }}">{{ label_by_status.get(message.status.value, message.status.value) }}</span>
+          {% if message.status.value == 'failed' and message.last_error %}
+          <div class="text-sm text-muted mt-1">{{ message.last_error }}</div>
+          {% endif %}
+        </td>
+        <td class="text-sm">{{ message.attempt_count }}/{{ message.max_attempts }}</td>
+        <td class="flex gap-1">
+          {% if message.status.value == 'failed' %}
+          <form method="post" action="/outbox/{{ message.id }}/retry" style="display:inline">
+            <button class="btn btn-sm" type="submit">Reintentar</button>
+          </form>
+          {% endif %}
+          {% if message.status.value == 'manual_pending' %}
+          <form method="post" action="/outbox/{{ message.id }}/manual-done" style="display:inline">
+            <button class="btn btn-sm" type="submit" style="background:var(--ok)">Marcar enviado</button>
+          </form>
+          {% endif %}
+          {% if message.status.value in ('draft', 'queued', 'manual_pending') %}
+          <form method="post" action="/outbox/{{ message.id }}/cancel" style="display:inline">
+            <button class="btn btn-sm btn-secondary" type="submit">Cancelar</button>
+          </form>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+</div>

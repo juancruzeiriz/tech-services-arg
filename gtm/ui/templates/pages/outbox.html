@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}Envíos{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1>Envíos</h1>
+  <p>Elegí de la cola quién sale, mandalo, y mirá acá si salió o si hay que reintentar.</p>
+</div>
+
+{% if not has_pool %}
+<div class="empty-state">
+  <h3>Envíos deshabilitado</h3>
+  <p>No hay <code>SUPABASE_DB_URL</code> configurada. El estado de un mensaje (encolado, enviado, rebotado...) necesita Postgres para poder reescribirse — un JSONL append-only no alcanza. La <a href="/queue">cola manual</a> sigue funcionando igual que siempre mientras tanto.</p>
+</div>
+{% else %}
+
+<div class="card mb-2">
+  <div class="card-title">Encolar de la cola de contacto</div>
+  {% if not items %}
+  <p class="text-sm text-muted">No hay prospectos accionables en la cola. Corré una <a href="/">nueva corrida</a> o revisá <a href="/queue">la cola</a>.</p>
+  {% else %}
+  <form method="post" action="/outbox/enqueue">
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th></th><th>Prospecto</th><th>Canal</th><th>Dolor</th></tr></thead>
+        <tbody>
+          {% for item in items %}
+          <tr>
+            <td><input type="checkbox" name="selected" value="{{ item_key(item) }}"></td>
+            <td class="text-sm">{{ item.prospect.name }}</td>
+            <td class="text-sm text-muted">{{ 'teléfono' if item.plan.channel.value == 'phone' else 'formulario' }}</td>
+            <td><span class="badge {{ 'badge-danger' if item.plan.pain_score >= 70 else 'badge-warn' if item.plan.pain_score >= 45 else 'badge-muted' }}">{{ item.plan.pain_score }}</span></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <button class="btn mt-2" type="submit">Encolar seleccionados</button>
+  </form>
+  {% endif %}
+</div>
+
+<div class="card">
+  <div class="card-title">Estado de los mensajes</div>
+  {% include "fragments/outbox_table.html" %}
+</div>
+
+{% endif %}
+{% endblock %}

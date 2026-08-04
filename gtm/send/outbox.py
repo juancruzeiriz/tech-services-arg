@@ -139,6 +139,65 @@ async def claim_due(
     return [replace(_row_to_message(row), status=MessageStatus.SENDING) for row in rows]
 
 
+async def enqueue_manual(pool: AsyncConnectionPool, messages: list[OutreachMessage]) -> int:
+    """Encola mensajes de canal manual (`phone`/`contact_form`): a diferencia de
+    `enqueue`, quedan en `manual_pending`, no en `queued`. El worker de envío
+    ignora a propósito esos dos canales (ver `gtm/send/worker.py`) -- dejarlos
+    en `queued` haría que `claim_due` los reclame, los suba a `sending`, y ahí
+    se queden colgados para siempre, porque nada los mueve de ese estado."""
+    if not messages:
+        return 0
+    now = datetime.now(UTC)
+    queued = [replace(m, status=MessageStatus.MANUAL_PENDING, queued_at=now) for m in messages]
+    await repo.upsert(pool, "outreach_messages", [repo.outreach_message_row(m) for m in queued])
+    return len(queued)
+
+
+async def mark_manual_done(pool: AsyncConnectionPool, message: OutreachMessage) -> OutreachMessage:
+    """El botón "Marcar enviado" de `/outbox`, para teléfono y formulario --
+    canales que el operador despacha a mano y confirma él mismo."""
+    if not message.status.can_transition_to(MessageStatus.MANUAL_DONE):
+        raise ValueError(f"no se puede marcar como enviado un mensaje en estado {message.status.value!r}")
+    updated = replace(message, status=MessageStatus.MANUAL_DONE, sent_at=datetime.now(UTC))
+    await repo.upsert(pool, "outreach_messages", [repo.outreach_message_row(updated)])
+    return updated
+
+
+async def cancel(pool: AsyncConnectionPool, message: OutreachMessage) -> OutreachMessage:
+    """El botón "Cancelar" de `/outbox`, para un mensaje que todavía no salió."""
+    if not message.status.can_transition_to(MessageStatus.CANCELLED):
+        raise ValueError(f"no se puede cancelar un mensaje en estado {message.status.value!r}")
+    updated = replace(message, status=MessageStatus.CANCELLED)
+    await repo.upsert(pool, "outreach_messages", [repo.outreach_message_row(updated)])
+    return updated
+
+
+async def get_by_id(pool: AsyncConnectionPool, message_id: int) -> OutreachMessage | None:
+    cols = ", ".join(_CLAIM_COLUMNS)
+    async with pool.connection() as conn, conn.cursor() as cur:
+        await cur.execute(
+            f"select {cols} from outreach_messages where id = %(id)s", {"id": message_id}
+        )
+        row = await cur.fetchone()
+    return _row_to_message(row) if row else None
+
+
+async def list_messages(
+    pool: AsyncConnectionPool, *, status: MessageStatus | None = None, limit: int = 200
+) -> list[OutreachMessage]:
+    """Para la pantalla `/outbox`: los mensajes más recientes primero, con
+    filtro opcional por estado."""
+    cols = ", ".join(_CLAIM_COLUMNS)
+    where = "where status = %(status)s" if status is not None else ""
+    async with pool.connection() as conn, conn.cursor() as cur:
+        await cur.execute(
+            f"select {cols} from outreach_messages {where} order by created_at desc limit %(limit)s",
+            {"status": status.value if status is not None else None, "limit": limit},
+        )
+        rows = await cur.fetchall()
+    return [_row_to_message(row) for row in rows]
+
+
 async def get_by_verp_tag(pool: AsyncConnectionPool, verp_tag: str) -> OutreachMessage | None:
     """El mensaje que generó ese tag VERP, o None. Es cómo `worker.py`
     empareja un rebote recién leído con el mensaje que lo causó, sin tener
