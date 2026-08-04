@@ -1,0 +1,38 @@
+---
+import Experience from "./Experience.astro";
+import { getLangFromUrl, useTranslations } from "../i18n/utils";
+
+const lang = getLangFromUrl(Astro.url);
+const t = useTranslations(lang);
+---
+<section class="section" id="about">
+  <div class="section-inner about-grid">
+    <div>
+      <h2 data-split data-reveal>{t("about.title")}</h2>
+      <p class="about-body" data-reveal>{t("about.body")}</p>
+    </div>
+    <Experience />
+  </div>
+</section>
+
+<style>
+  .about-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 3rem;
+  }
+  .about-body {
+    margin-top: 1.5rem;
+    font-size: 1.05rem;
+    line-height: 1.7;
+    color: var(--fg-muted);
+    max-width: 38rem;
+  }
+
+  @media (min-width: 960px) {
+    .about-grid {
+      grid-template-columns: 1fr 1fr;
+      align-items: start;
+    }
+  }
+</style>

@@ -1,0 +1,60 @@
+---
+import { profile } from "../data/profile";
+import { getLangFromUrl, useTranslations } from "../i18n/utils";
+
+const lang = getLangFromUrl(Astro.url);
+const t = useTranslations(lang);
+---
+<section class="section" id="contact">
+  <div class="section-inner">
+    <h2 data-split data-reveal>{t("contact.title")}</h2>
+    <p class="section-lead" data-reveal>{t("contact.lead")}</p>
+
+    <ul class="contact-list" data-reveal>
+      <li>
+        <span class="contact-label">{t("contact.phone")}</span>
+        <a href={`tel:${profile.phoneTel}`} data-magnetic>{profile.phoneDisplay}</a>
+      </li>
+      <li>
+        <span class="contact-label">{t("contact.email")}</span>
+        <a href={`mailto:${profile.email}`} data-magnetic>{profile.email}</a>
+      </li>
+      <li>
+        <span class="contact-label">{t("contact.linkedin")}</span>
+        <a href={profile.linkedinUrl} target="_blank" rel="noopener noreferrer" data-magnetic>LinkedIn ↗</a>
+      </li>
+    </ul>
+  </div>
+</section>
+
+<style>
+  .contact-list {
+    list-style: none;
+    margin: 3rem 0 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    max-width: 32rem;
+  }
+  .contact-list li {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 1rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid var(--border);
+  }
+  .contact-label {
+    color: var(--fg-muted);
+    font-size: 0.9rem;
+  }
+  .contact-list a {
+    font-size: 1.2rem;
+    font-weight: 600;
+    text-decoration: none;
+    color: var(--fg);
+    transition: color 0.2s ease;
+  }
+  .contact-list a:hover { color: var(--color-accent); }
+</style>

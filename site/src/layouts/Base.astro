@@ -2,6 +2,7 @@
 import "../styles/global.css";
 import Footer from "../components/Footer.astro";
 import Nav from "../components/Nav.astro";
+import { profile } from "../data/profile";
 import { alternateUrl, getLangFromUrl, useTranslations } from "../i18n/utils";
 
 interface Props {
@@ -45,6 +46,17 @@ const canonical = new URL(Astro.url.pathname, Astro.site);
         }
       } catch {}
     </script>
+
+    <script type="application/ld+json" is:inline set:html={JSON.stringify({
+      "@context": "https://schema.org",
+      "@type": "Person",
+      name: profile.name,
+      jobTitle: profile.jobTitle[lang],
+      url: canonical.toString(),
+      email: `mailto:${profile.email}`,
+      telephone: profile.phoneTel,
+      sameAs: [profile.linkedinUrl],
+    })} />
 
     <slot name="head" />
   </head>

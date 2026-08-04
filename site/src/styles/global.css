@@ -126,6 +126,26 @@ a { color: inherit; }
   transition: transform 0.15s ease-out;
 }
 
+/* Chrome de sección compartido por Work/About/Certifications/CV/Contact —
+   así cada componente solo define lo que le es propio. */
+.section {
+  padding: clamp(4rem, 10vh, 7rem) clamp(1.25rem, 6vw, 4rem);
+}
+.section-inner {
+  max-width: 72rem;
+  margin-inline: auto;
+}
+.section-head h2 {
+  font-size: clamp(2rem, 5vw, 3.5rem);
+}
+.section-lead {
+  margin-top: 0.75rem;
+  color: var(--fg-muted);
+  font-size: 1.05rem;
+  max-width: 34rem;
+}
+.split-line { overflow: hidden; }
+
 /* Estado inicial de las revelaciones controladas por GSAP. La clase .js-reveal
    la pone reveal.ts al montar: si el script no corre (JS deshabilitado, error),
    esta regla nunca se aplica y el contenido queda visible por defecto. */

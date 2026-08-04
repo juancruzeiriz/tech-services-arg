@@ -1,7 +1,28 @@
 ---
-// Placeholder temporal — la Tarea 1.8 lo reemplaza por el redirect real a /es/ o /en/.
-import Base from "../layouts/Base.astro";
+// Astro genera sitios 100% estáticos: no hay servidor en request-time que
+// pueda mirar el header Accept-Language, así que la detección de idioma del
+// navegador se hace con JS del lado del cliente. El <meta refresh> es el
+// respaldo si JS no corre (redirige al idioma por defecto), y los links de
+// abajo son el respaldo del respaldo — para crawlers y lectores de pantalla
+// que no siguen refresh.
+import { defaultLang, languages } from "../i18n/utils";
 ---
-<Base>
-  <p style="padding: 8rem 2rem;">placeholder — Tarea 1.8 lo reemplaza</p>
-</Base>
+<!doctype html>
+<html lang={defaultLang}>
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="refresh" content={`0;url=/${defaultLang}/`} />
+    <title>Juan Cruz Eiriz</title>
+    <script is:inline define:vars={{ languages: Object.keys(languages), defaultLang }}>
+      var preferred = (navigator.languages || [navigator.language || defaultLang])
+        .map(function (l) { return l.slice(0, 2).toLowerCase(); })
+        .find(function (l) { return languages.indexOf(l) !== -1; });
+      location.replace("/" + (preferred || defaultLang) + "/");
+    </script>
+  </head>
+  <body>
+    <p>
+      <a href="/es/">Español</a> — <a href="/en/">English</a>
+    </p>
+  </body>
+</html>

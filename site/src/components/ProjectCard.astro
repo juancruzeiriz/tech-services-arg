@@ -1,0 +1,177 @@
+---
+import type { Project } from "../data/projects";
+import { getLangFromUrl, useTranslations } from "../i18n/utils";
+
+interface Props {
+  project: Project;
+}
+
+const { project } = Astro.props;
+const lang = getLangFromUrl(Astro.url);
+const t = useTranslations(lang);
+---
+<article class="project-card" data-reveal>
+  <a class="project-media" href={project.url ?? undefined} target={project.url ? "_blank" : undefined} rel={project.url ? "noopener noreferrer" : undefined} aria-label={project.title[lang]}>
+    <img src={project.image} alt="" loading="lazy" width="800" height="500" />
+  </a>
+
+  <div class="project-body">
+    <div class="project-heading">
+      <h3>{project.title[lang]}</h3>
+      <span class="project-year">{project.year}</span>
+    </div>
+
+    <p class="project-summary">{project.summary[lang]}</p>
+
+    <div class="project-detail">
+      {project.metric && (
+        <p class="project-metric">
+          <span class="project-metric-label">{t("work.metricLabel")}</span>
+          {project.metric[lang]}
+        </p>
+      )}
+
+      <ul class="project-stack">
+        {project.stack.map((tech) => <li>{tech}</li>)}
+      </ul>
+
+      <div class="project-links">
+        {project.url ? (
+          <a href={project.url} target="_blank" rel="noopener noreferrer">{t("work.viewProject")} ↗</a>
+        ) : (
+          <span class="project-private">{t("work.noLink")}</span>
+        )}
+        {project.repo && (
+          <a href={project.repo} target="_blank" rel="noopener noreferrer">{t("work.sourceCode")} ↗</a>
+        )}
+      </div>
+    </div>
+  </div>
+</article>
+
+<style>
+  .project-card {
+    border: 1px solid var(--border);
+    border-radius: 1rem;
+    overflow: hidden;
+    background: var(--surface);
+    transition: border-color 0.3s var(--ease-out-expo), transform 0.3s var(--ease-out-expo);
+  }
+  .project-card:hover,
+  .project-card:focus-within {
+    border-color: var(--color-accent);
+    transform: translateY(-4px);
+  }
+
+  .project-media {
+    display: block;
+    aspect-ratio: 8 / 5;
+    overflow: hidden;
+  }
+  .project-media img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.5s var(--ease-out-expo);
+  }
+  .project-card:hover .project-media img,
+  .project-card:focus-within .project-media img {
+    transform: scale(1.05);
+  }
+
+  .project-body { padding: 1.5rem; }
+
+  .project-heading {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 1rem;
+  }
+  .project-heading h3 {
+    font-size: 1.3rem;
+    margin: 0;
+  }
+  .project-year {
+    color: var(--fg-muted);
+    font-size: 0.85rem;
+    flex-shrink: 0;
+  }
+
+  .project-summary {
+    margin-top: 0.75rem;
+    color: var(--fg-muted);
+    font-size: 0.92rem;
+    line-height: 1.55;
+  }
+
+  /* Patrón "hover-driven pacing": el detalle (métrica, stack, links) se
+     revela al pasar el mouse o al recibir foco por teclado — nunca se
+     esconde de forma permanente, solo se prioriza visualmente. */
+  .project-detail {
+    display: grid;
+    grid-template-rows: 0fr;
+    opacity: 0;
+    transition: grid-template-rows 0.4s var(--ease-out-expo), opacity 0.3s ease;
+  }
+  .project-card:hover .project-detail,
+  .project-card:focus-within .project-detail {
+    grid-template-rows: 1fr;
+    opacity: 1;
+  }
+  .project-detail > * { overflow: hidden; }
+
+  .project-metric {
+    margin: 1rem 0 0;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border);
+    font-size: 0.9rem;
+  }
+  .project-metric-label {
+    display: block;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--color-accent);
+    margin-bottom: 0.25rem;
+  }
+
+  .project-stack {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    list-style: none;
+    margin: 1rem 0 0;
+    padding: 0;
+  }
+  .project-stack li {
+    font-size: 0.75rem;
+    padding: 0.25rem 0.6rem;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    color: var(--fg-muted);
+  }
+
+  .project-links {
+    display: flex;
+    gap: 1rem;
+    margin-top: 1rem;
+    font-size: 0.85rem;
+  }
+  .project-links a {
+    text-decoration: none;
+    color: var(--fg);
+    font-weight: 600;
+  }
+  .project-links a:hover { color: var(--color-accent); }
+  .project-private { color: var(--fg-muted); }
+
+  /* Sin JS/hover (teclado con :focus-within ya cubierto arriba, esto es para
+     táctil): en pantallas táctiles no hay :hover real, así que el detalle
+     queda siempre visible en vez de atrapado detrás de un gesto que no existe. */
+  @media (hover: none) {
+    .project-detail {
+      grid-template-rows: 1fr;
+      opacity: 1;
+    }
+  }
+</style>

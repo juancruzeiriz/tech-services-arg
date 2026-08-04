@@ -23,6 +23,9 @@
     "typescript": "^5.9.3",
     "vitest": "^3.2.4"
   },
+  "overrides": {
+    "vite": "^6.4.1"
+  },
   "allowScripts": {
     "sharp@0.34.5": true,
     "esbuild@0.25.12": true,

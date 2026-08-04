@@ -1,8 +1,11 @@
 ---
-// Las demás secciones (Work, About, Certs, CV, Contact) se agregan en la
-// Tarea 1.8 — por ahora Hero ya es contenido real, no placeholder.
-import Base from "../../layouts/Base.astro";
+import About from "../../components/About.astro";
+import Certifications from "../../components/Certifications.astro";
+import Contact from "../../components/Contact.astro";
+import CV from "../../components/CV.astro";
 import Hero from "../../components/Hero.astro";
+import Work from "../../components/Work.astro";
+import Base from "../../layouts/Base.astro";
 import { languages } from "../../i18n/utils";
 
 export function getStaticPaths() {
@@ -11,7 +14,9 @@ export function getStaticPaths() {
 ---
 <Base>
   <Hero />
-  <section style="padding: 4rem 2rem 6rem; min-height: 40vh;">
-    <p>placeholder — Tarea 1.8 completa el resto del contenido</p>
-  </section>
+  <Work />
+  <About />
+  <Certifications />
+  <CV />
+  <Contact />
 </Base>
