@@ -165,6 +165,27 @@ class TestOutboxPageConPool:
         assert "p1" in response.text
         assert "a mano: pendiente" in response.text
 
+    def test_la_tabla_se_repolla_sola_con_htmx(self, client):
+        # Sin esto un mensaje que pasa de queued a sent no se actualiza en
+        # pantalla hasta que el operador recarga la página a mano.
+        cursor = _FakeCursor(fetchall_result=[_row()])
+        _with_fake_pool(client, cursor)
+
+        response = client.get("/outbox")
+
+        assert 'hx-get="/outbox/status"' in response.text
+        assert 'hx-trigger="every 5s"' in response.text
+
+    def test_status_devuelve_solo_el_fragmento_de_la_tabla(self, client):
+        cursor = _FakeCursor(fetchall_result=[_row()])
+        _with_fake_pool(client, cursor)
+
+        response = client.get("/outbox/status")
+
+        assert response.status_code == 200
+        assert "<html" not in response.text.lower()
+        assert 'id="outbox-table"' in response.text
+
     def test_el_boton_de_reenvio_aparece_solo_en_los_fallados(self, client):
         cursor = _FakeCursor(
             fetchall_result=[

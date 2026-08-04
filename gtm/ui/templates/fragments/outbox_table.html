@@ -10,7 +10,7 @@
   "failed": "falló", "manual_pending": "a mano: pendiente",
   "manual_done": "a mano: enviado", "cancelled": "cancelado",
 } %}
-<div id="outbox-table" class="table-wrap">
+<div id="outbox-table" class="table-wrap" hx-get="/outbox/status" hx-trigger="every 5s" hx-swap="outerHTML">
   {% if not messages %}
   <p class="text-sm text-muted">Todavía no se encoló ningún mensaje.</p>
   {% else %}

@@ -195,9 +195,13 @@ async def run_detail(request: Request, run_id: str, registry: RegistryDep) -> HT
         scores_by_id = {s.place_id: s.score for s in handle.result.scores}
         demos_by_id = {d.place_id: d.url for d in handle.result.demos if d.url}
 
+    # Pedido de htmx (el swap del script de progreso, ver run_detail.html):
+    # devuelve solo el fragmento, sin el layout de base.html alrededor -- un
+    # swap de outerHTML no tiene dónde meter <html>/<head>/la barra lateral.
+    template = "fragments/run_detail_content.html" if request.headers.get("hx-request") else "pages/run_detail.html"
     return templates.TemplateResponse(
         request,
-        "pages/run_detail.html",
+        template,
         {"active": "runs", "handle": handle, "scores_by_id": scores_by_id, "demos_by_id": demos_by_id},
     )
 

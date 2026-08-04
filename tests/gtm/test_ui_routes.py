@@ -172,6 +172,32 @@ class TestRunDetail:
         response = client.get("/runs")
         assert response.status_code == 200
 
+    def _create_run(self, client) -> str:
+        data = {
+            "vertical": "hvac", "vertical_other": "", "metro": "tucson-az", "metro_other": "",
+            "language": "es", "mode": "simulate", "limit": "6", "min_reviews": "50",
+            "min_rating": "4.0", "seed": "1", "concurrency": "5", "price_usd": "950",
+            "base_url": "https://demos.example.com", "author_name": "Test", "author_url": "https://example.com",
+        }
+        response = client.post("/runs", data=data, follow_redirects=False)
+        return response.headers["location"].removeprefix("/runs/")
+
+    def test_pedido_normal_devuelve_la_pagina_completa(self, client):
+        run_id = self._create_run(client)
+        response = client.get(f"/runs/{run_id}")
+        assert "<html" in response.text.lower()
+        assert 'id="run-detail-content"' in response.text
+
+    def test_pedido_de_htmx_devuelve_solo_el_fragmento(self, client):
+        # El script de progreso de run_detail.html pide esta misma URL con
+        # htmx.ajax cuando la corrida termina -- sin esto, un swap de
+        # outerHTML terminaría metiendo <html>/<head>/la barra lateral entera
+        # adentro de #run-detail-content.
+        run_id = self._create_run(client)
+        response = client.get(f"/runs/{run_id}", headers={"HX-Request": "true"})
+        assert "<html" not in response.text.lower()
+        assert 'id="run-detail-content"' in response.text
+
 
 class TestPresets:
     def _form_data(self, **overrides):

@@ -1,0 +1,75 @@
+<div id="run-detail-content">
+<div class="page-header flex justify-between items-center">
+  <div>
+    <h1>{{ handle.ctx.vertical }} · {{ handle.ctx.metro }}</h1>
+    <p>{{ handle.ctx.run_id }} — {{ handle.ctx.language.value }} · {{ 'simulación' if handle.ctx.simulated else 'real' }} · precio USD {{ handle.ctx.offer_price_usd }}</p>
+  </div>
+  <span id="run-status-badge" class="badge {{ 'badge-ok' if handle.status == 'ok' else 'badge-danger' if handle.status == 'failed' else 'badge-info' }}">{{ handle.status }}</span>
+</div>
+
+{% if handle.status in ('pending', 'running') %}
+<div class="card">
+  <div class="card-title">Progreso</div>
+  <div id="stage-list">
+    {% for stage in ["discover", "score", "generate", "deploy", "contact", "outreach"] %}
+    <div class="flex justify-between items-center mt-1" id="stage-row-{{ stage }}">
+      <span class="text-sm">{{ stage }}</span>
+      <span class="text-sm text-muted" data-stage-count="{{ stage }}">esperando…</span>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+{% if handle.error %}
+<div class="card mt-2">
+  <span class="badge badge-danger">Error</span>
+  <p class="mono text-sm mt-1">{{ handle.error }}</p>
+</div>
+{% endif %}
+
+{% if handle.result %}
+<div class="card mt-2">
+  <div class="card-title">Resultado</div>
+  <div class="grid grid-4">
+    <div class="stat"><span class="stat-value">{{ handle.result.prospects | length }}</span><span class="stat-label">prospectos</span></div>
+    <div class="stat"><span class="stat-value">{{ handle.result.scores | selectattr("is_qualified") | list | length }}</span><span class="stat-label">calificados</span></div>
+    <div class="stat"><span class="stat-value">{{ handle.result.demos | length }}</span><span class="stat-label">demos publicadas</span></div>
+    <div class="stat"><span class="stat-value">{{ handle.result.contacts | selectattr("is_actionable") | list | length }}</span><span class="stat-label">contactables</span></div>
+  </div>
+  {% if handle.result.contacts %}
+  <a class="btn mt-2" href="/queue?run_id={{ handle.ctx.run_id }}">Ir a la cola de contacto →</a>
+  {% endif %}
+</div>
+
+{% if handle.result.prospects %}
+<div class="card mt-2">
+  <div class="card-title">Prospectos ({{ handle.result.prospects | length }})</div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Negocio</th><th>Dolor</th><th>Presencia web</th><th>Reseñas</th><th>Demo</th></tr></thead>
+      <tbody>
+        {% for prospect in handle.result.prospects %}
+        <tr>
+          <td>{{ prospect.name }}</td>
+          <td>
+            {% set score = scores_by_id.get(prospect.place_id) %}
+            {% if score is not none %}
+              <span class="badge {{ 'badge-danger' if score >= 70 else 'badge-warn' if score >= 45 else 'badge-muted' }}">{{ score }}</span>
+            {% else %}—{% endif %}
+          </td>
+          <td class="text-sm text-muted">{{ prospect.web_presence.value }}</td>
+          <td class="text-sm">{{ prospect.review_count }}</td>
+          <td class="text-sm">
+            {% set demo_url = demos_by_id.get(prospect.place_id) %}
+            {% if demo_url %}<a href="{{ demo_url }}" target="_blank" rel="noopener">ver →</a>{% else %}—{% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+{% endif %}
+</div>
