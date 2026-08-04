@@ -94,6 +94,56 @@ class TestRunRegistry:
         assert not registry.is_busy()
 
 
+class TestRehydrate:
+    async def test_la_cola_se_rehidrata_despues_de_reiniciar(self, tmp_path):
+        from gtm.factory.ledger import SuppressionList
+        from gtm.factory.pipeline import run_pipeline
+        from gtm.ui.routes.queue import _queue_items
+
+        suppression = SuppressionList(tmp_path / "suppression.jsonl")
+        ctx = RunContext.create(
+            "plumber", "Tucson, AZ", root=tmp_path / "runs", simulated=True, limit=5, seed=42
+        )
+        result = await run_pipeline(ctx, suppression=suppression)
+
+        original = RunRegistry()
+        handle = original.register(ctx)
+        handle.result = result
+        esperado = _queue_items(original, None, suppression)
+        assert esperado, "el fixture simulado tiene que producir al menos un item accionable"
+
+        rehidratado = RunRegistry()
+        rehidratado.rehydrate(tmp_path)
+
+        obtenido = _queue_items(rehidratado, None, suppression)
+        assert [item["place_id"] for item in obtenido] == [item["place_id"] for item in esperado]
+
+    def test_no_pisa_una_corrida_ya_registrada_en_memoria(self, tmp_path):
+        ctx = _ctx("r1")
+        registry = RunRegistry()
+        handle = registry.register(ctx)
+
+        (tmp_path / "runs" / "r1" / "data").mkdir(parents=True)
+        registry.rehydrate(tmp_path)
+
+        assert registry.get("r1") is handle
+
+    def test_corridas_sin_meta_json_se_saltean(self, tmp_path):
+        data_dir = tmp_path / "runs" / "sin-meta" / "data"
+        data_dir.mkdir(parents=True)
+        (data_dir / "prospects.json").write_text("[]", encoding="utf-8")
+
+        registry = RunRegistry()
+        registry.rehydrate(tmp_path)
+
+        assert registry.get("sin-meta") is None
+
+    def test_rehydrate_sin_directorio_de_runs_no_lanza(self, tmp_path):
+        registry = RunRegistry()
+        registry.rehydrate(tmp_path / "no-existe")
+        assert registry.all() == []
+
+
 class TestProgressBus:
     async def test_un_suscriptor_recibe_el_evento(self):
         bus = ProgressBus()

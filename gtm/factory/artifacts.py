@@ -55,8 +55,18 @@ def write_demos(path: str | Path, demos: Iterable[Demo]) -> None:
     _write_json(path, [d.to_dict() for d in demos])
 
 
+def read_contacts(path: str | Path) -> list[ContactPlan]:
+    with open(path, encoding="utf-8") as handle:
+        return [ContactPlan.from_dict(item) for item in json.load(handle)]
+
+
 def write_contacts(path: str | Path, plans: Iterable[ContactPlan]) -> None:
     _write_json(path, [plan.to_dict() for plan in plans])
+
+
+def read_emails(path: str | Path) -> list[OutreachEmail]:
+    with open(path, encoding="utf-8") as handle:
+        return [OutreachEmail.from_dict(item) for item in json.load(handle)]
 
 
 def write_emails(path: str | Path, emails: Iterable[OutreachEmail]) -> None:
@@ -65,3 +75,17 @@ def write_emails(path: str | Path, emails: Iterable[OutreachEmail]) -> None:
 
 def write_queue(path: str | Path, markdown: str) -> None:
     Path(path).write_text(markdown, encoding="utf-8")
+
+
+def write_meta(path: str | Path, data: dict[str, object]) -> None:
+    """Metadatos de la corrida (vertical, metro, idioma...) que ningún otro
+    artefacto guarda -- sin esto `RunRegistry.rehydrate` no podría reconstruir
+    un `RunContext` a partir de lo que quedó en disco."""
+    with open(path, "w", encoding="utf-8") as handle:
+        json.dump(data, handle, ensure_ascii=False, indent=2)
+
+
+def read_meta(path: str | Path) -> dict[str, object]:
+    with open(path, encoding="utf-8") as handle:
+        result: dict[str, object] = json.load(handle)
+        return result

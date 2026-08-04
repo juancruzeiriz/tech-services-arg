@@ -37,6 +37,7 @@ templates.env.filters["pct"] = lambda x: f"{x * 100:.1f}%".replace(".0%", "%")
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     app.state.pool = await open_pool()
     app.state.registry = RunRegistry()
+    app.state.registry.rehydrate(config.BUILD_DIR)
     app.state.progress_bus = ProgressBus()
     # None sin pool: el envío automático queda deshabilitado limpiamente,
     # igual que el resto de gtm/store/ cuando no hay Postgres -- la cola

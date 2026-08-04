@@ -11,8 +11,34 @@ from __future__ import annotations
 import asyncio
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
+from pathlib import Path
 
+from gtm.factory import artifacts
+from gtm.factory.logs import get_logger
 from gtm.factory.pipeline import ProgressEvent, RunContext, RunResult
+from gtm.factory.types import Language
+
+_logger = get_logger(__name__)
+
+
+def _meta_str(meta: dict[str, object], key: str, default: str) -> str:
+    value = meta.get(key, default)
+    return str(value) if value is not None else default
+
+
+def _meta_int(meta: dict[str, object], key: str, default: int) -> int:
+    value = meta.get(key, default)
+    return int(value) if isinstance(value, int | float | str) else default
+
+
+def _meta_float(meta: dict[str, object], key: str, default: float) -> float:
+    value = meta.get(key, default)
+    return float(value) if isinstance(value, int | float | str) else default
+
+
+def _meta_bool(meta: dict[str, object], key: str, default: bool) -> bool:
+    value = meta.get(key, default)
+    return bool(value) if isinstance(value, bool | int) else default
 
 
 @dataclass
@@ -68,6 +94,96 @@ class RunRegistry:
 
     def is_busy(self) -> bool:
         return any(h.status == "running" for h in self._runs.values())
+
+    def rehydrate(self, build_dir: Path) -> None:
+        """Reconstruye corridas terminadas leyendo `gtm/build/runs/*/data/` --
+        sin esto, reiniciar `uvicorn` vacía `/queue` aunque los artefactos y
+        Postgres tengan todo. Corridas sin `meta.json` (versiones del pipeline
+        previas a esta función, o corridas a medio escribir) se saltean: no
+        hay forma de reconstruir su `RunContext` sin esos datos.
+        """
+        runs_dir = build_dir / "runs"
+        if not runs_dir.is_dir():
+            return
+
+        run_paths = sorted(
+            (p for p in runs_dir.iterdir() if p.is_dir()),
+            key=lambda p: p.stat().st_mtime,
+        )
+        for run_path in run_paths:
+            if run_path.name in self._runs:
+                continue
+            handle = self._rehydrate_one(run_path, runs_dir)
+            if handle is not None:
+                self._runs[run_path.name] = handle
+
+    def _rehydrate_one(self, run_path: Path, runs_dir: Path) -> RunHandle | None:
+        data_dir = run_path / "data"
+        meta_path = data_dir / "meta.json"
+        if not meta_path.exists():
+            return None
+        try:
+            meta = artifacts.read_meta(meta_path)
+            ctx = RunContext.create(
+                _meta_str(meta, "vertical", ""),
+                _meta_str(meta, "metro", ""),
+                run_id=run_path.name,
+                root=runs_dir,
+                language=Language(_meta_str(meta, "language", "en")),
+                limit=_meta_int(meta, "limit", 20),
+                min_reviews=_meta_int(meta, "min_reviews", 50),
+                min_rating=_meta_float(meta, "min_rating", 4.0),
+                score_concurrency=_meta_int(meta, "score_concurrency", 5),
+                contact_concurrency=_meta_int(meta, "contact_concurrency", 8),
+                probe_site=_meta_bool(meta, "probe_site", True),
+                dry_run=_meta_bool(meta, "dry_run", True),
+                simulated=_meta_bool(meta, "simulated", True),
+                seed=_meta_int(meta, "seed", 42),
+                author_name=_meta_str(meta, "author_name", ""),
+                author_url=_meta_str(meta, "author_url", ""),
+                base_url=_meta_str(meta, "base_url", ""),
+                offer_price_usd=_meta_int(meta, "offer_price_usd", 950),
+            )
+            prospects = (
+                artifacts.read_prospects(data_dir / "prospects.json")
+                if (data_dir / "prospects.json").exists()
+                else []
+            )
+            scores = (
+                artifacts.read_scores(data_dir / "scores.json")
+                if (data_dir / "scores.json").exists()
+                else []
+            )
+            demos = (
+                artifacts.read_demos(data_dir / "demos.json") if (data_dir / "demos.json").exists() else []
+            )
+            contacts = (
+                artifacts.read_contacts(data_dir / "contacts.json")
+                if (data_dir / "contacts.json").exists()
+                else []
+            )
+            emails = (
+                artifacts.read_emails(data_dir / "emails.json")
+                if (data_dir / "emails.json").exists()
+                else []
+            )
+        except (OSError, ValueError, KeyError, TypeError) as exc:
+            _logger.warning(
+                "no se pudo rehidratar la corrida",
+                extra={"event": "run_rehydrate_failed", "run_id": run_path.name, "error": str(exc)},
+            )
+            return None
+
+        result = RunResult(
+            ctx,
+            stages=(),
+            prospects=tuple(prospects),
+            scores=tuple(scores),
+            demos=tuple(demos),
+            contacts=tuple(contacts),
+            emails=tuple(emails),
+        )
+        return RunHandle(ctx=ctx, result=result)
 
 
 class ProgressBus:

@@ -239,6 +239,28 @@ async def run_pipeline(
     necesita mostrar qué se alcanzó a hacer, no solo "falló".
     """
     ctx.ensure_dirs()
+    artifacts.write_meta(
+        ctx.data_dir / "meta.json",
+        {
+            "vertical": ctx.vertical,
+            "metro": ctx.metro,
+            "language": ctx.language.value,
+            "limit": ctx.limit,
+            "min_reviews": ctx.min_reviews,
+            "min_rating": ctx.min_rating,
+            "score_concurrency": ctx.score_concurrency,
+            "contact_concurrency": ctx.contact_concurrency,
+            "probe_site": ctx.probe_site,
+            "dry_run": ctx.dry_run,
+            "simulated": ctx.simulated,
+            "seed": ctx.seed,
+            "author_name": ctx.author_name,
+            "author_url": ctx.author_url,
+            "base_url": ctx.base_url,
+            "offer_price_usd": ctx.offer_price_usd,
+            "started_at": ctx.started_at.isoformat(),
+        },
+    )
     suppression_list = suppression if suppression is not None else SuppressionList()
     stages: list[StageResult] = []
 
