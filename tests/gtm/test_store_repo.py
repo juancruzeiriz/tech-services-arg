@@ -7,8 +7,9 @@ context manager async, `conn.cursor()` también, `executemany`)."""
 
 from __future__ import annotations
 
+import json
 import re
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 
 import pytest
 
@@ -23,6 +24,7 @@ from gtm.factory.types import (
     Prospect,
     SenderIdentity,
 )
+from gtm.send.types import MessageStatus, OutreachMessage
 from gtm.store import buffer, repo
 
 
@@ -277,8 +279,6 @@ class TestRowBuilders:
         ]
 
     def test_score_row_last_changed_es_string_iso_o_none(self):
-        from datetime import date
-
         sin_fecha = repo.score_row("run-1", PainScore(place_id="p1"))
         assert sin_fecha["last_changed"] is None
 
@@ -286,8 +286,6 @@ class TestRowBuilders:
         assert con_fecha["last_changed"] == "2016-03-12"
 
     def test_score_row_es_json_safe(self):
-        import json
-
         score = PainScore(
             place_id="p1",
             findings=(Finding(code="no_https", evidence="x", weight=FINDINGS["no_https"].weight),),
@@ -332,6 +330,31 @@ class TestRowBuilders:
         assert row["minutes"] == 30
         assert row["activity"] == "llamadas"
         assert row["client_id"]
+
+    def test_outreach_message_row_traduce_el_status_a_string(self):
+        message = OutreachMessage(
+            client_id="c1", place_id="p1", channel="email", body="hola",
+            status=MessageStatus.QUEUED, to_address="dueno@negocio.example",
+        )
+        row = repo.outreach_message_row(message)
+        assert row["status"] == "queued"
+        assert row["client_id"] == "c1"
+        assert row["to_address"] == "dueno@negocio.example"
+        assert row["sent_at"] is None
+
+    def test_outreach_message_row_es_json_safe(self):
+        message = OutreachMessage(
+            client_id="c1", place_id="p1", channel="email", body="hola",
+            status=MessageStatus.SENT, sent_at=datetime(2026, 8, 4, tzinfo=UTC),
+        )
+        json.dumps(repo.outreach_message_row(message))  # no debe lanzar
+
+    def test_outreach_attempt_row_tiene_client_id_unico(self):
+        a = repo.outreach_attempt_row(message_id=1, attempt_no=1, outcome="accepted")
+        b = repo.outreach_attempt_row(message_id=1, attempt_no=1, outcome="accepted")
+        assert a["client_id"] != b["client_id"]
+        assert a["message_id"] == 1
+        assert a["outcome"] == "accepted"
 
 
 class TestPersistRun:

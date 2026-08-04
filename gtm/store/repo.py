@@ -25,6 +25,7 @@ from psycopg_pool import AsyncConnectionPool
 from gtm.factory.logs import get_logger
 from gtm.factory.pipeline import RunContext, RunResult
 from gtm.factory.types import ContactPlan, Demo, OutreachEmail, PainScore, Prospect
+from gtm.send.types import OutreachMessage
 from gtm.store import buffer
 
 _logger = get_logger(__name__)
@@ -263,6 +264,55 @@ def outreach_email_row(run_id: str, email: OutreachEmail) -> dict[str, Any]:
         "unsubscribe_url": email.sender.unsubscribe_url,
         "created_at": email.created_at.isoformat(),
         "sent_at": None,
+    }
+
+
+def outreach_message_row(message: OutreachMessage) -> dict[str, Any]:
+    """`gtm/send/outbox.py` es el único llamador: acá solo se traduce la
+    dataclass a un dict JSON-safe, sin ninguna lógica de estado."""
+    return {
+        "client_id": message.client_id,
+        "run_id": message.run_id,
+        "place_id": message.place_id,
+        "channel": message.channel,
+        "to_address": message.to_address,
+        "subject": message.subject,
+        "body": message.body,
+        "link_token": message.link_token,
+        "status": message.status.value,
+        "attempt_count": message.attempt_count,
+        "max_attempts": message.max_attempts,
+        "next_attempt_at": message.next_attempt_at.isoformat() if message.next_attempt_at else None,
+        "provider_message_id": message.provider_message_id,
+        "verp_tag": message.verp_tag,
+        "created_at": (message.created_at or datetime.now(UTC)).isoformat(),
+        "queued_at": message.queued_at.isoformat() if message.queued_at else None,
+        "sent_at": message.sent_at.isoformat() if message.sent_at else None,
+        "delivered_at": message.delivered_at.isoformat() if message.delivered_at else None,
+        "failed_at": message.failed_at.isoformat() if message.failed_at else None,
+        "failure_kind": message.failure_kind,
+        "failure_reason": message.failure_reason,
+        "last_error": message.last_error,
+    }
+
+
+def outreach_attempt_row(
+    *,
+    message_id: int,
+    attempt_no: int,
+    outcome: str,
+    detail: str | None = None,
+    smtp_code: int | None = None,
+    at: datetime | None = None,
+) -> dict[str, Any]:
+    return {
+        "client_id": str(uuid4()),
+        "message_id": message_id,
+        "attempt_no": attempt_no,
+        "at": (at or datetime.now(UTC)).isoformat(),
+        "outcome": outcome,
+        "detail": detail,
+        "smtp_code": smtp_code,
     }
 
 
