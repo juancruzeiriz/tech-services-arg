@@ -199,29 +199,59 @@ a { color: inherit; }
 /* Estado inicial de las revelaciones. La clase .js-reveal la pone reveal.ts
    al montar: si el script no corre (JS deshabilitado, error), esta regla
    nunca se aplica y el contenido queda visible por defecto. Dos caminos:
-   en navegadores con scroll-driven animations (Chromium hoy), la propia regla
-   @supports de abajo anima por CSS puro sin que reveal.ts haga nada más que
-   poner la clase. En el resto, reveal.ts arma un IntersectionObserver que
-   agrega .is-visible, y esa es la que dispara la transición. */
+   en navegadores con scroll-driven animations (Chromium/Firefox/Safari hoy),
+   la propia regla @supports de abajo anima por CSS puro sin que reveal.ts
+   haga nada más que poner la clase. En el resto, reveal.ts arma un
+   IntersectionObserver que agrega .is-visible, y esa es la que dispara la
+   transición.
+
+   .reduce-motion (reveal.ts la agrega si prefers-reduced-motion coincide) NO
+   apaga el reveal entero -- apaga solo la parte vestibular, el
+   desplazamiento. El fade de opacidad es seguro y queda igual en los dos
+   casos: sin él, la página directamente no tiene vida bajo esa preferencia,
+   que es más de lo que pide la accesibilidad (ver WCAG 2.3.3, que habla de
+   movimiento disparado por interacción/parallax, no de un simple fundido).
+
+   --i es el índice del ítem dentro de su lista (Certifications, Services,
+   StatsBand, ProjectCard lo declaran inline vía style="--i:N"); sin --i vale
+   0 y no hay demora -- así una grilla entra en cascada en vez de en bloque. */
 .js-reveal [data-reveal] {
   opacity: 0;
-  transform: translateY(1.2rem);
+  transform: translateY(2.2rem) scale(0.98);
 }
 .js-reveal [data-reveal].is-visible {
   opacity: 1;
   transform: none;
   transition: opacity 0.9s var(--ease-out-expo), transform 0.9s var(--ease-out-expo);
+  transition-delay: calc(var(--i, 0) * 70ms);
+}
+.reduce-motion.js-reveal [data-reveal] {
+  transform: none;
+}
+.reduce-motion.js-reveal [data-reveal].is-visible {
+  transition: opacity 0.9s ease;
+  transition-delay: calc(var(--i, 0) * 70ms);
 }
 @supports (animation-timeline: view()) {
-  .js-reveal [data-reveal] {
+  .js-reveal:not(.reduce-motion) [data-reveal] {
     animation: reveal-in linear both;
+    animation-timeline: view();
+    animation-range: entry 0% cover 30%;
+    animation-delay: calc(var(--i, 0) * 70ms);
+  }
+  .reduce-motion.js-reveal [data-reveal] {
+    animation: reveal-in-fade linear both;
     animation-timeline: view();
     animation-range: entry 0% cover 30%;
   }
 }
 @keyframes reveal-in {
-  from { opacity: 0; transform: translateY(1.2rem); }
+  from { opacity: 0; transform: translateY(2.2rem) scale(0.98); }
   to { opacity: 1; transform: none; }
+}
+@keyframes reveal-in-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 /* Enmascarado por palabra de los títulos con [data-split] (reemplaza a
@@ -230,7 +260,9 @@ a { color: inherit; }
    src/utils/text.ts) -- CSS puro no puede partir texto en palabras. Solo se
    anima en navegadores con scroll-driven animations: en el resto, las
    palabras se ven de una sola vez, sin cascada -- el <h2> igual entra con la
-   regla de arriba porque sigue llevando [data-reveal]. */
+   regla de arriba porque sigue llevando [data-reveal]. Bajo reduce-motion el
+   título se muestra formado de una -- el desplazamiento de la máscara es
+   justamente el tipo de movimiento que esa preferencia pide evitar. */
 .word-mask { display: inline-block; overflow: hidden; vertical-align: top; }
 .word { display: inline-block; }
 @supports (animation-timeline: view()) {
@@ -241,26 +273,26 @@ a { color: inherit; }
     animation-range: entry 0% cover 25%;
     animation-delay: calc(var(--i, 0) * 30ms);
   }
+  .reduce-motion .word {
+    transform: none;
+    animation: none;
+  }
 }
 @keyframes word-in {
   to { transform: translateY(0); }
 }
 
-/* Regla dura de accesibilidad: si el usuario pidió menos movimiento, no hay
-   movimiento. Los scripts también leen esta media query en JS antes de
-   montarse; esto es el respaldo CSS. */
+/* Movimiento ambiental/decorativo (blobs del hero, marquee, loader): no
+   comunica información, así que bajo reduce-motion se apaga entero en vez
+   de suavizarse -- a diferencia del reveal de arriba, acá no hay nada que
+   valga la pena conservar. Los componentes marcan sus piezas puramente
+   decorativas con data-motion="ambient" en vez de repetir esta media query
+   en cada <style> scoped. */
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-    scroll-behavior: auto !important;
+  html { scroll-behavior: auto !important; }
+  [data-motion="ambient"] {
+    animation: none !important;
   }
-  .js-reveal [data-reveal] {
-    opacity: 1;
-    transform: none;
-  }
-  .word { transform: none !important; }
 }
 
 @media print {

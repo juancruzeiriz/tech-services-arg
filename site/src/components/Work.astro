@@ -22,7 +22,7 @@ const t = useTranslations(lang);
     </header>
 
     <div class="project-grid">
-      {projects.map((project) => <ProjectCard project={project} />)}
+      {projects.map((project, i) => <ProjectCard project={project} index={i} />)}
     </div>
   </div>
 </section>

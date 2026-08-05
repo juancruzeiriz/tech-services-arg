@@ -4,13 +4,14 @@ import { getLangFromUrl, useTranslations } from "../i18n/utils";
 
 interface Props {
   project: Project;
+  index?: number;
 }
 
-const { project } = Astro.props;
+const { project, index = 0 } = Astro.props;
 const lang = getLangFromUrl(Astro.url);
 const t = useTranslations(lang);
 ---
-<article class="project-card" data-reveal>
+<article class="project-card" data-reveal style={`--i:${index}`}>
   <div class="project-body">
     <div class="project-heading">
       <h3>{project.title[lang]}</h3>

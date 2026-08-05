@@ -15,8 +15,8 @@ const stats = [
 ---
 <section class="stats-band">
   <ul class="stats-list">
-    {stats.map((stat) => (
-      <li data-reveal>
+    {stats.map((stat, i) => (
+      <li data-reveal style={`--i:${i}`}>
         <span class="stats-value">{stat.value}</span>
         <span class="stats-label">{stat.label[lang]}</span>
       </li>

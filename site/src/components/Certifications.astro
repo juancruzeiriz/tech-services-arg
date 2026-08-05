@@ -21,7 +21,7 @@ const t = useTranslations(lang);
     </header>
 
     <ul class="certs-grid">
-      {certifications.map((cert) => {
+      {certifications.map((cert, i) => {
         const inner = (
           <>
             <span class="cert-mark" aria-hidden="true">{cert.mark}</span>
@@ -35,7 +35,7 @@ const t = useTranslations(lang);
           </>
         );
         return (
-          <li data-reveal>
+          <li data-reveal style={`--i:${i}`}>
             {cert.verifyUrl ? (
               <a href={cert.verifyUrl} target="_blank" rel="noopener noreferrer" class="cert-card" data-magnetic>
                 {inner}

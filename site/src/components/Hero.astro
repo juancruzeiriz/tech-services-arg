@@ -28,7 +28,7 @@ const t = useTranslations(lang);
   <div class="hero-rail" data-reveal>
     <span class="hero-availability">{t("hero.availability")}</span>
     <a class="hero-scroll" href="#services" aria-label={t("hero.scroll")}>
-      <span></span>
+      <span data-motion="ambient"></span>
     </a>
   </div>
 </section>
@@ -123,9 +123,5 @@ const t = useTranslations(lang);
   @media (max-width: 560px) {
     .hero-availability { display: none; }
     .hero-rail { justify-content: flex-end; }
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    .hero-scroll span { animation: none; }
   }
 </style>
