@@ -1,5 +1,6 @@
 ---
 import { Font } from "astro:assets";
+import { ClientRouter } from "astro:transitions";
 import "../styles/global.css";
 import Footer from "../components/Footer.astro";
 import Loader from "../components/Loader.astro";
@@ -46,14 +47,25 @@ const canonical = new URL(Astro.url.pathname, Astro.site);
     <meta name="twitter:card" content="summary_large_image" />
 
     <!-- El tema se fija antes del primer paint: sin esto hay un flash de tema
-         equivocado al cargar con "light"/"cream" ya guardado en localStorage. -->
+         equivocado al cargar con "light"/"cream" ya guardado en localStorage.
+         Se repite en astro:after-swap: con <ClientRouter /> activo, una
+         navegación entre /es/ y /es/servicios/ no vuelve a pasar por este
+         script en el orden normal de parseo -- sin este segundo enganche, el
+         tema podría parpadear al oscuro por defecto durante la transición. -->
     <script is:inline>
-      try {
-        const saved = localStorage.getItem("theme");
-        if (saved === "light") document.documentElement.classList.add("theme-light");
-        else if (saved === "cream") document.documentElement.classList.add("theme-cream");
-      } catch {}
+      function applyStoredTheme() {
+        try {
+          const saved = localStorage.getItem("theme");
+          document.documentElement.classList.remove("theme-light", "theme-cream");
+          if (saved === "light") document.documentElement.classList.add("theme-light");
+          else if (saved === "cream") document.documentElement.classList.add("theme-cream");
+        } catch {}
+      }
+      applyStoredTheme();
+      document.addEventListener("astro:after-swap", applyStoredTheme);
     </script>
+
+    <ClientRouter />
 
     <script type="application/ld+json" is:inline set:html={JSON.stringify({
       "@context": "https://schema.org",
@@ -79,13 +91,37 @@ const canonical = new URL(Astro.url.pathname, Astro.site);
     <Footer />
 
     <script>
+      import { mountCountUp } from "../scripts/count-up";
       import { mountCursor } from "../scripts/cursor";
+      import { mountHeroParallax } from "../scripts/hero-parallax";
       import { mountLoader } from "../scripts/loader";
       import { mountReveal } from "../scripts/reveal";
 
-      mountLoader();
-      mountReveal();
-      mountCursor();
+      // Con <ClientRouter /> activo, astro:page-load dispara tanto en la
+      // carga inicial como después de cada transición -- un solo enganche
+      // cubre los dos casos, así que este bloque NO llama a las funciones
+      // directamente (eso duplicaría el montaje en la carga inicial).
+      //
+      // mountCursor/mountHeroParallax devuelven una función de limpieza
+      // porque dejan estado vivo (el punto del cursor en el DOM, un
+      // requestAnimationFrame corriendo, listeners en window): sin
+      // desmontarlas antes de la próxima navegación, cada transición
+      // sumaría un cursor y un loop más, todos escribiendo el mismo
+      // transform. mountReveal/mountLoader/mountCountUp no necesitan
+      // limpieza -- son idempotentes o se autodesactivan solas.
+      let cursorCleanup: (() => void) | null = null;
+      let parallaxCleanup: (() => void) | null = null;
+
+      document.addEventListener("astro:page-load", () => {
+        cursorCleanup?.();
+        parallaxCleanup?.();
+
+        mountLoader();
+        mountReveal();
+        mountCountUp();
+        cursorCleanup = mountCursor();
+        parallaxCleanup = mountHeroParallax();
+      });
     </script>
   </body>
 </html>

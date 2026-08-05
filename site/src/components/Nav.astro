@@ -47,6 +47,14 @@ const home = `/${lang}/`;
     </div>
   </nav>
 
+  <!-- Cero JS: animation-timeline:scroll(root) lee el scroll del documento
+       directamente en el motor de CSS. Fuera de data-motion="ambient" a
+       propósito -- a diferencia de los blobs o el marquee, este movimiento
+       está 1:1 atado al scroll que la propia persona ya hizo, no es una
+       sorpresa autónoma, así que no es el tipo de movimiento que
+       prefers-reduced-motion pide evitar. -->
+  <div class="reading-progress" aria-hidden="true"></div>
+
   <div id="nav-menu" popover="auto" class="nav-menu">
     <ul class="nav-menu-links">
       {links.map((link) => (
@@ -73,6 +81,30 @@ const home = `/${lang}/`;
     border-bottom-color: var(--border);
   }
   .nav[data-hidden="true"] { transform: translateY(-100%); }
+
+  .reading-progress {
+    display: none;
+  }
+  /* Sin soporte de scroll-driven animations, la propiedad
+     animation-timeline directamente no se parsea -- @supports la detecta y
+     evita que quede un <div> con un ancho fijo raro colgando del nav. */
+  @supports (animation-timeline: scroll(root)) {
+    .reading-progress {
+      display: block;
+      position: absolute;
+      inset-inline: 0;
+      bottom: -1px;
+      height: 2px;
+      background: var(--color-accent);
+      transform-origin: left;
+      transform: scaleX(0);
+      animation: reading-progress-fill linear;
+      animation-timeline: scroll(root);
+    }
+  }
+  @keyframes reading-progress-fill {
+    to { transform: scaleX(1); }
+  }
 
   .nav-inner {
     display: flex;

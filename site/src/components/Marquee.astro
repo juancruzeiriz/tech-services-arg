@@ -13,7 +13,7 @@ const list = words[lang];
      hero, sin necesitar ninguna imagen. aria-hidden porque el contenido real
      (las mismas capacidades) ya está en Services, en un formato accesible. -->
 <div class="marquee" aria-hidden="true">
-  <div class="marquee-track">
+  <div class="marquee-track" data-motion="ambient">
     {[...list, ...list].map((word) => (
       <span class="marquee-item">{word}<span class="marquee-dot">·</span></span>
     ))}
@@ -47,9 +47,5 @@ const list = words[lang];
   @keyframes marquee-scroll {
     from { transform: translateX(0); }
     to { transform: translateX(-50%); }
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    .marquee-track { animation: none; }
   }
 </style>
