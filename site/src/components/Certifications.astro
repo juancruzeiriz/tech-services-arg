@@ -13,18 +13,31 @@ const t = useTranslations(lang);
     </header>
 
     <ul class="certs-grid">
-      {certifications.map((cert) => (
-        <li data-reveal>
-          <a href={cert.verifyUrl} target="_blank" rel="noopener noreferrer" class="cert-card" data-magnetic>
-            <img src={cert.badge} alt="" width="72" height="72" loading="lazy" />
+      {certifications.map((cert) => {
+        const inner = (
+          <>
+            <span class="cert-mark" aria-hidden="true">{cert.mark}</span>
             <div>
               <p class="cert-name">{cert.name[lang]}</p>
-              <p class="cert-meta">{cert.issuer} · {cert.year}</p>
-              <span class="cert-verify">{t("certs.verify")} ↗</span>
+              <p class="cert-meta">
+                {cert.issuer} · {cert.year}{cert.hours ? ` · ${cert.hours}h` : ""}
+              </p>
+              {cert.verifyUrl && <span class="cert-verify">{t("certs.verify")} ↗</span>}
             </div>
-          </a>
-        </li>
-      ))}
+          </>
+        );
+        return (
+          <li data-reveal>
+            {cert.verifyUrl ? (
+              <a href={cert.verifyUrl} target="_blank" rel="noopener noreferrer" class="cert-card" data-magnetic>
+                {inner}
+              </a>
+            ) : (
+              <div class="cert-card cert-card-static">{inner}</div>
+            )}
+          </li>
+        );
+      })}
     </ul>
   </div>
 </section>
@@ -54,8 +67,29 @@ const t = useTranslations(lang);
     border-color: var(--color-accent);
     transform: translateY(-3px);
   }
+  .cert-card-static {
+    cursor: default;
+  }
+  .cert-card-static:hover {
+    border-color: var(--border);
+    transform: none;
+  }
 
-  .cert-card img { border-radius: 50%; flex-shrink: 0; }
+  .cert-mark {
+    flex-shrink: 0;
+    display: grid;
+    place-items: center;
+    width: 3rem;
+    height: 3rem;
+    border-radius: 50%;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    font-family: var(--font-display);
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    color: var(--color-accent);
+  }
 
   .cert-name {
     font-weight: 600;

@@ -39,7 +39,7 @@
   },
   "certs": {
     "title": "Certifications",
-    "lead": "Verifiable: each one links to the public credential on Credly.",
+    "lead": "Most link to a public verification; the rest are available on request.",
     "verify": "Verify credential"
   },
   "cv": {

@@ -39,7 +39,7 @@
   },
   "certs": {
     "title": "Certificaciones",
-    "lead": "Verificables: cada una enlaza a la credencial pública en Credly.",
+    "lead": "La mayoría enlaza a una verificación pública; el resto, disponible a pedido.",
     "verify": "Verificar credencial"
   },
   "cv": {
