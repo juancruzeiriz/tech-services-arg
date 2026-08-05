@@ -194,11 +194,42 @@ HTTPS en Cloudflare (DNS only, no proxied).
 verificable. Sin esto, el prospecto que googlea antes de responder no encuentra nada y el
 mensaje pierde credibilidad.
 
-**Palancas** — Copy de "Sobre mí", certificaciones mostradas, CV descargable, nav mobile.
+**Palancas** — Copy de "Sobre mí", certificaciones mostradas, CV descargable, nav mobile, tema
+activo (dark/light/cream), loader de intro.
 
-**Problemas conocidos** —
+**Problemas conocidos** — Auditoría del Día 2 (2026-08-05). Tres hipótesis, verificadas por
+medición en vivo antes de tocar código — no por opinión:
+
+1. **Bug de layout en `/servicios/`, confirmado.** `.services-detail-list li` (selector
+   descendiente) atrapaba también los `<li>` de la lista de stack anidada dentro de cada fila.
+   Medido: el chip "Python" medía 97×59px con `grid-template-columns: 56px 0px` — texto en una
+   columna de 0px de ancho. 21 chips afectados en las 4 rutas del catálogo. **Resuelto** en
+   `fix(site): chips de stack rotos...` — combinador de hijo directo (`>`).
+2. **"Nada se mueve", parcialmente un bug y parcialmente diseño.** Medido en producción:
+   `prefers-reduced-motion` estaba activo y la regla `*, *::before, *::after
+   { animation-duration: 0.01ms !important }` apagaba *todo* el movimiento, no solo el
+   vestibular — más de lo que pide la accesibilidad (WCAG 2.3.3 habla de parallax/desplazamientos
+   grandes, no de un simple fundido). **Resuelto**: reduced-motion ahora conserva el fade de
+   opacidad y solo mata `transform`/animaciones ambientales (`data-motion="ambient"`).
+3. **Aun con el movimiento activo, era imperceptible.** Blobs de 22-28s de período y reveals de
+   `translateY(1.2rem)` no se notan en la ventana de atención real de un visitante. **Resuelto**:
+   blobs a 13-16s con más amplitud, reveals a `translateY(2.2rem) + scale`, stagger real vía
+   `--i` en las grillas (Certifications/Services/StatsBand/ProjectCard), más loader de intro,
+   tercer tema, blobs con parallax de mouse, transiciones SPA entre páginas, barra de progreso de
+   lectura y contadores que cuentan hacia arriba.
+
+**Oportunidad identificada, no resuelta todavía**: el marquee de servicios podría reaccionar a la
+velocidad/dirección del scroll en vez de tener una velocidad fija — quedó fuera de esta sesión
+por relación costo/beneficio (la ganancia era la más chica de toda la lista).
 
 **Bitácora** —
+
+- **2026-08-05** — Fix de layout en `/servicios/` (Fase 0). Reduced-motion matizado + intensidad
+  de reveals/blobs subida (Fase 1). Tercer tema "cream" con contraste WCAG AA calculado, no a
+  ojo — el primer valor de acento elegido daba 3.80:1, insuficiente (Fase 3b). Loader de intro
+  con grilla de bits 0/1, diseñado para degradar a "no mostrar nunca" si el script falla, nunca a
+  "overlay trabado para siempre" (Fase 3a). `<ClientRouter />` + parallax de mouse en los blobs +
+  barra de progreso de lectura (CSS puro) + contadores animados en StatsBand (Fase 3c).
 
 ---
 

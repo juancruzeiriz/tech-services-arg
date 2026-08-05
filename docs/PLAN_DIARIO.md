@@ -27,14 +27,19 @@ calibrado".
 
 ## Fase A — El QUÉ (días 1-8): entender antes de opinar
 
-- [ ] **Día 1** (60 min, setup) — Commit+push del incremento pendiente del sitio. Confirmar que
+- [x] **Día 1** (60 min, setup) — Commit+push del incremento pendiente del sitio. Confirmar que
   `docs/PROCESOS.md` está creado con los 3 diagramas y las 14 fichas. Publicar el Artifact
   navegable. *Salida: el mapa existe y se puede mirar desde el celular.*
 
-- [ ] **Día 2** (45 min, Nodo 0) — Abrir juancruzeiriz.com en celular **y** desktop. Escribir la
-  lista de qué está mal, priorizada. El gap ya identificado —el nav desaparece en <860px sin
-  reemplazo por hamburguesa— entra en la lista, no la agota. *Salida: lista priorizada con
-  captura de pantalla.*
+- [x] **Día 2** (2026-08-05, Nodo 0) — Auditoría real de juancruzeiriz.com. Encontró y resolvió
+  un bug de layout (chips rotos en `/servicios/`), un bug de accesibilidad (reduced-motion
+  apagaba todo el movimiento, no solo lo vestibular) y un problema de diseño (el movimiento
+  activo era imperceptible). Sumó loader de intro, tercer tema, transiciones SPA, parallax de
+  mouse y contadores animados. Detalle completo en la ficha del Nodo 0 en `PROCESOS.md`. El gap
+  del nav mobile mencionado en la sesión anterior ("<860px sin hamburguesa") resultó estar
+  desactualizado: `Nav.astro` ya tiene un botón hamburguesa con popover nativo, verificado en
+  vivo a 375px (aparece, oculta los links de escritorio, funciona). No había nada que arreglar
+  ahí.
 
 - [ ] **Día 3** (45 min, Nodo 1) — Leer `gtm/catalog/trades.yaml` y `metros.yaml` completos.
   Reconstruir a mano las dos fórmulas de `rank` con 3 ejemplos del catálogo. Elegir 1 oficio × 1
