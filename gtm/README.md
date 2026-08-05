@@ -211,6 +211,9 @@ permanente.
 
 ## Documentos
 
+- [`../docs/PROCESOS.md`](../docs/PROCESOS.md) — mapa de las 14 patas del negocio (grafo,
+  DER de datos, bucles de realimentación) con ficha de qué/cómo/para-qué por nodo, y el
+  [plan diario de 20 sesiones](../docs/PLAN_DIARIO.md) para recorrerlo
 - [`pipeline.md`](pipeline.md) — precios, guion de venta, secuencia y contrato
 - [`decision_criteria.yaml`](decision_criteria.yaml) — criterio de kill pre-registrado
 - [`validation.md`](validation.md) — investigación de mercado externa: qué tan real es el
