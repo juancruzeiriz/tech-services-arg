@@ -55,14 +55,14 @@ const home = `/${lang}/`;
     flex-direction: column;
     gap: 2.5rem;
   }
-  .services-detail-list li {
+  .services-detail-list > li {
     display: grid;
     grid-template-columns: 3.5rem 1fr;
     gap: 1.25rem;
     padding-bottom: 2.5rem;
     border-bottom: 1px solid var(--border);
   }
-  .services-detail-list li:last-child { border-bottom: none; padding-bottom: 0; }
+  .services-detail-list > li:last-child { border-bottom: none; padding-bottom: 0; }
 
   .services-detail-index {
     font-family: var(--font-mono);
