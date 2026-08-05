@@ -10,7 +10,13 @@ export default defineConfig({
   i18n: {
     locales: ["es", "en"],
     defaultLocale: "es",
-    routing: { prefixDefaultLocale: true },
+    // redirectToDefaultLocale:false es el fix del bug real de producción del
+    // 2026-08-05: sin esto, Astro pisa src/pages/index.astro con SU PROPIO
+    // redirect automático (un HTML desnudo, "Redirecting from / to /es/",
+    // con 2 segundos de <meta refresh> antes de saltar) -- nuestro
+    // index.astro, que hace detección real de idioma del navegador y
+    // redirige al instante (content="0;..."), nunca llegaba a compilarse.
+    routing: { prefixDefaultLocale: true, redirectToDefaultLocale: false },
   },
   vite: {
     plugins: [tailwindcss()],
