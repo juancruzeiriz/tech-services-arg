@@ -4,12 +4,22 @@ import { getLangFromUrl, useTranslations } from "../i18n/utils";
 const t = useTranslations(getLangFromUrl(Astro.url));
 ---
 <button type="button" class="theme-toggle" data-theme-toggle aria-label={t("a11y.toggleTheme")}>
-  <svg data-icon-dark viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+  <!-- El ícono mostrado es el del tema ACTIVO (no el destino, como antes con
+       2 estados) -- con 3 estados en ciclo, "qué vas a ver si tocás" deja de
+       ser obvio con una sola figura, así que el ícono ahora identifica dónde
+       estás. -->
+  <svg data-icon-dark viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79Z"/>
+  </svg>
+  <svg data-icon-light viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
     <circle cx="12" cy="12" r="4"/>
     <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/>
   </svg>
-  <svg data-icon-light viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79Z"/>
+  <!-- Hoja: representa el tema "cream" (tierra/nórdico) sin pisar el
+       vocabulario visual de sol/luna que ya identifica claro/oscuro. -->
+  <svg data-icon-cream viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M4 19c7-1 11-5 12-14-9 1-13 5-14 12 0 1 0 2 2 2Z"/>
+    <path d="M9 15 20 4"/>
   </svg>
 </button>
 
@@ -27,22 +37,38 @@ const t = useTranslations(getLangFromUrl(Astro.url));
     transition: border-color 0.2s var(--ease-out-expo), transform 0.2s var(--ease-out-expo);
   }
   .theme-toggle:hover { border-color: var(--color-accent); transform: translateY(-1px); }
-  [data-icon-light] { display: none; }
-  :root.theme-light [data-icon-dark] { display: none; }
+
+  [data-icon-dark],
+  [data-icon-light],
+  [data-icon-cream] { display: none; }
+  /* Sin clase (tema oscuro, el default) -> luna. */
+  :root:not(.theme-light):not(.theme-cream) [data-icon-dark] { display: block; }
   :root.theme-light [data-icon-light] { display: block; }
+  :root.theme-cream [data-icon-cream] { display: block; }
 </style>
 
 <script>
   const KEY = "theme";
+  type Theme = "dark" | "light" | "cream";
+  const ORDER: Theme[] = ["dark", "light", "cream"];
   const btn = document.querySelector<HTMLButtonElement>("[data-theme-toggle]");
 
-  function apply(theme: "dark" | "light") {
-    document.documentElement.classList.toggle("theme-light", theme === "light");
+  function current(): Theme {
+    const el = document.documentElement;
+    if (el.classList.contains("theme-light")) return "light";
+    if (el.classList.contains("theme-cream")) return "cream";
+    return "dark";
+  }
+
+  function apply(theme: Theme) {
+    const el = document.documentElement;
+    el.classList.toggle("theme-light", theme === "light");
+    el.classList.toggle("theme-cream", theme === "cream");
     localStorage.setItem(KEY, theme);
   }
 
   btn?.addEventListener("click", () => {
-    const current = document.documentElement.classList.contains("theme-light") ? "light" : "dark";
-    apply(current === "dark" ? "light" : "dark");
+    const next = ORDER[(ORDER.indexOf(current()) + 1) % ORDER.length];
+    apply(next);
   });
 </script>

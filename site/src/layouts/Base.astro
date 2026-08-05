@@ -45,12 +45,12 @@ const canonical = new URL(Astro.url.pathname, Astro.site);
     <meta name="twitter:card" content="summary_large_image" />
 
     <!-- El tema se fija antes del primer paint: sin esto hay un flash de tema
-         equivocado al cargar con "light" ya guardado en localStorage. -->
+         equivocado al cargar con "light"/"cream" ya guardado en localStorage. -->
     <script is:inline>
       try {
-        if (localStorage.getItem("theme") === "light") {
-          document.documentElement.classList.add("theme-light");
-        }
+        const saved = localStorage.getItem("theme");
+        if (saved === "light") document.documentElement.classList.add("theme-light");
+        else if (saved === "cream") document.documentElement.classList.add("theme-cream");
       } catch {}
     </script>
 

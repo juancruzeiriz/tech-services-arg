@@ -34,6 +34,13 @@
      inicial, cuando apuntaba a system-ui; ahora es un alias. */
   --font-body: var(--font-display);
 
+  /* Texto sobre --color-accent (el fill de .btn-primary). Fijo en los dos
+     temas oscuro/claro porque el naranja de marca es lo bastante brillante
+     para que la tinta oscura pase AA (6.00:1); .theme-cream lo redefine
+     porque ahí el acento es más oscuro y necesita tinta clara -- ver el
+     comentario junto a :root.theme-cream. */
+  --color-on-accent: #08090a;
+
   --container: 76rem;
   --gutter: clamp(1.25rem, 5vw, 3rem);
 
@@ -44,11 +51,11 @@
   --text-eyebrow: 0.78rem;
 }
 
-/* Clase, no atributo: el toggle usa .theme-light en <html> porque en pruebas
-   manuales un selector de atributo ([data-theme="light"]) no invalidaba de
-   forma confiable las custom properties consumidas en background-color al
-   cambiar solo el atributo — .theme-light es el mismo mecanismo que usa
-   Tailwind para su variante dark: y no tuvo ese problema. */
+/* Clase, no atributo: el toggle usa .theme-light/.theme-cream en <html>
+   porque en pruebas manuales un selector de atributo ([data-theme="light"])
+   no invalidaba de forma confiable las custom properties consumidas en
+   background-color al cambiar solo el atributo — la clase es el mismo
+   mecanismo que usa Tailwind para su variante dark: y no tuvo ese problema. */
 :root.theme-light {
   color-scheme: light;
   --bg: var(--color-paper);
@@ -56,6 +63,33 @@
   --fg-muted: #55585f;
   --surface: color-mix(in srgb, var(--color-ink) 4%, var(--color-paper));
   --border: color-mix(in srgb, var(--color-ink) 12%, var(--color-paper));
+}
+
+/* Tercer tema: tierra nórdica, no el cream+terracota genérico de siempre --
+   el verde-grafito profundo en vez de negro puro para el texto, y el acento
+   desaturado hacia el mismo terracota que ya usan .theme-light/.theme-dark,
+   para que la marca se siga leyendo igual bajando el contraste general.
+
+   Los tres tonos de acento se calibraron con la fórmula de contraste WCAG
+   (no a ojo): el primer intento (#b4552d) daba 3.80:1 sobre --bg -- pasa
+   para texto grande pero no para los usos reales (.services-index,
+   .cert-verify, etc, todos <1rem). #954323 da 5.24:1. Mismo problema en
+   cascada con --color-accent-soft (el hover de .btn-primary): el primer
+   valor daba 2.92:1 con el texto claro encima: #9c4d29 da 5.13:1.
+   --color-on-accent (abajo) es el motivo de por qué existe ese token en vez
+   de reusar el #08090a fijo de los otros dos temas: sobre este acento más
+   oscuro, tinta clara en vez de tinta oscura es lo que pasa AA (5.79:1 vs
+   2.95:1). */
+:root.theme-cream {
+  color-scheme: light;
+  --bg: #e8e2d4;
+  --fg: #2c352e;
+  --fg-muted: #6a7168;
+  --surface: #f2ede2;
+  --border: #cfc7b4;
+  --color-accent: #954323;
+  --color-accent-soft: #9c4d29;
+  --color-on-accent: var(--surface);
 }
 
 html {
@@ -115,7 +149,7 @@ a { color: inherit; }
 
 ::selection {
   background: var(--color-accent);
-  color: var(--color-ink);
+  color: var(--color-on-accent);
 }
 
 /* Accesibilidad de teclado: foco visible siempre, con el acento de marca. */
@@ -319,7 +353,7 @@ a { color: inherit; }
 
 .btn-primary {
   background: var(--color-accent);
-  color: #08090a;
+  color: var(--color-on-accent);
 }
 .btn-primary:hover { background: var(--color-accent-soft); }
 
