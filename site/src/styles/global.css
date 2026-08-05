@@ -6,12 +6,20 @@
   --color-accent: #ff4d18;
   --color-accent-soft: #ff8355;
   --color-muted: #8a8f98;
-  --font-display: "Instrument Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
-  --font-body: system-ui, -apple-system, "Segoe UI", sans-serif;
-  --text-display: clamp(3rem, 12vw, 11rem);
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
+/* --font-display y --font-editorial NO se declaran acá: el componente <Font>
+   de Base.astro (astro:assets) emite su propia regla `:root` para esas
+   variables a partir de experimental.fonts en astro.config.mjs.
+
+   Ojo con los nombres: Tailwind ya reserva --font-sans/--font-serif/--font-mono
+   en su tema por defecto (son los que respaldan las utilidades font-serif/
+   font-mono). Usar esos mismos nombres para tokens propios es una carrera de
+   cascada real, no teórica -- se probó con --font-serif y Tailwind ganaba (el
+   :root de Tailwind se emite después). Por eso el acento editorial se llama
+   --font-editorial, no --font-serif, y --font-mono directamente NO se
+   redeclara: el stack por defecto de Tailwind ya sirve. */
 :root {
   color-scheme: dark;
   --bg: var(--color-ink);
@@ -19,6 +27,21 @@
   --fg-muted: var(--color-muted);
   --surface: color-mix(in srgb, var(--color-paper) 6%, var(--color-ink));
   --border: color-mix(in srgb, var(--color-paper) 14%, var(--color-ink));
+
+  /* Mismo archivo de fuente para display y body -- la diferencia entre
+     títulos y texto de cuerpo es peso/tamaño/tracking, no una segunda
+     descarga. --font-body existía como token separado desde el andamiaje
+     inicial, cuando apuntaba a system-ui; ahora es un alias. */
+  --font-body: var(--font-display);
+
+  --container: 76rem;
+  --gutter: clamp(1.25rem, 5vw, 3rem);
+
+  --text-display: clamp(3.25rem, 11vw, 9.5rem);
+  --text-h2: clamp(2.25rem, 6vw, 4.5rem);
+  --text-h3: clamp(1.2rem, 2.2vw, 1.6rem);
+  --text-lead: clamp(1.05rem, 1.5vw, 1.35rem);
+  --text-eyebrow: 0.78rem;
 }
 
 /* Clase, no atributo: el toggle usa .theme-light en <html> porque en pruebas
@@ -56,8 +79,33 @@ body {
 
 h1, h2, h3, .display {
   font-family: var(--font-display);
-  letter-spacing: -0.04em;
-  line-height: 0.92;
+  text-wrap: balance;
+}
+h1, .display {
+  font-size: var(--text-display);
+  line-height: 0.9;
+  letter-spacing: -0.045em;
+}
+h2 {
+  font-size: var(--text-h2);
+  line-height: 0.95;
+  letter-spacing: -0.035em;
+}
+h3 {
+  font-size: var(--text-h3);
+  line-height: 1.15;
+  letter-spacing: -0.015em;
+}
+p { text-wrap: pretty; }
+
+/* La palabra en itálica del hero (y cualquier acento editorial que la
+   reutilice) -- el contrapunto serif es lo que rompe la monotonía de una
+   sola familia sans en toda la página. */
+.font-editorial {
+  font-family: var(--font-editorial);
+  font-style: italic;
+  font-weight: 400;
+  letter-spacing: 0;
 }
 
 a { color: inherit; }
@@ -135,13 +183,10 @@ a { color: inherit; }
   max-width: 72rem;
   margin-inline: auto;
 }
-.section-head h2 {
-  font-size: clamp(2rem, 5vw, 3.5rem);
-}
 .section-lead {
   margin-top: 0.75rem;
   color: var(--fg-muted);
-  font-size: 1.05rem;
+  font-size: var(--text-lead);
   max-width: 34rem;
 }
 .split-line { overflow: hidden; }

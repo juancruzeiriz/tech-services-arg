@@ -1,4 +1,5 @@
 ---
+import { Font } from "astro:assets";
 import "../styles/global.css";
 import Footer from "../components/Footer.astro";
 import Nav from "../components/Nav.astro";
@@ -22,6 +23,12 @@ const canonical = new URL(Astro.url.pathname, Astro.site);
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <!-- Solo la display se precarga: es el elemento de LCP (el H1 del hero).
+         La serif no lleva preload -- aparece recién en About, después del
+         primer paint, y "optimizedFallbacks" ya genera un fallback con
+         métricas ajustadas (size-adjust) para que no salte el layout. -->
+    <Font cssVariable="--font-display" preload />
+    <Font cssVariable="--font-editorial" />
     <title>{pageTitle}</title>
     <meta name="description" content={pageDescription} />
     <link rel="canonical" href={canonical} />
