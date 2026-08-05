@@ -10,6 +10,10 @@ interface Props {
 const { project, index = 0 } = Astro.props;
 const lang = getLangFromUrl(Astro.url);
 const t = useTranslations(lang);
+// Variable aparte para que TS la siga viendo como definida dentro del
+// .map() de abajo -- el narrowing de `project.stages &&` no persiste en un
+// closure anidado, solo en la expresión inmediata.
+const stages = project.stages;
 ---
 <article class="project-card" data-reveal style={`--i:${index}`}>
   <div class="project-body">
@@ -24,6 +28,20 @@ const t = useTranslations(lang);
     <p class="project-summary">{project.summary[lang]}</p>
 
     <div class="project-detail">
+      {stages && (
+        <div class="project-flow-wrap">
+          <span class="project-flow-label">{t("work.flowLabel")}</span>
+          <ol class="project-flow" aria-label={t("work.flowLabel")}>
+            {stages.map((stage, i) => (
+              <li>
+                <span class="flow-node">{stage[lang]}</span>
+                {i < stages.length - 1 && <span class="flow-arrow" aria-hidden="true">→</span>}
+              </li>
+            ))}
+          </ol>
+        </div>
+      )}
+
       {project.metric && (
         <p class="project-metric">
           <span class="project-metric-label">{t("work.metricLabel")}</span>
@@ -95,6 +113,50 @@ const t = useTranslations(lang);
     color: var(--fg-muted);
     font-size: 0.92rem;
     line-height: 1.55;
+  }
+
+  /* El esquema de flujo: nodos redondeados conectados por flechas, en vez de
+     una simple lista de tecnologías -- comunica "esto es un pipeline con
+     pasos", no solo "esto usa tal herramienta". display:contents en el <li>
+     deja que nodo+flecha se comporten como ítems sueltos del flex del padre,
+     sin perder la semántica de lista ordenada para lectores de pantalla. */
+  .project-flow-wrap {
+    margin-top: 1rem;
+  }
+  .project-flow-label {
+    display: block;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--color-accent);
+    margin-bottom: 0.5rem;
+  }
+  .project-flow {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.3rem;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+  .project-flow li {
+    display: contents;
+  }
+  .flow-node {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.01em;
+    padding: 0.3rem 0.7rem;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    color: var(--fg);
+    white-space: nowrap;
+  }
+  .flow-arrow {
+    color: var(--color-accent);
+    font-size: 0.85rem;
+    flex-shrink: 0;
   }
 
   .project-metric {

@@ -1,7 +1,6 @@
 ---
 import { Image } from "astro:assets";
 import portrait from "../assets/retrato.png";
-import Experience from "./Experience.astro";
 import { profile } from "../data/profile";
 import { getLangFromUrl, useTranslations } from "../i18n/utils";
 import { splitWords } from "../utils/text";
@@ -9,36 +8,34 @@ import { splitWords } from "../utils/text";
 const lang = getLangFromUrl(Astro.url);
 const t = useTranslations(lang);
 ---
+<!-- Sin trayectoria acá a propósito: el detalle de roles y fechas ya vive en
+     LinkedIn y en el CV descargable (sección CV, más abajo) -- repetirlo acá
+     era ruido, no información nueva. -->
 <section class="section" id="about">
-  <div class="section-inner about-grid">
-    <div>
-      <Image
-        class="about-portrait"
-        src={portrait}
-        alt={profile.name}
-        width={128}
-        height={128}
-        data-reveal
-      />
-      <h2 data-reveal>
-        {splitWords(t("about.title")).map((word, i, arr) => (
-          <>
-            <span class="word-mask"><span class="word" style={`--i:${i}`}>{word}</span></span>
-            {i < arr.length - 1 ? " " : ""}
-          </>
-        ))}
-      </h2>
-      <p class="about-body" data-reveal>{t("about.body")}</p>
-    </div>
-    <Experience />
+  <div class="section-inner about-content">
+    <Image
+      class="about-portrait"
+      src={portrait}
+      alt={profile.name}
+      width={128}
+      height={128}
+      data-reveal
+    />
+    <h2 data-reveal>
+      {splitWords(t("about.title")).map((word, i, arr) => (
+        <>
+          <span class="word-mask"><span class="word" style={`--i:${i}`}>{word}</span></span>
+          {i < arr.length - 1 ? " " : ""}
+        </>
+      ))}
+    </h2>
+    <p class="about-body" data-reveal>{t("about.body")}</p>
   </div>
 </section>
 
 <style>
-  .about-grid {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 3rem;
+  .about-content {
+    max-width: 42rem;
   }
   .about-portrait {
     width: 5.5rem;
@@ -52,13 +49,5 @@ const t = useTranslations(lang);
     font-size: 1.05rem;
     line-height: 1.7;
     color: var(--fg-muted);
-    max-width: 38rem;
-  }
-
-  @media (min-width: 960px) {
-    .about-grid {
-      grid-template-columns: 1fr 1fr;
-      align-items: start;
-    }
   }
 </style>

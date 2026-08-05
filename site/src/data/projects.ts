@@ -23,6 +23,30 @@ export type Project = {
 // de gtm/factory/outreach.py).
 export const projects: Project[] = [
   {
+    slug: "cost-to-serve",
+    title: {
+      es: "Motor de costo-a-servir y rentabilidad",
+      en: "Cost-to-serve & profitability engine",
+    },
+    summary: {
+      es: "Motor de ETL que junta información dispersa en distintos sistemas de una empresa (ventas, logística, operaciones) y la ordena en un solo esquema. Con eso arma reportes que muestran cuánto cuesta de verdad atender a cada cliente, producto o canal, y cuánto deja de ganancia cada uno.",
+      en: "An ETL engine that pulls scattered data from a company's different systems (sales, logistics, operations) and organizes it into a single schema. From that, it builds reports showing what it actually costs to serve each customer, product or channel — and how much profit each one leaves.",
+    },
+    metric: null,
+    status: { es: "En producción desde 2021", en: "In production since 2021" },
+    kind: "client",
+    stages: [
+      { es: "Extraer", en: "Extract" },
+      { es: "Consolidar", en: "Consolidate" },
+      { es: "Prorratear", en: "Allocate" },
+      { es: "Reportar", en: "Report" },
+    ],
+    stack: ["Python", "Django REST Framework", "Pandas", "Databricks", "PostgreSQL", "Azure"],
+    year: 2021,
+    url: null,
+    repo: null,
+  },
+  {
     slug: "gtm-factory",
     title: {
       es: "Fábrica de demos de prospección",

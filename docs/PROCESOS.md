@@ -236,6 +236,15 @@ por relación costo/beneficio (la ganancia era la más chica de toda la lista).
   tendencia documentada de paletas tierra-terracota-crema 2026) como segundo acento decorativo
   del oscuro únicamente: un blob del hero y la mitad de los puntos del marquee, nunca en botones
   o links. Contraste verificado: crema/carbón 14.14:1, taupe-muted/carbón 6.68:1.
+- **2026-08-05** — Sección "Sobre mí": se sacó la trayectoria (`Experience.astro`/`experience.ts`,
+  eliminados — ya está en LinkedIn y el CV, era ruido repetido) y se reescribió el copy: menos
+  jerga técnica (sin nombrar Django/PageSpeed/Chrome UX Report), directo a los tres beneficios que
+  le importan a alguien sin conocimiento técnico — más clientes, más facturación, más presencia.
+  Se agregó el proyecto del trabajo actual (motor de costo-a-servir/rentabilidad, ETL) como primer
+  ítem de Proyectos, descrito en términos de capacidad, no de detalles confidenciales del empleador.
+  De paso, se implementó el render del campo `stages` (existía en `projects.ts` desde antes, nunca
+  se mostraba en ningún lado) como un esquema de flujo de nodos con flechas — ahora también visible
+  en `gtm-factory`, que ya tenía sus 6 etapas cargadas y sin usar.
 
 ---
 

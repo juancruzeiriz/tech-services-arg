@@ -36,15 +36,12 @@
     "sourceCode": "Source code",
     "noLink": "No public link",
     "metricLabel": "Result",
-    "stackLabel": "Stack"
+    "stackLabel": "Stack",
+    "flowLabel": "How the data flows"
   },
   "about": {
     "title": "About me",
-    "body": "I'm a full-stack developer — Python, Django REST Framework, and React are my day-to-day. I work with service businesses that depend on the phone to make money, and I measure the result with the same public tools you can run yourself: PageSpeed Insights, Chrome UX Report, and Lighthouse. Nothing I say about a site is an opinion — it's a number you can verify on the spot."
-  },
-  "experience": {
-    "title": "Experience",
-    "present": "Present"
+    "body": "I build software so your business gets more customers, earns more, and looks professional online: sites that load fast and turn visits into calls, systems that organize your information so you can decide faster, and automations that save hours of repetitive work every week. You don't have to take my word for it — I measure every result with the same free Google tools anyone can open and check."
   },
   "certs": {
     "title": "Certifications",
