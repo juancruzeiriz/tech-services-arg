@@ -114,6 +114,13 @@ body {
   transition: background-color 0.25s ease, color 0.25s ease;
 }
 
+/* loader.ts agrega esta clase a <html> mientras el overlay de intro está
+   activo -- bloquea el scroll de fondo para que no se note que hay
+   contenido debajo mientras se resuelve la grilla de bits. */
+:root.loader-active body {
+  overflow: hidden;
+}
+
 h1, h2, h3, .display {
   font-family: var(--font-display);
   text-wrap: balance;

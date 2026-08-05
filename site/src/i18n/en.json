@@ -68,6 +68,9 @@
   "footer": {
     "rights": "All rights reserved."
   },
+  "loader": {
+    "skip": "Tap or press any key to skip"
+  },
   "a11y": {
     "toggleTheme": "Toggle theme",
     "switchLang": "Cambiar a español",

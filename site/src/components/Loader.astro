@@ -1,0 +1,63 @@
+---
+import { getLangFromUrl, useTranslations } from "../i18n/utils";
+
+const t = useTranslations(getLangFromUrl(Astro.url));
+---
+<!-- display:none por defecto (ver loader.ts): si mountLoader() nunca corre,
+     esto no existe visualmente para nadie. Solo loader.ts agrega
+     .is-active. -->
+<div class="loader" data-loader role="status" aria-live="polite">
+  <canvas data-loader-canvas></canvas>
+  <div class="loader-count mono" data-loader-count aria-hidden="true">00</div>
+  <p class="loader-skip">{t("loader.skip")}</p>
+</div>
+
+<style>
+  .loader {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 999;
+    background: var(--bg);
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 1.25rem;
+    cursor: pointer;
+  }
+  .loader.is-active {
+    display: flex;
+  }
+  .loader.is-leaving {
+    opacity: 0;
+    transition: opacity 0.4s ease;
+  }
+
+  .loader canvas {
+    display: block;
+  }
+
+  .loader-count {
+    font-family: "Cascadia Code", "SFMono-Regular", Consolas, monospace;
+    font-size: 0.85rem;
+    letter-spacing: 0.08em;
+    color: var(--fg-muted);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .loader-skip {
+    position: absolute;
+    bottom: 2rem;
+    margin: 0;
+    font-size: 0.72rem;
+    letter-spacing: 0.06em;
+    color: var(--fg-muted);
+    opacity: 0.7;
+  }
+
+  @media (max-width: 420px) {
+    .loader canvas {
+      transform: scale(0.72);
+    }
+  }
+</style>

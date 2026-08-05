@@ -2,6 +2,7 @@
 import { Font } from "astro:assets";
 import "../styles/global.css";
 import Footer from "../components/Footer.astro";
+import Loader from "../components/Loader.astro";
 import Nav from "../components/Nav.astro";
 import { profile } from "../data/profile";
 import { alternateUrl, getLangFromUrl, useTranslations } from "../i18n/utils";
@@ -68,6 +69,7 @@ const canonical = new URL(Astro.url.pathname, Astro.site);
     <slot name="head" />
   </head>
   <body>
+    <Loader />
     <a href="#main" class="sr-only focus:not-sr-only">{t("a11y.skip")}</a>
     <div id="top"></div>
     <Nav />
@@ -78,8 +80,10 @@ const canonical = new URL(Astro.url.pathname, Astro.site);
 
     <script>
       import { mountCursor } from "../scripts/cursor";
+      import { mountLoader } from "../scripts/loader";
       import { mountReveal } from "../scripts/reveal";
 
+      mountLoader();
       mountReveal();
       mountCursor();
     </script>

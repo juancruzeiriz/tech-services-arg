@@ -68,6 +68,9 @@
   "footer": {
     "rights": "Todos los derechos reservados."
   },
+  "loader": {
+    "skip": "Tocá o presioná una tecla para saltear"
+  },
   "a11y": {
     "toggleTheme": "Cambiar tema",
     "switchLang": "Switch to English",
