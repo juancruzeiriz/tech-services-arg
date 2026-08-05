@@ -22,11 +22,30 @@
    redeclara: el stack por defecto de Tailwind ya sirve. */
 :root {
   color-scheme: dark;
-  --bg: var(--color-ink);
-  --fg: var(--color-paper);
-  --fg-muted: var(--color-muted);
-  --surface: color-mix(in srgb, var(--color-paper) 6%, var(--color-ink));
-  --border: color-mix(in srgb, var(--color-paper) 14%, var(--color-ink));
+
+  /* El oscuro deja de ser negro/blanco puro -- pedido explícito: sacar el
+     blanco del texto y bajar el negro a algo grisáceo, en la misma familia
+     tierra que ya tiene .theme-cream. Por eso estos NO se escriben como
+     var(--color-ink)/var(--color-paper): esos dos tokens siguen existiendo
+     sin tocar (los sigue usando .theme-light, más abajo, y el fondo del
+     popover del nav) -- este tema ahora tiene su paleta propia, desacoplada.
+     Contraste verificado con la fórmula WCAG: crema sobre carbón 14.14:1,
+     gris-taupe (el --fg-muted nuevo) 6.68:1, el acento naranja de siempre
+     5.27:1 -- los tres pasan AA con margen. */
+  --bg: #1c1917;
+  --fg: #efe6d8;
+  --fg-muted: #a89f8f;
+  --surface: color-mix(in srgb, #efe6d8 6%, #1c1917);
+  --border: color-mix(in srgb, #efe6d8 14%, #1c1917);
+
+  /* Segunda seña de identidad del oscuro, no del claro ni del cream: un
+     salvia apagado. Investigado, no improvisado -- salvia/verde apagado
+     como acento secundario de paletas tierra-terracota-crema es tendencia
+     documentada para 2026 (ver la bitácora en docs/PROCESOS.md). Se usa
+     puntual y decorativo (un blob del hero, el punto del marquee alternado)
+     -- nunca reemplaza al naranja en botones o links, que sigue siendo el
+     único acento con función real. */
+  --color-accent-alt: #7c8a6a;
 
   /* Mismo archivo de fuente para display y body -- la diferencia entre
      títulos y texto de cuerpo es peso/tamaño/tracking, no una segunda
@@ -189,7 +208,7 @@ a { color: inherit; }
   clip: auto;
   white-space: normal;
   background: var(--color-accent);
-  color: var(--color-ink);
+  color: var(--color-on-accent);
   border-radius: 0.5rem;
   z-index: 100;
   font-weight: 600;

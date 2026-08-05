@@ -43,6 +43,11 @@ const list = words[lang];
     white-space: nowrap;
   }
   .marquee-dot { color: var(--color-accent); }
+  /* Mismo giro que los blobs del hero: la mitad de los puntos pasa a
+     salvia, solo en el tema oscuro -- ver el comentario en HeroCanvas.astro. */
+  :global(:root:not(.theme-light):not(.theme-cream)) .marquee-item:nth-child(even) .marquee-dot {
+    color: var(--color-accent-alt);
+  }
 
   @keyframes marquee-scroll {
     from { transform: translateX(0); }

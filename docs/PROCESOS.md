@@ -229,7 +229,13 @@ por relación costo/beneficio (la ganancia era la más chica de toda la lista).
   ojo — el primer valor de acento elegido daba 3.80:1, insuficiente (Fase 3b). Loader de intro
   con grilla de bits 0/1, diseñado para degradar a "no mostrar nunca" si el script falla, nunca a
   "overlay trabado para siempre" (Fase 3a). `<ClientRouter />` + parallax de mouse en los blobs +
-  barra de progreso de lectura (CSS puro) + contadores animados en StatsBand (Fase 3c).
+  barra de progreso de lectura (CSS puro) + contadores animados en StatsBand (Fase 3c). Paleta
+  del tema oscuro rediseñada a pedido: negro/blanco puro (`--color-ink`/`--color-paper`)
+  reemplazados SOLO en ese tema por carbón grisáceo (`#1c1917`) y crema cálido (`#efe6d8`) —
+  claro y cream quedan intactos, son tokens propios desacoplados. Salvia apagado (`#7c8a6a`,
+  tendencia documentada de paletas tierra-terracota-crema 2026) como segundo acento decorativo
+  del oscuro únicamente: un blob del hero y la mitad de los puntos del marquee, nunca en botones
+  o links. Contraste verificado: crema/carbón 14.14:1, taupe-muted/carbón 6.68:1.
 
 ---
 

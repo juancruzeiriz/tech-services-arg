@@ -71,6 +71,17 @@
     animation-delay: -5s;
   }
   .hero-blob--b .hero-blob-inner { opacity: 0.45; }
+  /* El giro pedido: el blob del medio se tiñe de salvia en vez de naranja,
+     pero SOLO en el tema oscuro -- claro y cream ya tienen su propia
+     identidad resuelta y no la necesitan. :global() porque :root vive fuera
+     del árbol de este componente. */
+  :global(:root:not(.theme-light):not(.theme-cream)) .hero-blob--b .hero-blob-inner {
+    background: radial-gradient(
+      circle,
+      color-mix(in srgb, var(--color-accent-alt) 55%, transparent),
+      transparent 70%
+    );
+  }
   .hero-blob--c {
     top: 10%;
     right: -20%;
