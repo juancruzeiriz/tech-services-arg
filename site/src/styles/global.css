@@ -60,6 +60,9 @@
 
 html {
   scrollbar-color: var(--fg-muted) transparent;
+  /* Reemplaza a Lenis: scroll nativo, sin secuestrar el hilo principal.
+     prefers-reduced-motion ya fuerza "auto" más abajo con !important. */
+  scroll-behavior: smooth;
 }
 
 /* El fondo va en body, no en html: el elemento raíz tiene reglas especiales de
@@ -189,19 +192,59 @@ a { color: inherit; }
   font-size: var(--text-lead);
   max-width: 34rem;
 }
-.split-line { overflow: hidden; }
-
-/* Estado inicial de las revelaciones controladas por GSAP. La clase .js-reveal
-   la pone reveal.ts al montar: si el script no corre (JS deshabilitado, error),
-   esta regla nunca se aplica y el contenido queda visible por defecto. */
+/* Estado inicial de las revelaciones. La clase .js-reveal la pone reveal.ts
+   al montar: si el script no corre (JS deshabilitado, error), esta regla
+   nunca se aplica y el contenido queda visible por defecto. Dos caminos:
+   en navegadores con scroll-driven animations (Chromium hoy), la propia regla
+   @supports de abajo anima por CSS puro sin que reveal.ts haga nada más que
+   poner la clase. En el resto, reveal.ts arma un IntersectionObserver que
+   agrega .is-visible, y esa es la que dispara la transición. */
 .js-reveal [data-reveal] {
   opacity: 0;
   transform: translateY(1.2rem);
 }
+.js-reveal [data-reveal].is-visible {
+  opacity: 1;
+  transform: none;
+  transition: opacity 0.9s var(--ease-out-expo), transform 0.9s var(--ease-out-expo);
+}
+@supports (animation-timeline: view()) {
+  .js-reveal [data-reveal] {
+    animation: reveal-in linear both;
+    animation-timeline: view();
+    animation-range: entry 0% cover 30%;
+  }
+}
+@keyframes reveal-in {
+  from { opacity: 0; transform: translateY(1.2rem); }
+  to { opacity: 1; transform: none; }
+}
+
+/* Enmascarado por palabra de los títulos con [data-split] (reemplaza a
+   SplitText de GSAP). Cada palabra vive en una máscara con overflow:hidden;
+   el split en sí pasa a build-time, en el template de Astro (ver
+   src/utils/text.ts) -- CSS puro no puede partir texto en palabras. Solo se
+   anima en navegadores con scroll-driven animations: en el resto, las
+   palabras se ven de una sola vez, sin cascada -- el <h2> igual entra con la
+   regla de arriba porque sigue llevando [data-reveal]. */
+.word-mask { display: inline-block; overflow: hidden; vertical-align: top; }
+.word { display: inline-block; }
+@supports (animation-timeline: view()) {
+  .word {
+    transform: translateY(110%);
+    animation: word-in linear both;
+    animation-timeline: view();
+    animation-range: entry 0% cover 25%;
+    animation-delay: calc(var(--i, 0) * 30ms);
+  }
+}
+@keyframes word-in {
+  to { transform: translateY(0); }
+}
 
 /* Regla dura de accesibilidad: si el usuario pidió menos movimiento, no hay
-   movimiento — ni Lenis, ni GSAP, ni el shader del hero. Los scripts también
-   leen esta media query en JS antes de montarse; esto es el respaldo CSS. */
+   movimiento. Los scripts también leen esta media query en JS antes de
+   montarse; esto es el respaldo CSS. */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.01ms !important;
@@ -213,6 +256,7 @@ a { color: inherit; }
     opacity: 1;
     transform: none;
   }
+  .word { transform: none !important; }
 }
 
 @media print {
@@ -248,3 +292,12 @@ a { color: inherit; }
   color: var(--fg);
 }
 .btn-ghost:hover { border-color: var(--color-accent); }
+
+/* En touch el cursor imán (cursor.ts) nunca se monta -- gateado a
+   pointer:fine a propósito, porque "imán" no significa nada sin hover. Este
+   es el reemplazo: una respuesta táctil real al tocar, en vez de nada. */
+@media (pointer: coarse) {
+  .btn:active, [data-magnetic]:active {
+    transform: scale(0.97);
+  }
+}

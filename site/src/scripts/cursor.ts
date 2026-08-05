@@ -28,19 +28,22 @@ export function mountCursor(): (() => void) | null {
   const onEnter = (el: HTMLElement) => () => {
     magnetTarget = el;
   };
-  const onLeave = () => {
-    magnetTarget = null;
-    if (magnetTarget === null) {
-      for (const el of magnets) el.style.transform = "";
-    }
+  // Cierra sobre el elemento que se abandona -- la versión anterior anulaba
+  // magnetTarget y DESPUÉS testeaba si era null (siempre verdadero) y
+  // limpiaba el transform de TODOS los imanes en cada mouseleave, no solo
+  // del que se estaba abandonando.
+  const onLeave = (el: HTMLElement) => () => {
+    if (magnetTarget === el) magnetTarget = null;
+    el.style.transform = "";
   };
   const cleanups = magnets.map((el) => {
     const enter = onEnter(el);
+    const leave = onLeave(el);
     el.addEventListener("mouseenter", enter);
-    el.addEventListener("mouseleave", onLeave);
+    el.addEventListener("mouseleave", leave);
     return () => {
       el.removeEventListener("mouseenter", enter);
-      el.removeEventListener("mouseleave", onLeave);
+      el.removeEventListener("mouseleave", leave);
     };
   });
 

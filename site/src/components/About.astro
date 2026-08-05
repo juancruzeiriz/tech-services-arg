@@ -4,6 +4,7 @@ import portrait from "../assets/retrato.png";
 import Experience from "./Experience.astro";
 import { profile } from "../data/profile";
 import { getLangFromUrl, useTranslations } from "../i18n/utils";
+import { splitWords } from "../utils/text";
 
 const lang = getLangFromUrl(Astro.url);
 const t = useTranslations(lang);
@@ -19,7 +20,14 @@ const t = useTranslations(lang);
         height={128}
         data-reveal
       />
-      <h2 data-split data-reveal>{t("about.title")}</h2>
+      <h2 data-reveal>
+        {splitWords(t("about.title")).map((word, i, arr) => (
+          <>
+            <span class="word-mask"><span class="word" style={`--i:${i}`}>{word}</span></span>
+            {i < arr.length - 1 ? " " : ""}
+          </>
+        ))}
+      </h2>
       <p class="about-body" data-reveal>{t("about.body")}</p>
     </div>
     <Experience />

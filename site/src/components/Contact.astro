@@ -1,13 +1,21 @@
 ---
 import { profile } from "../data/profile";
 import { getLangFromUrl, useTranslations } from "../i18n/utils";
+import { splitWords } from "../utils/text";
 
 const lang = getLangFromUrl(Astro.url);
 const t = useTranslations(lang);
 ---
 <section class="section" id="contact">
   <div class="section-inner">
-    <h2 data-split data-reveal>{t("contact.title")}</h2>
+    <h2 data-reveal>
+      {splitWords(t("contact.title")).map((word, i, arr) => (
+        <>
+          <span class="word-mask"><span class="word" style={`--i:${i}`}>{word}</span></span>
+          {i < arr.length - 1 ? " " : ""}
+        </>
+      ))}
+    </h2>
     <p class="section-lead" data-reveal>{t("contact.lead")}</p>
 
     <ul class="contact-list" data-reveal>
