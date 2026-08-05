@@ -7,5 +7,5 @@ export const profile = {
   phoneTel: "+5491133396508",
   email: "juancruzeiriz@gmail.com",
   linkedinUrl: "https://www.linkedin.com/in/juancruzeiriz",
-  githubUrl: "https://github.com/jeiriz",
+  githubUrl: "https://github.com/juancruzeiriz",
 };
