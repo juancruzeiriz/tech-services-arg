@@ -12,16 +12,23 @@
  * vez de antes es imperceptible; un overlay que se queda trabado para
  * siempre porque el script que lo iba a sacar nunca cargó, no lo es.
  *
- * Reglas: piso de 1.2s (para que se aprecie), techo de 2.5s (para no
- * castigar), atado a document.fonts.ready entre medio, sessionStorage para
- * que corra una vez por sesión, salteable con click o cualquier tecla, y
- * nunca corre bajo prefers-reduced-motion (es la definición misma de
- * movimiento ambiental que esa preferencia pide evitar).
+ * Reglas: piso de 3s (para que se aprecie de verdad), techo de 4s (para no
+ * castigar), atado a document.fonts.ready entre medio, salteable con click
+ * o cualquier tecla, y nunca corre bajo prefers-reduced-motion (es la
+ * definición misma de movimiento ambiental que esa preferencia pide evitar).
+ *
+ * Vuelve a mostrarse por visita real, no una sola vez por sesión: se guarda
+ * la marca de tiempo del último show en localStorage (sobrevive a cerrar la
+ * pestaña, a diferencia de sessionStorage) y se corre de nuevo si pasaron
+ * ≥30 minutos desde esa marca -- ese es el corte entre "seguís navegando" y
+ * "volviste después de un rato", que es cuando tiene sentido saludar de
+ * nuevo con la animación.
  */
 
-const SESSION_KEY = "loader-shown";
-const FLOOR_MS = 1200;
-const CEIL_MS = 2500;
+const STORAGE_KEY = "loader-last-shown";
+const REVISIT_GAP_MS = 30 * 60 * 1000;
+const FLOOR_MS = 3000;
+const CEIL_MS = 4000;
 const FADE_MS = 400;
 
 // Dot-matrix 5x7 a mano, no una fuente -- el wordmark es la pieza de marca,
@@ -48,16 +55,17 @@ function buildGlyphGrid(): boolean[][] {
 }
 
 export function mountLoader(): void {
-  let alreadyShown = true;
+  let recentlyShown = true;
   try {
-    alreadyShown = sessionStorage.getItem(SESSION_KEY) === "1";
+    const last = localStorage.getItem(STORAGE_KEY);
+    recentlyShown = last !== null && Date.now() - Number(last) < REVISIT_GAP_MS;
   } catch {
-    /* sessionStorage bloqueado (modo privado estricto): tratamos como ya
-       mostrado -- de nuevo, el default seguro es NO mostrar, no mostrar
+    /* localStorage bloqueado (modo privado estricto): tratamos como
+       mostrado hace poco -- el default seguro es NO mostrar, no mostrar
        siempre. */
   }
   const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
-  if (alreadyShown || reduceMotion) return;
+  if (recentlyShown || reduceMotion) return;
 
   const overlay = document.querySelector<HTMLDivElement>("[data-loader]");
   const canvas = document.querySelector<HTMLCanvasElement>("[data-loader-canvas]");
@@ -128,10 +136,10 @@ export function mountLoader(): void {
     overlay!.removeEventListener("click", finish);
     overlay!.classList.add("is-leaving");
     try {
-      sessionStorage.setItem(SESSION_KEY, "1");
+      localStorage.setItem(STORAGE_KEY, String(Date.now()));
     } catch {
-      /* no persiste entre sesiones si sessionStorage está bloqueado -- el
-         loader vuelve a correr la próxima carga, degradación aceptable. */
+      /* no persiste si localStorage está bloqueado -- el loader vuelve a
+         correr la próxima carga, degradación aceptable. */
     }
     setTimeout(() => {
       document.documentElement.classList.remove("loader-active");
