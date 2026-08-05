@@ -1,9 +1,10 @@
 {
   "meta": {
-    "title": "Juan Cruz Eiriz — Desarrollo web para negocios que viven del teléfono",
-    "description": "Sitios rápidos, medibles y hechos para convertir llamadas. Desarrollo web y captura de leads para negocios de servicios."
+    "title": "Juan Cruz Eiriz — Software, datos e inteligencia artificial",
+    "description": "Automatizaciones e IA, tableros de datos, sistemas a medida y sitios rápidos y medibles. Python, datos y nube, en producción."
   },
   "nav": {
+    "services": "Servicios",
     "work": "Proyectos",
     "about": "Sobre mí",
     "certs": "Certificaciones",
@@ -11,22 +12,29 @@
     "cv": "Descargar CV",
     "menu": "Menú"
   },
+  "services": {
+    "title": "Qué hago",
+    "lead": "Cinco frentes, un solo objetivo: que tu negocio deje de perder tiempo y plata en algo que se puede automatizar o medir.",
+    "seeMore": "Ver el detalle técnico",
+    "backHome": "Volver al inicio"
+  },
   "hero": {
-    "eyebrow": "Desarrollador web",
-    "line1": "Sitios que",
-    "line2": "cargan en",
-    "line3": "un segundo",
-    "sub": "Desarrollo web orientado a un solo número: cuántas llamadas entran. Medible con las mismas herramientas públicas que usás vos, sin humo.",
-    "cta": "Ver proyectos",
+    "eyebrow": "Software, datos e inteligencia artificial",
+    "line1": "Software que",
+    "line2": "te saca",
+    "line3": "trabajo de encima",
+    "sub": "Agentes de IA entrenados con la información de tu empresa, tableros armados con tus propios datos, sistemas a medida e integraciones. Python, datos y nube — en producción, no en un PowerPoint.",
+    "cta": "Qué puedo hacer",
     "ctaSecondary": "Hablemos",
-    "scroll": "Bajá"
+    "scroll": "Bajá",
+    "availability": "Disponible para proyectos · Buenos Aires (GMT-3) · remoto"
   },
   "work": {
     "title": "Proyectos",
     "lead": "Trabajo real, con el número que movió.",
     "viewProject": "Ver proyecto",
     "sourceCode": "Código fuente",
-    "noLink": "Privado",
+    "noLink": "Sin link público",
     "metricLabel": "Resultado",
     "stackLabel": "Stack"
   },

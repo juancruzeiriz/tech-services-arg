@@ -1,9 +1,10 @@
 {
   "meta": {
-    "title": "Juan Cruz Eiriz — Web development for businesses that live on the phone",
-    "description": "Fast, measurable websites built to convert calls. Web development and lead capture for service businesses."
+    "title": "Juan Cruz Eiriz — Software, data & artificial intelligence",
+    "description": "Automation & AI, data dashboards, custom systems, and fast, measurable websites. Python, data and cloud, in production."
   },
   "nav": {
+    "services": "Services",
     "work": "Work",
     "about": "About",
     "certs": "Certifications",
@@ -11,22 +12,29 @@
     "cv": "Download CV",
     "menu": "Menu"
   },
+  "services": {
+    "title": "What I do",
+    "lead": "Five areas, one goal: your business stops losing time and money on something that can be automated or measured.",
+    "seeMore": "See the technical detail",
+    "backHome": "Back to home"
+  },
   "hero": {
-    "eyebrow": "Web developer",
-    "line1": "Sites that",
-    "line2": "load in",
-    "line3": "one second",
-    "sub": "Web development built around one number: how many calls come in. Measured with the same public tools you can run yourself — no smoke.",
-    "cta": "See the work",
+    "eyebrow": "Software, data & artificial intelligence",
+    "line1": "Software that",
+    "line2": "takes work",
+    "line3": "off your hands",
+    "sub": "AI agents trained on your company's own data, dashboards built from your own numbers, custom systems and integrations. Python, data and cloud — in production, not in a slide deck.",
+    "cta": "What I can do",
     "ctaSecondary": "Let's talk",
-    "scroll": "Scroll"
+    "scroll": "Scroll",
+    "availability": "Available for projects · Buenos Aires (GMT-3) · remote"
   },
   "work": {
     "title": "Work",
     "lead": "Real work, with the number it moved.",
     "viewProject": "View project",
     "sourceCode": "Source code",
-    "noLink": "Private",
+    "noLink": "No public link",
     "metricLabel": "Result",
     "stackLabel": "Stack"
   },

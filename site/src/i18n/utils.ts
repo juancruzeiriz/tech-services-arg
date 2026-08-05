@@ -5,6 +5,14 @@ export const languages = { es: "Español", en: "English" } as const;
 export type Lang = keyof typeof languages;
 export const defaultLang: Lang = "es";
 
+/** Slugs traducidos por página, más allá de /[lang]/. Sin esto, alternateUrl
+ * (que solo sabe reemplazar el segmento de idioma) mapearía /es/servicios/ a
+ * /en/servicios/ -- una ruta que no existe, porque la versión en inglés vive
+ * en /en/services/. Cada página con URL propia entra acá. */
+export const routes = {
+  services: { es: "servicios", en: "services" },
+} as const;
+
 const dict = { es, en } as const;
 
 export function getLangFromUrl(url: URL): Lang {
@@ -35,12 +43,23 @@ export function useTranslations(lang: Lang) {
   };
 }
 
-/** La URL equivalente en el otro idioma, para el switch de idioma. */
+/** La URL equivalente en el otro idioma, para el switch de idioma y los
+ * hreflang de Base.astro. Traduce el slug de la página (vía `routes`) además
+ * del segmento de idioma -- si el slug actual no está en `routes`, lo deja
+ * igual (ese es el comportamiento de siempre, para rutas sin traducir). */
 export function alternateUrl(url: URL, target: Lang): string {
-  const parts = url.pathname.split("/");
-  parts[1] = target;
-  const joined = parts.join("/");
-  return joined.endsWith("/") ? joined : `${joined}/`;
+  const current = getLangFromUrl(url);
+  const rest = url.pathname.split("/").filter(Boolean).slice(1);
+
+  if (rest.length === 0) return `/${target}/`;
+
+  const [slug, ...tail] = rest;
+  const routeKey = (Object.keys(routes) as Array<keyof typeof routes>).find(
+    (key) => routes[key][current] === slug,
+  );
+  const translatedSlug = routeKey ? routes[routeKey][target] : slug;
+
+  return `/${target}/${[translatedSlug, ...tail].join("/")}/`;
 }
 
 export function otherLang(lang: Lang): Lang {

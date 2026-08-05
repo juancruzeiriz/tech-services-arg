@@ -1,0 +1,105 @@
+---
+import { services } from "../data/services";
+import { getLangFromUrl, useTranslations } from "../i18n/utils";
+
+const lang = getLangFromUrl(Astro.url);
+const t = useTranslations(lang);
+const home = `/${lang}/`;
+---
+<section class="section services-detail">
+  <div class="section-inner">
+    <a class="back-home" href={home} data-magnetic>← {t("services.backHome")}</a>
+
+    <header class="section-head">
+      <h1 data-reveal>{t("services.title")}</h1>
+      <p class="section-lead" data-reveal>{t("services.lead")}</p>
+    </header>
+
+    <ol class="services-detail-list">
+      {services.map((service, i) => (
+        <li data-reveal>
+          <span class="services-detail-index">{String(i + 1).padStart(2, "0")}</span>
+          <div>
+            <h2>{service.title[lang]}</h2>
+            <p class="services-detail-plain">{service.plain[lang]}</p>
+            <p class="services-detail-body">{service.detail[lang]}</p>
+            <ul class="services-detail-stack">
+              {service.stack.map((tech) => <li>{tech}</li>)}
+            </ul>
+          </div>
+        </li>
+      ))}
+    </ol>
+
+    <a class="btn btn-primary" href={`${home}#contact`} data-magnetic>{t("hero.ctaSecondary")}</a>
+  </div>
+</section>
+
+<style>
+  .services-detail { padding-top: clamp(6rem, 14vh, 9rem); }
+
+  .back-home {
+    display: inline-block;
+    margin-bottom: 2rem;
+    color: var(--fg-muted);
+    text-decoration: none;
+    font-size: 0.9rem;
+  }
+  .back-home:hover { color: var(--fg); }
+
+  .services-detail-list {
+    list-style: none;
+    margin: 3rem 0 3rem;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2.5rem;
+  }
+  .services-detail-list li {
+    display: grid;
+    grid-template-columns: 3.5rem 1fr;
+    gap: 1.25rem;
+    padding-bottom: 2.5rem;
+    border-bottom: 1px solid var(--border);
+  }
+  .services-detail-list li:last-child { border-bottom: none; padding-bottom: 0; }
+
+  .services-detail-index {
+    font-family: var(--font-mono);
+    color: var(--color-accent);
+    font-size: 0.85rem;
+  }
+
+  .services-detail-list h2 {
+    font-size: clamp(1.4rem, 3vw, 2rem);
+    margin: 0 0 0.75rem;
+  }
+  .services-detail-plain {
+    color: var(--fg);
+    font-size: 1.05rem;
+    line-height: 1.6;
+    margin: 0 0 0.75rem;
+  }
+  .services-detail-body {
+    color: var(--fg-muted);
+    font-size: 0.95rem;
+    line-height: 1.6;
+    margin: 0;
+  }
+
+  .services-detail-stack {
+    list-style: none;
+    margin: 1rem 0 0;
+    padding: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+  }
+  .services-detail-stack li {
+    font-size: 0.75rem;
+    padding: 0.25rem 0.6rem;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    color: var(--fg-muted);
+  }
+</style>

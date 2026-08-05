@@ -4,6 +4,7 @@ import Certifications from "../../components/Certifications.astro";
 import Contact from "../../components/Contact.astro";
 import CV from "../../components/CV.astro";
 import Hero from "../../components/Hero.astro";
+import Services from "../../components/Services.astro";
 import Work from "../../components/Work.astro";
 import Base from "../../layouts/Base.astro";
 import { languages } from "../../i18n/utils";
@@ -14,6 +15,7 @@ export function getStaticPaths() {
 ---
 <Base>
   <Hero />
+  <Services />
   <Work />
   <About />
   <Certifications />

@@ -1,7 +1,12 @@
 {
   "ci": {
     "collect": {
-      "url": ["http://localhost:4322/es/", "http://localhost:4322/en/"],
+      "url": [
+        "http://localhost:4322/es/",
+        "http://localhost:4322/en/",
+        "http://localhost:4322/es/servicios/",
+        "http://localhost:4322/en/services/"
+      ],
       "startServerCommand": "npm run preview -- --port 4322",
       "startServerReadyPattern": "Local.*http://localhost:4322",
       "settings": {

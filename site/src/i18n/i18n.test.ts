@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import en from "./en.json";
 import es from "./es.json";
-import { alternateUrl, defaultLang, getLangFromUrl, languages, otherLang, useTranslations } from "./utils";
+import { alternateUrl, defaultLang, getLangFromUrl, languages, otherLang, routes, useTranslations } from "./utils";
 
 function paths(obj: unknown, prefix = ""): string[] {
   if (typeof obj !== "object" || obj === null) return [prefix];
@@ -60,6 +60,18 @@ describe("alternateUrl", () => {
 
   it("siempre termina en barra", () => {
     expect(alternateUrl(new URL("https://x.dev/es"), "en")).toBe("/en/");
+  });
+
+  it("traduce el slug de una página con ruta propia en routes", () => {
+    expect(alternateUrl(new URL("https://x.dev/es/servicios/"), "en")).toBe("/en/services/");
+    expect(alternateUrl(new URL("https://x.dev/en/services/"), "es")).toBe("/es/servicios/");
+  });
+
+  it("routes cubre todas las páginas con slug propio, en los dos idiomas", () => {
+    for (const slugs of Object.values(routes)) {
+      expect(slugs.es.length).toBeGreaterThan(0);
+      expect(slugs.en.length).toBeGreaterThan(0);
+    }
   });
 });
 

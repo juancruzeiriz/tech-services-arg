@@ -1,0 +1,16 @@
+---
+// Solo genera /en/services/ -- la versión en español vive en [lang]/servicios.astro
+// bajo un slug distinto (ver routes en src/i18n/utils.ts).
+import ServicesDetail from "../../components/ServicesDetail.astro";
+import Base from "../../layouts/Base.astro";
+import { useTranslations } from "../../i18n/utils";
+
+export function getStaticPaths() {
+  return [{ params: { lang: "en" } }];
+}
+
+const t = useTranslations("en");
+---
+<Base title={t("services.title")} description={t("services.lead")}>
+  <ServicesDetail />
+</Base>
