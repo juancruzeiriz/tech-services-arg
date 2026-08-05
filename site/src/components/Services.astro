@@ -21,42 +21,65 @@ const servicesHref = `/${lang}/${lang === "es" ? "servicios" : "services"}/`;
       <p class="section-lead" data-reveal>{t("services.lead")}</p>
     </header>
 
-    <ul class="services-list">
-      {services.map((service) => (
-        <li data-reveal>
+    <!-- Filas editoriales, no tarjetas: el registro que usan thelist.design y
+         Duna para listar capacidades sin necesitar una imagen por ítem. La
+         descripción siempre está visible -- nada se esconde detrás de hover
+         (ver el bug que se arregló en ProjectCard por hacer justo eso). -->
+    <ol class="services-rows">
+      {services.map((service, i) => (
+        <li class="services-row" data-reveal tabindex="0">
+          <span class="services-index">{String(i + 1).padStart(2, "0")}</span>
           <h3>{service.title[lang]}</h3>
           <p>{service.plain[lang]}</p>
         </li>
       ))}
-    </ul>
+    </ol>
 
     <a class="services-more" href={servicesHref} data-magnetic>{t("services.seeMore")} →</a>
   </div>
 </section>
 
 <style>
-  .services-list {
+  .services-rows {
     list-style: none;
     margin: 3rem 0 0;
     padding: 0;
+  }
+  .services-row {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
+    grid-template-columns: 3rem 14rem 1fr;
+    align-items: baseline;
     gap: 1.5rem;
+    padding: 1.75rem 0;
+    border-top: 1px solid var(--border);
+    transition: border-color 0.3s var(--ease-out-expo);
   }
-  .services-list li {
-    padding: 1.5rem;
-    border: 1px solid var(--border);
-    border-radius: 1rem;
+  .services-rows li:last-child { border-bottom: 1px solid var(--border); }
+  .services-row:hover,
+  .services-row:focus-visible {
+    border-color: var(--color-accent);
   }
-  .services-list h3 {
-    font-size: 1.05rem;
-    margin: 0 0 0.6rem;
+
+  .services-index {
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+    color: var(--color-accent);
   }
-  .services-list p {
+  .services-row h3 {
+    font-size: 1.2rem;
+    margin: 0;
+  }
+  .services-row p {
     margin: 0;
     color: var(--fg-muted);
-    font-size: 0.9rem;
-    line-height: 1.55;
+    font-size: 0.95rem;
+    line-height: 1.6;
+    max-width: 34rem;
+    transition: color 0.3s ease;
+  }
+  .services-row:hover p,
+  .services-row:focus-visible p {
+    color: var(--fg);
   }
 
   .services-more {
@@ -68,4 +91,11 @@ const servicesHref = `/${lang}/${lang === "es" ? "servicios" : "services"}/`;
     font-size: 0.95rem;
   }
   .services-more:hover { text-decoration: underline; }
+
+  @media (max-width: 720px) {
+    .services-row {
+      grid-template-columns: 1fr;
+      gap: 0.5rem;
+    }
+  }
 </style>

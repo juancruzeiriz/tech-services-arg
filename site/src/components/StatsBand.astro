@@ -1,0 +1,62 @@
+---
+import { getLangFromUrl } from "../i18n/utils";
+
+const lang = getLangFromUrl(Astro.url);
+
+// Números reales, verificables contra el propio repo -- nunca una cifra de
+// relleno. "95+" es el piso que exige la puerta de Lighthouse en CI
+// (lighthouserc.json), no una foto de un solo momento.
+const stats = [
+  { value: "9", label: { es: "años en sistemas", en: "years in tech" } },
+  { value: "~400", label: { es: "tests automatizados en gtm-factory", en: "automated tests in gtm-factory" } },
+  { value: "6", label: { es: "etapas del pipeline", en: "pipeline stages" } },
+  { value: "95+", label: { es: "Lighthouse en este sitio, con puerta en CI", en: "Lighthouse on this site, gated in CI" } },
+];
+---
+<section class="stats-band">
+  <ul class="stats-list">
+    {stats.map((stat) => (
+      <li data-reveal>
+        <span class="stats-value">{stat.value}</span>
+        <span class="stats-label">{stat.label[lang]}</span>
+      </li>
+    ))}
+  </ul>
+</section>
+
+<style>
+  /* Invertida a propósito: tinta sobre papel en vez de papel sobre tinta. Es
+     la mayor palanca de variación disponible sin fotos -- el único bloque de
+     color sólido de toda la página. */
+  .stats-band {
+    background: var(--fg);
+    color: var(--bg);
+    padding: clamp(3rem, 8vh, 5rem) var(--gutter);
+  }
+  .stats-list {
+    list-style: none;
+    margin: 0 auto;
+    padding: 0;
+    max-width: var(--container);
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+    gap: 2rem;
+  }
+  .stats-value {
+    display: block;
+    font-family: var(--font-display);
+    font-size: clamp(2.5rem, 6vw, 4rem);
+    line-height: 1;
+    letter-spacing: -0.03em;
+  }
+  .stats-label {
+    display: block;
+    margin-top: 0.5rem;
+    font-size: 0.85rem;
+    /* --fg-muted está calibrado para el tema activo, no para esta banda
+       invertida -- acá el fondo SIEMPRE es var(--fg) (claro en tema oscuro,
+       oscuro en tema claro), así que el muted correcto es siempre el que usa
+       .theme-light, sin importar qué tema esté activo de verdad. */
+    color: color-mix(in srgb, var(--bg) 70%, var(--fg));
+  }
+</style>

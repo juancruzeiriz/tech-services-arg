@@ -1,0 +1,55 @@
+---
+import { getLangFromUrl } from "../i18n/utils";
+
+const lang = getLangFromUrl(Astro.url);
+
+const words: Record<typeof lang, string[]> = {
+  es: ["AGENTES DE IA", "ETL", "DJANGO", "AZURE", "DOCKER", "POSTGRESQL", "TABLEROS", "APIS REST"],
+  en: ["AI AGENTS", "ETL", "DJANGO", "AZURE", "DOCKER", "POSTGRESQL", "DASHBOARDS", "REST APIS"],
+};
+const list = words[lang];
+---
+<!-- Puramente decorativo: rompe el ritmo de caja-tras-caja justo después del
+     hero, sin necesitar ninguna imagen. aria-hidden porque el contenido real
+     (las mismas capacidades) ya está en Services, en un formato accesible. -->
+<div class="marquee" aria-hidden="true">
+  <div class="marquee-track">
+    {[...list, ...list].map((word) => (
+      <span class="marquee-item">{word}<span class="marquee-dot">·</span></span>
+    ))}
+  </div>
+</div>
+
+<style>
+  .marquee {
+    overflow: clip;
+    border-block: 1px solid var(--border);
+    padding-block: 1.5rem;
+  }
+  .marquee-track {
+    display: flex;
+    width: max-content;
+    animation: marquee-scroll 32s linear infinite;
+  }
+  .marquee-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 2rem;
+    padding-inline: 1rem;
+    font-family: var(--font-display);
+    font-size: clamp(1.5rem, 4vw, 2.75rem);
+    letter-spacing: -0.02em;
+    color: var(--fg-muted);
+    white-space: nowrap;
+  }
+  .marquee-dot { color: var(--color-accent); }
+
+  @keyframes marquee-scroll {
+    from { transform: translateX(0); }
+    to { transform: translateX(-50%); }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .marquee-track { animation: none; }
+  }
+</style>
