@@ -60,6 +60,7 @@ const t = useTranslations(lang);
   .contact-label {
     color: var(--fg-muted);
     font-size: 0.9rem;
+    flex-shrink: 0;
   }
   .contact-list a {
     font-size: 1.2rem;
@@ -67,6 +68,23 @@ const t = useTranslations(lang);
     text-decoration: none;
     color: var(--fg);
     transition: color 0.2s ease;
+    overflow-wrap: anywhere;
+    text-align: right;
   }
   .contact-list a:hover { color: var(--color-accent); }
+
+  /* "juancruzeiriz@gmail.com" + el label + el gap ya está al límite de un
+     viewport de 375px. Abajo de 480px la fila apila: label arriba, valor
+     abajo, sin el "space-between" peleando por el mismo renglón. */
+  @media (max-width: 480px) {
+    .contact-list li {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 0.35rem;
+    }
+    .contact-list a {
+      font-size: 1.05rem;
+      text-align: left;
+    }
+  }
 </style>

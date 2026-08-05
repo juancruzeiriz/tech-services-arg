@@ -14,14 +14,14 @@ const year = new Date().getFullYear();
 
 <style>
   .site-footer {
-    padding: 2rem clamp(1.25rem, 4vw, 3rem) 3rem;
+    padding: 2rem var(--gutter) 3rem;
     border-top: 1px solid var(--border);
   }
   .site-footer-inner {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    max-width: 84rem;
+    max-width: var(--container);
     margin-inline: auto;
     font-size: 0.8rem;
     color: var(--fg-muted);

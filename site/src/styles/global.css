@@ -179,11 +179,15 @@ a { color: inherit; }
 
 /* Chrome de sección compartido por Work/About/Certifications/CV/Contact —
    así cada componente solo define lo que le es propio. */
+/* Mismo --container/--gutter que .nav-inner y .site-footer-inner: antes cada
+   uno tenía su propio max-width (72rem acá, 84rem en nav/footer) y su propio
+   gutter horizontal -- el wordmark y el copyright del footer quedaban
+   visiblemente más a la izquierda que cualquier H2 de la página. */
 .section {
-  padding: clamp(4rem, 10vh, 7rem) clamp(1.25rem, 6vw, 4rem);
+  padding: clamp(4rem, 10vh, 7rem) var(--gutter);
 }
 .section-inner {
-  max-width: 72rem;
+  max-width: var(--container);
   margin-inline: auto;
 }
 .section-lead {

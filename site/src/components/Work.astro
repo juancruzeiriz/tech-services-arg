@@ -30,7 +30,12 @@ const t = useTranslations(lang);
 <style>
   .project-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(20rem, 1fr));
+    /* auto-fill, no auto-fit: con un solo proyecto, auto-fit colapsa las
+       pistas vacías y estira esa única tarjeta a los ~1150px del contenedor
+       -- el placeholder de gtm-factory llegó a renderizar a ~1152×720px por
+       esto. auto-fill deja las pistas vacías ocupando espacio (sin colapsar),
+       así que un ítem solo queda del ancho de su propia columna. */
+    grid-template-columns: repeat(auto-fill, minmax(20rem, 1fr));
     gap: 1.5rem;
     margin-top: 3rem;
   }

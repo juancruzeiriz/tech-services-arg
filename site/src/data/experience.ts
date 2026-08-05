@@ -2,6 +2,11 @@ export type ExperienceEntry = {
   id: string;
   role: { es: string; en: string };
   org: string;
+  /** Aclaración opcional del org (ej. el producto/cliente detrás del
+   * empleador). Separada de `org` para que el timeline pueda mostrarla en una
+   * línea aparte, más chica -- "Market One" cabe en la columna angosta de
+   * mobile, "PHI (Cost-to-Serve & Profit Management Software)" no. */
+  orgDetail?: string;
   from: string; // "2024" o "2024-03"
   to: string | null; // null = presente
   bullets: { es: string[]; en: string[] };
@@ -18,7 +23,8 @@ export const experience: ExperienceEntry[] = [
       es: "Software Developer — Django REST Framework (Python)",
       en: "Software Developer — Django REST Framework (Python)",
     },
-    org: "Market One — PHI (Cost-to-Serve & Profit Management Software)",
+    org: "Market One",
+    orgDetail: "PHI (Cost-to-Serve & Profit Management Software)",
     from: "2021-12",
     to: null,
     bullets: {

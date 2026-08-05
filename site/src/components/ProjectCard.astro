@@ -110,22 +110,6 @@ const t = useTranslations(lang);
     line-height: 1.55;
   }
 
-  /* Patrón "hover-driven pacing": el detalle (métrica, stack, links) se
-     revela al pasar el mouse o al recibir foco por teclado — nunca se
-     esconde de forma permanente, solo se prioriza visualmente. */
-  .project-detail {
-    display: grid;
-    grid-template-rows: 0fr;
-    opacity: 0;
-    transition: grid-template-rows 0.4s var(--ease-out-expo), opacity 0.3s ease;
-  }
-  .project-card:hover .project-detail,
-  .project-card:focus-within .project-detail {
-    grid-template-rows: 1fr;
-    opacity: 1;
-  }
-  .project-detail > * { overflow: hidden; }
-
   .project-metric {
     margin: 1rem 0 0;
     padding-top: 1rem;
@@ -170,14 +154,4 @@ const t = useTranslations(lang);
   }
   .project-links a:hover { color: var(--color-accent); }
   .project-private { color: var(--fg-muted); }
-
-  /* Sin JS/hover (teclado con :focus-within ya cubierto arriba, esto es para
-     táctil): en pantallas táctiles no hay :hover real, así que el detalle
-     queda siempre visible en vez de atrapado detrás de un gesto que no existe. */
-  @media (hover: none) {
-    .project-detail {
-      grid-template-rows: 1fr;
-      opacity: 1;
-    }
-  }
 </style>
