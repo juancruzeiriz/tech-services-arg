@@ -57,7 +57,7 @@ def create_app() -> FastAPI:
 
     # Import diferido: evita que gtm.ui.routes.* tenga que importar gtm.ui.app
     # (que las registra) antes de que create_app() termine de definirse.
-    from gtm.ui.routes import costs, dashboard, outbox, pages, queue, runs, time_log
+    from gtm.ui.routes import costs, dashboard, outbox, pages, pricing, queue, runs, time_log
 
     app.include_router(pages.router)
     app.include_router(runs.router)
@@ -66,5 +66,6 @@ def create_app() -> FastAPI:
     app.include_router(time_log.router)
     app.include_router(costs.router)
     app.include_router(dashboard.router)
+    app.include_router(pricing.router)
 
     return app

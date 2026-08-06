@@ -238,6 +238,16 @@ class FunnelReport:
         return self.spend_usd / self.calls_booked if self.calls_booked else None
 
     @property
+    def cost_per_contact(self) -> float | None:
+        """Costo por prospecto contactado (Nivel-1). A diferencia de
+        `cost_per_call`, no espera ninguna señal de interés -- es el "techo de
+        gasto" real del proyecto (ver docs/PLAN_DIARIO.md, Día 17): la
+        publicidad paga se descartó por aritmética (README.md), así que lo que
+        sí importa vigilar acá es cuánto cuesta cada prospecto contactado, no
+        un CPC de un canal que no se usa."""
+        return self.spend_usd / self.contacted if self.contacted else None
+
+    @property
     def has_winner(self) -> bool:
         """Criterio pre-registrado (v2): 1 venta cobrada. Nivel 5 es terminal.
 

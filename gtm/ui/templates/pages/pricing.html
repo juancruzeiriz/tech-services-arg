@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+{% block title %}Precio{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1>Precio</h1>
+  <p>La mitad que falta en <a href="/dashboard/economics">Economía</a>: no qué pasó, sino si el precio de hoy alcanza y cuánto cobrar por lo que no es el paquete.</p>
+</div>
+
+<div class="grid grid-4 mb-2">
+  <div class="card">
+    <div class="card-title">Piso por hora</div>
+    {% if floor_usd_hour is none %}
+      <div class="stat-value">—</div>
+      <div class="stat-label">sin horas cargadas todavía</div>
+    {% else %}
+      <div class="stat-value">USD {{ floor_usd_hour | round(1) }}</div>
+      <div class="stat-label">costo acumulado ÷ horas cargadas</div>
+    {% endif %}
+  </div>
+  <div class="card">
+    <div class="card-title">Costo acumulado</div>
+    <div class="stat-value">USD {{ total_cost | round(0) | int }}</div>
+    <div class="stat-label">cargado en /settings</div>
+  </div>
+  <div class="card">
+    <div class="card-title">Horas cargadas</div>
+    <div class="stat-value">{{ hours_logged | round(1) }}</div>
+    <div class="stat-label">cargadas en la cola de contacto</div>
+  </div>
+  <div class="card">
+    <div class="card-title">Costo por contacto</div>
+    {% if cost_per_contact is none %}
+      <div class="stat-value">—</div>
+      <div class="stat-label">sin contactados todavía</div>
+    {% else %}
+      <div class="stat-value">USD {{ cost_per_contact | round(2) }}</div>
+      <div class="stat-label">sobre {{ contacted }} contactados — el techo de gasto real, no un CPC de ads</div>
+    {% endif %}
+  </div>
+</div>
+
+<form method="get" action="/pricing" class="card mb-2 grid grid-3">
+  <div class="field">
+    <label for="estimated_hours">Horas estimadas para entregar el paquete</label>
+    <input type="number" name="estimated_hours" id="estimated_hours" min="0" step="0.5" value="{{ estimated_hours if estimated_hours else '' }}" placeholder="ej: 6">
+    <p class="text-sm text-muted mt-1">Solo se usa si todavía no hay una venta pagada real.</p>
+  </div>
+  <div class="field">
+    <label for="quote_hours">Horas de un trabajo a cotizar (no el paquete)</label>
+    <input type="number" name="quote_hours" id="quote_hours" min="0" step="0.5" value="{{ quote_hours if quote_hours else '' }}" placeholder="ej: 4">
+  </div>
+  <div class="mt-1" style="align-self:end"><button class="btn btn-sm" type="submit">Calcular</button></div>
+</form>
+
+<div class="card mb-2">
+  <div class="card-title">¿El paquete de USD {{ package_price }} alcanza?</div>
+  <p class="text-sm text-muted">El precio no se toca durante el experimento (<code>decision_criteria.yaml</code>) — esto solo dice si conviene, no lo cambia.</p>
+  {% if hours_per_sale is none %}
+    <p class="text-sm text-muted mt-1">Todavía no hay ninguna venta pagada ({{ paid }}) ni una estimación de horas cargada arriba. Sin uno de los dos, esta pregunta no tiene respuesta todavía.</p>
+  {% else %}
+    <div class="grid grid-3 mt-1">
+      <div>
+        <div class="stat-value">{{ hours_per_sale | round(1) }} h</div>
+        <div class="stat-label">{{ 'estimadas (a confirmar con una venta real)' if hours_per_sale_is_estimate else 'reales, medidas' }}</div>
+      </div>
+      <div>
+        <div class="stat-value">USD {{ package_rate | round(1) }}/h</div>
+        <div class="stat-label">tarifa implícita del paquete</div>
+      </div>
+      <div>
+        {% if clears_floor is none %}
+          <span class="badge badge-warn">Piso desconocido</span>
+        {% elif clears_floor %}
+          <span class="badge badge-ok">Arriba del piso</span>
+        {% else %}
+          <span class="badge badge-danger">Por debajo del piso</span>
+        {% endif %}
+        <div class="stat-label mt-1">
+          {% if floor_usd_hour is none %}sin costos ni horas cargadas todavía{% else %}piso: USD {{ floor_usd_hour | round(1) }}/h{% endif %}
+        </div>
+      </div>
+    </div>
+  {% endif %}
+</div>
+
+<div class="card">
+  <div class="card-title">Cotizador para otros servicios</div>
+  <p class="text-sm text-muted">Para trabajo que no es el paquete fijo (demos de reservas, calculadoras a medida, cualquier otro servicio) — usa el piso por hora como referencia porque sale de datos, no de una corazonada.</p>
+  {% if quote_total is none %}
+    <p class="text-sm text-muted mt-1">Cargá horas arriba para ver una cotización sugerida.</p>
+  {% else %}
+    <div class="stat-value mt-1">USD {{ quote_total | round(0) | int }}</div>
+    <div class="stat-label">{{ quote_hours }} h × USD {{ floor_usd_hour | round(1) }}/h — piso, no precio final</div>
+  {% endif %}
+</div>
+{% endblock %}

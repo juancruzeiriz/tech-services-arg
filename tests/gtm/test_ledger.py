@@ -229,6 +229,15 @@ class TestFunnelLedger:
         """None, no cero ni división por cero: todavía no hay dato."""
         assert funnel.report(spend_usd=150).cost_per_call is None
 
+    def test_costo_por_contacto(self, funnel):
+        funnel.record("a", FunnelEvent.CONTACTED)
+        funnel.record("b", FunnelEvent.CONTACTED)
+        funnel.record("c", FunnelEvent.CONTACTED)
+        assert funnel.report(spend_usd=90).cost_per_contact == 30
+
+    def test_sin_contactos_el_costo_por_contacto_es_none(self, funnel):
+        assert funnel.report(spend_usd=90).cost_per_contact is None
+
     def test_niveles_en_orden(self):
         assert FunnelEvent.CONTACTED.level == 1
         assert FunnelEvent.PAID.level == 5
