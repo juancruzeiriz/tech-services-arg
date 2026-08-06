@@ -67,11 +67,15 @@ export async function onRequestPost(context) {
     if (!response.ok && response.status !== 409) {
       const detail = await response.text().catch(() => "");
       console.error("subscribe: PostgREST rechazó el insert", response.status, detail);
-      return jsonResponse({ error: "No se pudo guardar la suscripción." }, 502);
+      // DEBUG TEMPORAL: expone el detalle en la respuesta para diagnosticar en
+      // producción sin depender del panel de logs de Cloudflare. Revertir
+      // apenas se identifique la causa -- no debe quedar así.
+      return jsonResponse({ error: "No se pudo guardar la suscripción.", debug_status: response.status, debug_detail: detail }, 502);
     }
   } catch (err) {
-    console.error("subscribe: fetch a Supabase falló", err instanceof Error ? err.message : err);
-    return jsonResponse({ error: "No se pudo guardar la suscripción." }, 502);
+    const message = err instanceof Error ? err.message : String(err);
+    console.error("subscribe: fetch a Supabase falló", message);
+    return jsonResponse({ error: "No se pudo guardar la suscripción.", debug_detail: message }, 502);
   }
 
   return jsonResponse({ ok: true }, 200);
