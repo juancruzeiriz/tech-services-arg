@@ -65,9 +65,12 @@ export async function onRequestPost(context) {
     // suscripta -- se trata igual como éxito para no filtrar esa
     // información al que llena el formulario.
     if (!response.ok && response.status !== 409) {
+      const detail = await response.text().catch(() => "");
+      console.error("subscribe: PostgREST rechazó el insert", response.status, detail);
       return jsonResponse({ error: "No se pudo guardar la suscripción." }, 502);
     }
-  } catch {
+  } catch (err) {
+    console.error("subscribe: fetch a Supabase falló", err instanceof Error ? err.message : err);
     return jsonResponse({ error: "No se pudo guardar la suscripción." }, 502);
   }
 
