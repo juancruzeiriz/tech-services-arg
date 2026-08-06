@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="$lang">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<!-- noindex: este informe es material interno, no una página del prospecto ni
+     un artefacto pensado para indexarse. -->
+<meta name="robots" content="noindex,nofollow">
+<title>$report_title</title>
+<style>
+/* Todo el CSS va inline, igual que site.html: cero requests externos. */
+*,*::before,*::after{box-sizing:border-box}
+body{margin:0;font:16px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;color:#16202a;background:#fff}
+.wrap{max-width:760px;margin:0 auto;padding:0 20px}
+.internal-flag{background:#7c2d12;color:#fff7ed;font-size:13px;padding:10px 20px;text-align:center}
+.internal-flag strong{color:#fff}
+header{padding:36px 0 20px}
+header h1{font-size:clamp(24px,4vw,32px);line-height:1.2;margin:0 0 8px;letter-spacing:-.02em}
+.meta{color:#475569;margin:0}
+section{padding:28px 0;border-top:1px solid #f1f5f9}
+h2{font-size:20px;letter-spacing:-.01em;margin:0 0 18px}
+.score-section{display:flex;flex-wrap:wrap;align-items:center;gap:24px}
+.score-badge{display:flex;align-items:baseline;gap:2px;flex-shrink:0}
+.score-value{font-size:56px;font-weight:800;letter-spacing:-.03em;color:#c2410c}
+.score-max{font-size:20px;color:#94a3b8}
+.score-caption{color:#475569;margin:0;max-width:40ch}
+.dims{width:100%;display:flex;flex-direction:column;gap:10px;margin-top:8px}
+.dim-row{display:grid;grid-template-columns:120px 1fr 34px;align-items:center;gap:10px;font-size:14px}
+.dim-label{color:#475569}
+.dim-bar{background:#f1f5f9;border-radius:6px;height:8px;overflow:hidden}
+.dim-fill{background:#c2410c;height:100%;border-radius:6px}
+.dim-value{text-align:right;color:#16202a;font-variant-numeric:tabular-nums}
+.findings{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:12px}
+.findings li{border-left:3px solid #c2410c;padding:2px 0 2px 14px;color:#334155}
+.empty{color:#94a3b8;font-style:italic}
+.notes-section p{color:#475569;margin:0 0 10px}
+footer{padding:24px 0 36px;color:#94a3b8;font-size:13px}
+@media(prefers-color-scheme:dark){
+  body{background:#0f151b;color:#e8eef4}
+  .meta,.score-caption,.dim-label,.notes-section p{color:#94a3b8}
+  section{border-color:#1c252f}
+  .dim-bar{background:#1c252f}
+  .dim-value{color:#e8eef4}
+  .findings li{color:#cbd5e1}
+  footer{color:#5b6b7a}
+}
+</style>
+</head>
+<body>
+
+<div class="internal-flag">
+  <strong>$internal_flag_label</strong> — $internal_flag_text
+</div>
+
+<header class="wrap">
+  <h1>$report_title</h1>
+  <p class="meta">$meta_line</p>
+</header>
+
+<section class="wrap score-section">
+  <div class="score-badge">
+    <span class="score-value">$score_value</span>
+    <span class="score-max">/100</span>
+  </div>
+  <p class="score-caption">$score_caption</p>
+  <div class="dims">$sub_scores_html</div>
+</section>
+
+<section class="wrap">
+  <h2>$findings_heading</h2>
+  $findings_html
+</section>
+
+<section class="wrap notes-section">
+  <h2>$notes_heading</h2>
+  $notes_html
+</section>
+
+<footer class="wrap">
+  <p>$footer_note</p>
+</footer>
+
+</body>
+</html>

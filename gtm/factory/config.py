@@ -42,6 +42,12 @@ BUILD_DIR = GTM_DIR / "build"
 DEMOS_DIR = BUILD_DIR / "demos"
 DATA_DIR = BUILD_DIR / "data"
 
+# Informes de auditoría (gtm/factory/audit.py). Directorio propio, separado de
+# DEMOS_DIR: a diferencia de las demos, estos informes nunca pasan por
+# deploy.py ni terminan en gtm/public/ -- son material interno para la
+# llamada, no un artefacto que se le manda al prospecto.
+AUDITS_DIR = BUILD_DIR / "audits"
+
 
 def _ensure_utf8_console() -> None:
     """En Windows, cuando stdout/stderr no son una consola real —entubados,
@@ -188,5 +194,5 @@ def daily_send_cap() -> int:
 
 def ensure_dirs() -> None:
     """Crea los directorios de build. Idempotente."""
-    for directory in (BUILD_DIR, DEMOS_DIR, DATA_DIR):
+    for directory in (BUILD_DIR, DEMOS_DIR, DATA_DIR, AUDITS_DIR):
         directory.mkdir(parents=True, exist_ok=True)
