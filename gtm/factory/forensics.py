@@ -4,8 +4,9 @@ Responde, con evidencia citable y sin que un humano tenga que mirar el sitio,
 la pregunta "¿esta web es vieja?": maquetación con tablas, jQuery sin
 actualizar desde hace una década, Universal Analytics (apagado por Google en
 julio de 2023), un copyright congelado en el pie de página, ausencia de
-`<meta viewport>`, HTTP sin cifrar, sin JSON-LD de negocio local, y una
-paleta de colores estadísticamente típica de sitios de hace más de diez años.
+`<meta viewport>`, HTTP sin cifrar, sin JSON-LD de negocio local, sin enlace a
+Facebook/Instagram, y una paleta de colores estadísticamente típica de sitios
+de hace más de diez años.
 
 Cada detector opera sobre el HTML que `contact.py` ya descarga para buscar el
 formulario de contacto — cero requests HTTP adicionales.
@@ -31,6 +32,10 @@ _PRESENTATIONAL_TABLE_ATTRS = ("width", "bgcolor", "align", "cellpadding", "cell
 _DATED_PALETTE_THRESHOLD = 0.4
 _STALE_COPYRIGHT_YEARS = 3
 
+# Solo las dos redes que de verdad importan en este nicho -- no Twitter/X ni
+# LinkedIn, que son mucho menos comunes entre home services hispanos en USA.
+_SOCIAL_DOMAINS = ("facebook.com", "instagram.com")
+
 
 def analyse_html(html: str, url: str) -> list[Finding]:
     """Corre todos los detectores sobre `html`.
@@ -53,6 +58,7 @@ def analyse_html(html: str, url: str) -> list[Finding]:
         _check_jquery(soup, findings)
         _check_tel_link(soup, findings)
         _check_local_schema(soup, findings)
+        _check_social_links(soup, findings)
         _check_palette(html, findings)
     except Exception:  # noqa: BLE001 - ver docstring del módulo
         pass
@@ -147,6 +153,22 @@ def _check_local_schema(soup: BeautifulSoup, findings: list[Finding]) -> None:
         if "LocalBusiness" in (tag.string or ""):
             return
     findings.append(Finding(code="no_local_schema", evidence="sin JSON-LD de tipo LocalBusiness"))
+
+
+def _check_social_links(soup: BeautifulSoup, findings: list[Finding]) -> None:
+    """Ausencia de link ≠ ausencia de página: por eso este hallazgo es LOW, no
+    CRITICAL como `no_tel_link`. Solo mide si el sitio *enlaza* a su red
+    social, no si el negocio tiene una.
+    """
+    has_social = any(
+        any(domain in str(a.get("href", "")).lower() for domain in _SOCIAL_DOMAINS)
+        for a in soup.find_all("a")
+    )
+    if has_social:
+        return
+    findings.append(
+        Finding(code="no_social_presence", evidence="sin enlaces a Facebook o Instagram")
+    )
 
 
 def _check_palette(html: str, findings: list[Finding]) -> None:

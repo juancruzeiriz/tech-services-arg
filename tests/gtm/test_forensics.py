@@ -18,6 +18,7 @@ _MODERNO = """<!doctype html><html><head><meta name="viewport" content="width=de
 <script type="application/ld+json">{"@type":"LocalBusiness"}</script>
 <meta property="og:title" content="x"></head>
 <body><a href="tel:+15555550100">Llamar</a>
+<a href="https://facebook.com/plomeriaacme">Facebook</a>
 <img src="/h.webp" srcset="/h.webp 800w" loading="lazy" alt="x"></body></html>"""
 
 
@@ -108,6 +109,21 @@ def test_con_local_business_schema_no_dispara_el_hallazgo():
     assert "no_local_schema" not in codes
 
 
+def test_detecta_falta_de_presencia_social():
+    assert "no_social_presence" in {f.code for f in analyse_html(_VIEJO, "http://x.com")}
+
+
+def test_un_link_a_facebook_no_dispara_el_hallazgo():
+    codes = {f.code for f in analyse_html(_MODERNO, "https://x.com")}
+    assert "no_social_presence" not in codes
+
+
+def test_un_link_a_instagram_tambien_cuenta():
+    html = _MODERNO.replace("https://facebook.com/plomeriaacme", "https://instagram.com/plomeriaacme")
+    codes = {f.code for f in analyse_html(html, "https://x.com")}
+    assert "no_social_presence" not in codes
+
+
 def test_un_sitio_moderno_no_dispara_hallazgos_de_obsolescencia():
     codes = {f.code for f in analyse_html(_MODERNO, "https://x.com")}
     assert codes.isdisjoint({
@@ -119,6 +135,7 @@ def test_un_sitio_moderno_no_dispara_hallazgos_de_obsolescencia():
         "no_https",
         "no_local_schema",
         "stale_copyright",
+        "no_social_presence",
     })
 
 

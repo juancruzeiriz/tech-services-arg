@@ -190,4 +190,11 @@ FINDINGS: dict[str, FindingSpec] = {
         "Most of the text is too small to read on a phone ({evidence}).",
         "La mayor parte del texto es demasiado chico para leer en un celular ({evidence}).",
     ),
+    "no_social_presence": FindingSpec(
+        Dimension.CONVERSION,
+        Severity.LOW,
+        1.0,
+        "There is no link to Facebook or Instagram from the site ({evidence}) — in this trade, customers often check social media before calling.",
+        "No hay enlace a Facebook o Instagram desde el sitio ({evidence}): en este rubro los clientes suelen mirar redes antes de llamar.",
+    ),
 }
