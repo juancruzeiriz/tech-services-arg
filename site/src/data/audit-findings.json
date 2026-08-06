@@ -1,0 +1,44 @@
+{
+  "no_https": {
+    "dimension": "seo",
+    "severity": "critical",
+    "weight": 3.0,
+    "sales_line_en": "Chrome marks your site as 'Not secure' ({evidence}).",
+    "sales_line_es": "Chrome marca tu sitio como 'No seguro' ({evidence})."
+  },
+  "no_viewport": {
+    "dimension": "mobile",
+    "severity": "critical",
+    "weight": 3.0,
+    "sales_line_en": "Your site was never built for phones ({evidence}) — visitors have to pinch and zoom.",
+    "sales_line_es": "Tu sitio nunca se hizo para celulares ({evidence}): hay que hacer zoom con dos dedos."
+  },
+  "tap_targets": {
+    "dimension": "mobile",
+    "severity": "high",
+    "weight": 2.0,
+    "sales_line_en": "Buttons and links are too small to tap reliably ({evidence}).",
+    "sales_line_es": "Los botones y enlaces son demasiado chicos para tocarlos bien ({evidence})."
+  },
+  "tiny_font": {
+    "dimension": "mobile",
+    "severity": "high",
+    "weight": 2.0,
+    "sales_line_en": "Most of the text is too small to read on a phone ({evidence}).",
+    "sales_line_es": "La mayor parte del texto es demasiado chico para leer en un celular ({evidence})."
+  },
+  "crux_lcp_poor": {
+    "dimension": "speed",
+    "severity": "critical",
+    "weight": 3.0,
+    "sales_line_en": "Real visitors on phones wait {evidence} for your page to show its main content.",
+    "sales_line_es": "Los visitantes reales desde el celular esperan {evidence} a que aparezca el contenido principal."
+  },
+  "crux_inp_poor": {
+    "dimension": "speed",
+    "severity": "high",
+    "weight": 2.0,
+    "sales_line_en": "When someone taps a button on your site it takes {evidence} to respond.",
+    "sales_line_es": "Cuando alguien toca un botón en tu sitio, tarda {evidence} en responder."
+  }
+}
