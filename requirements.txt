@@ -3,6 +3,10 @@ httpx==0.28.1
 python-dotenv==1.2.2
 beautifulsoup4==4.15.0
 
+# generate --ai-copy — opcional: gtm/factory/copy_ai.py importa este paquete
+# recién si ANTHROPIC_API_KEY está seteada. Sin la flag, no hace falta.
+anthropic==0.120.2
+
 # store — Postgres (Supabase). psycopg3 sirve sync (CLI) y async (UI) desde la
 # misma librería, y funciona bien contra el pooler de transacción de Supabase
 # (puerto 6543), a diferencia de asyncpg, que necesita configuración especial ahí.

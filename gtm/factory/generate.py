@@ -24,6 +24,8 @@ from string import Template
 
 from gtm.catalog import city_of, get_trade
 from gtm.factory import artifacts, config
+from gtm.factory.copy_ai import SLOTS as _AI_COPY_SLOTS
+from gtm.factory.copy_ai import generate_variant_copy
 from gtm.factory.ledger import SuppressionList
 from gtm.factory.logs import get_logger
 from gtm.factory.types import (
@@ -139,9 +141,19 @@ def _cta_heading(vertical: str, label: str, language: Language) -> str:
 
 
 def render(
-    prospect: Prospect, author_name: str, author_url: str, language: Language = Language.EN
+    prospect: Prospect,
+    author_name: str,
+    author_url: str,
+    language: Language = Language.EN,
+    *,
+    ai_copy: dict[str, str] | None = None,
 ) -> str:
     """Renderiza el HTML de la demo para un prospecto.
+
+    `ai_copy`, si se pasa, sobreescribe únicamente los slots 100% genéricos
+    del template (ver `gtm/factory/copy_ai.py` -- nunca un hecho del
+    negocio). Claves fuera de ese conjunto se ignoran a propósito: este
+    renderer no es el lugar para colar un dato inventado por accidente.
 
     Raises:
         GenerationError: si falta la plantilla o algún placeholder queda sin valor.
@@ -236,6 +248,15 @@ def render(
         "author_url": html.escape(author_url),
     }
 
+    if ai_copy:
+        # Filtro explícito a _AI_COPY_SLOTS: aunque el caller pase un dict con
+        # más claves, acá nunca se le da la chance de pisar business_name,
+        # phone, address ni ningún otro slot con datos reales del negocio.
+        for slot in _AI_COPY_SLOTS:
+            value = ai_copy.get(slot)
+            if value:
+                values[slot] = html.escape(value)
+
     template = Template(template_path.read_text(encoding="utf-8"))
     try:
         # substitute (no safe_substitute) para que un placeholder sin valor
@@ -252,6 +273,7 @@ def generate(
     language: Language = Language.EN,
     *,
     demos_dir: Path | None = None,
+    ai_copy: dict[str, str] | None = None,
 ) -> Demo:
     """Renderiza y escribe la demo en disco. Idempotente por slug.
 
@@ -260,7 +282,7 @@ def generate(
     prueba y una real) se pisarían el mismo directorio global.
     """
     config.ensure_dirs()
-    markup = render(prospect, author_name, author_url, language)
+    markup = render(prospect, author_name, author_url, language, ai_copy=ai_copy)
 
     demo_dir = (demos_dir or Path(config.DEMOS_DIR)) / prospect.slug
     demo_dir.mkdir(parents=True, exist_ok=True)
@@ -308,6 +330,15 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="genera también los prospectos que no califican (por defecto se omiten)",
     )
+    parser.add_argument(
+        "--ai-copy",
+        action="store_true",
+        help=(
+            "varía con IA los slots 100% genéricos del template (nunca hechos del "
+            "negocio, ver gtm/factory/copy_ai.py) -- degrada a los defaults sin "
+            "ANTHROPIC_API_KEY o si la llamada falla"
+        ),
+    )
     args = parser.parse_args(argv)
 
     if not args.prospect and not args.all:
@@ -343,10 +374,22 @@ def main(argv: list[str] | None = None) -> int:
             prospects = [p for p in prospects if p.place_id in qualified]
             skipped_unqualified = before - len(prospects)
 
+    # Un pedido de IA por oficio, no por prospecto: la variedad que importa es
+    # entre rubros, no entre dos plomeros de la misma corrida -- y evita pagar
+    # una llamada extra por cada demo generada con --all.
+    copy_by_vertical: dict[str, dict[str, str] | None] = {}
+
     demos: list[Demo] = []
     for prospect in prospects:
         try:
-            demos.append(generate(prospect, author_name, author_url))
+            ai_copy = None
+            if args.ai_copy:
+                if prospect.vertical not in copy_by_vertical:
+                    copy_by_vertical[prospect.vertical] = generate_variant_copy(
+                        prospect.vertical, Language.EN
+                    )
+                ai_copy = copy_by_vertical[prospect.vertical]
+            demos.append(generate(prospect, author_name, author_url, ai_copy=ai_copy))
         except GenerationError as exc:
             _logger.warning(
                 "demo omitida",

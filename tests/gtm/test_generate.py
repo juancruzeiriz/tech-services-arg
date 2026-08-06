@@ -254,6 +254,65 @@ class TestFiltroDeCalificados:
         assert load_qualified_ids(str(scores)) == set()
 
 
+class TestAiCopy:
+    """`ai_copy` (gtm/factory/copy_ai.py) solo puede tocar los 5 slots 100%
+    genéricos -- nunca un hecho del negocio. Ver la regla dura en pipeline.md."""
+
+    def test_sobreescribe_los_slots_permitidos(self, prospect):
+        ai_copy = {
+            "cta_body": "Texto generado por IA.",
+            "trust_serving_label": "Cobertura",
+            "trust_fast_label": "Al toque",
+            "services_heading": "Lo que hacemos",
+            "reviews_heading": "Nos eligen",
+        }
+        markup = render(prospect, AUTHOR, AUTHOR_URL, ai_copy=ai_copy)
+        assert "Texto generado por IA." in markup
+        assert "Cobertura" in markup
+        assert "Al toque" in markup
+
+    def test_ignora_claves_fuera_de_los_slots_permitidos(self, prospect):
+        """Un dict de ai_copy con 'business_name' u otro hecho no puede
+        pisar el dato real del prospecto -- ni por bug, ni por un modelo
+        que decida devolver más claves de las pedidas."""
+        hostile = {"business_name": "Nombre Inventado", "phone": "000-0000"}
+        markup = render(prospect, AUTHOR, AUTHOR_URL, ai_copy=hostile)
+        assert html.escape(prospect.name) in markup
+        assert "Nombre Inventado" not in markup
+        assert prospect.phone in markup
+
+    def test_ai_copy_none_usa_los_defaults(self, prospect):
+        with_none = render(prospect, AUTHOR, AUTHOR_URL, ai_copy=None)
+        without_arg = render(prospect, AUTHOR, AUTHOR_URL)
+        assert with_none == without_arg
+
+    def test_slot_vacio_en_ai_copy_no_pisa_el_default(self, prospect):
+        default_markup = render(prospect, AUTHOR, AUTHOR_URL)
+        markup = render(prospect, AUTHOR, AUTHOR_URL, ai_copy={"cta_body": ""})
+        assert markup == default_markup
+
+    def test_escapa_html_del_copy_generado(self, prospect):
+        markup = render(
+            prospect, AUTHOR, AUTHOR_URL, ai_copy={"cta_body": '<script>alert(1)</script>'}
+        )
+        assert "<script>alert" not in markup
+        assert "&lt;script&gt;" in markup
+
+    def test_generate_acepta_ai_copy(self, prospect, tmp_path, monkeypatch):
+        from gtm.factory import config
+
+        monkeypatch.setattr(config, "DEMOS_DIR", tmp_path / "demos")
+        monkeypatch.setattr(config, "BUILD_DIR", tmp_path / "build")
+        monkeypatch.setattr(config, "DATA_DIR", tmp_path / "data")
+
+        demo = generate(
+            prospect, AUTHOR, AUTHOR_URL, ai_copy={"cta_body": "Copy custom."}
+        )
+        written = (tmp_path / "demos" / prospect.slug / "index.html").read_text(encoding="utf-8")
+        assert "Copy custom." in written
+        assert demo.slug == prospect.slug
+
+
 class TestArticuloEnLaDemo:
     def test_hvac_usa_an(self):
         hvac = Prospect(
