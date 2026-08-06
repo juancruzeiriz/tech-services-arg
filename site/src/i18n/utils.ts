@@ -11,6 +11,7 @@ export const defaultLang: Lang = "es";
  * en /en/services/. Cada página con URL propia entra acá. */
 export const routes = {
   services: { es: "servicios", en: "services" },
+  audit: { es: "revisar", en: "check" },
 } as const;
 
 const dict = { es, en } as const;

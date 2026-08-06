@@ -62,6 +62,29 @@
     "linkedin": "LinkedIn",
     "github": "GitHub"
   },
+  "audit": {
+    "title": "Revisá tu sitio, gratis",
+    "lead": "Pegá la URL de tu sitio. Uso las mismas herramientas públicas de Google (PageSpeed, datos reales de Chrome) que cualquiera puede abrir y comprobar con su propio número — no te pido que me creas nada.",
+    "placeholder": "https://tu-sitio.com",
+    "submit": "Revisar",
+    "loading": "Analizando — puede tardar hasta un minuto...",
+    "error": "No se pudo analizar el sitio. Revisá la URL e intentá de nuevo.",
+    "rateLimited": "Esperá unos segundos e intentá de nuevo.",
+    "scoreLabel": "Rendimiento móvil (Lighthouse)",
+    "findingsHeading": "Lo que encontré",
+    "emptyGood": "No encontré problemas en las métricas públicas que reviso acá. Buena señal — no es un análisis completo, pero es un buen punto de partida.",
+    "disclaimer": "Esta es una versión acotada, pública: mide solo lo que las APIs de Google exponen sin acceder al sitio. Si querés el detalle completo, es parte de la auditoría que hago antes de armar una propuesta."
+  },
+  "subscribe": {
+    "heading": "¿Te mando este informe por mail?",
+    "lead": "Y de paso, avisos ocasionales sobre lo que puedo hacer por tu negocio. Sin spam — te podés dar de baja cuando quieras.",
+    "emailPlaceholder": "tu@email.com",
+    "segmentBusiness": "Tengo un negocio",
+    "segmentDeveloper": "Busco un desarrollador",
+    "submit": "Suscribirme",
+    "success": "Listo — gracias por suscribirte.",
+    "error": "No se pudo guardar. Probá de nuevo en un rato."
+  },
   "footer": {
     "rights": "Todos los derechos reservados."
   },

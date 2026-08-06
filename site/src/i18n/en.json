@@ -62,6 +62,29 @@
     "linkedin": "LinkedIn",
     "github": "GitHub"
   },
+  "audit": {
+    "title": "Check your site, free",
+    "lead": "Paste your site's URL. I use the same public Google tools (PageSpeed, real Chrome field data) anyone can open and verify with their own number — you don't have to take my word for it.",
+    "placeholder": "https://your-site.com",
+    "submit": "Check it",
+    "loading": "Analysing — this can take up to a minute...",
+    "error": "Could not analyse the site. Check the URL and try again.",
+    "rateLimited": "Wait a few seconds and try again.",
+    "scoreLabel": "Mobile performance (Lighthouse)",
+    "findingsHeading": "What I found",
+    "emptyGood": "No issues found in the public metrics checked here. Good sign — not a full audit, but a solid starting point.",
+    "disclaimer": "This is a scoped, public version: it only measures what Google's APIs expose without accessing the site itself. If you want the full detail, it's part of the audit I run before putting together a proposal."
+  },
+  "subscribe": {
+    "heading": "Want this report by email?",
+    "lead": "And occasional updates on what I can do for your business. No spam — unsubscribe any time.",
+    "emailPlaceholder": "you@email.com",
+    "segmentBusiness": "I have a business",
+    "segmentDeveloper": "I'm looking for a developer",
+    "submit": "Subscribe",
+    "success": "Done — thanks for subscribing.",
+    "error": "Could not save. Try again in a bit."
+  },
   "footer": {
     "rights": "All rights reserved."
   },

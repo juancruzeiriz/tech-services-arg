@@ -1,0 +1,35 @@
+---
+import AuditChecker from "./AuditChecker.astro";
+import { getLangFromUrl, useTranslations } from "../i18n/utils";
+
+const lang = getLangFromUrl(Astro.url);
+const t = useTranslations(lang);
+const home = `/${lang}/`;
+---
+<section class="section audit-page">
+  <div class="section-inner">
+    <a class="back-home" href={home} data-magnetic>← {t("services.backHome")}</a>
+
+    <header class="section-head">
+      <h1 data-reveal>{t("audit.title")}</h1>
+      <p class="section-lead" data-reveal>{t("audit.lead")}</p>
+    </header>
+
+    <div data-reveal>
+      <AuditChecker />
+    </div>
+  </div>
+</section>
+
+<style>
+  .audit-page { padding-top: clamp(6rem, 14vh, 9rem); }
+
+  .back-home {
+    display: inline-block;
+    margin-bottom: 2rem;
+    color: var(--fg-muted);
+    text-decoration: none;
+    font-size: 0.9rem;
+  }
+  .back-home:hover { color: var(--fg); }
+</style>

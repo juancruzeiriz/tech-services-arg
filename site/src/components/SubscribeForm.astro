@@ -1,0 +1,146 @@
+---
+// Formulario de suscripción reusable -- hoy solo se usa embebido en
+// AuditChecker.astro, pero vive aparte para poder ponerlo en más de un
+// lugar sin duplicar el POST a /api/subscribe.
+//
+// Solo junta interés (POST a la Cloudflare Function, que solo INSERTA en
+// Postgres): no hay ningún envío de mail todavía, ni de confirmación ni de
+// campaña -- ver el docstring de site/functions/api/subscribe.js.
+import { getLangFromUrl, useTranslations } from "../i18n/utils";
+
+interface Props {
+  source?: string;
+}
+
+const { source = "" } = Astro.props;
+const lang = getLangFromUrl(Astro.url);
+const t = useTranslations(lang);
+---
+<div class="subscribe-form" data-subscribe-form data-source={source}>
+  <h3>{t("subscribe.heading")}</h3>
+  <p class="subscribe-lead">{t("subscribe.lead")}</p>
+
+  <form data-subscribe-form-el>
+    <input
+      type="email"
+      name="email"
+      required
+      placeholder={t("subscribe.emailPlaceholder")}
+      data-subscribe-email
+      aria-label={t("subscribe.emailPlaceholder")}
+    />
+    <fieldset class="subscribe-segment">
+      <label>
+        <input type="radio" name="segment" value="business_owner" checked />
+        {t("subscribe.segmentBusiness")}
+      </label>
+      <label>
+        <input type="radio" name="segment" value="developer" />
+        {t("subscribe.segmentDeveloper")}
+      </label>
+    </fieldset>
+    <button type="submit" class="btn btn-primary">{t("subscribe.submit")}</button>
+  </form>
+
+  <p
+    class="subscribe-status"
+    data-subscribe-status
+    data-success={t("subscribe.success")}
+    data-error={t("subscribe.error")}
+    role="status"
+    aria-live="polite"
+  ></p>
+</div>
+
+<style>
+  .subscribe-form {
+    margin-top: 2rem;
+    padding-top: 2rem;
+    border-top: 1px solid var(--border);
+  }
+  .subscribe-form h3 { font-size: var(--text-h3); margin: 0 0 0.5rem; }
+  .subscribe-lead { color: var(--fg-muted); margin: 0 0 1.25rem; max-width: 48ch; }
+
+  .subscribe-form form {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    align-items: center;
+  }
+  .subscribe-form input[type="email"] {
+    flex: 1 1 16rem;
+    padding: 0.75rem 1rem;
+    border-radius: 0.6rem;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--fg);
+    font: inherit;
+  }
+  .subscribe-form input[type="email"]:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+  }
+
+  .subscribe-segment {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+    border: none;
+    margin: 0;
+    padding: 0;
+    font-size: 0.9rem;
+    color: var(--fg-muted);
+  }
+  .subscribe-segment label { display: flex; align-items: center; gap: 0.4rem; cursor: pointer; }
+
+  .subscribe-status {
+    margin: 0.75rem 0 0;
+    font-size: 0.9rem;
+    min-height: 1.2em;
+  }
+  .subscribe-status[data-state="ok"] { color: var(--color-accent-alt, var(--color-accent)); }
+  .subscribe-status[data-state="error"] { color: var(--color-accent); }
+</style>
+
+<script>
+  function initSubscribeForms() {
+    document.querySelectorAll<HTMLElement>("[data-subscribe-form]").forEach((container) => {
+      const form = container.querySelector<HTMLFormElement>("[data-subscribe-form-el]");
+      const status = container.querySelector<HTMLElement>("[data-subscribe-status]");
+      const source = container.dataset.source || "";
+      if (!form || !status || form.dataset.bound === "true") return;
+      form.dataset.bound = "true";
+
+      form.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const emailInput = form.querySelector<HTMLInputElement>("[data-subscribe-email]");
+        const segmentInput = form.querySelector<HTMLInputElement>('input[name="segment"]:checked');
+        if (!emailInput || !segmentInput) return;
+
+        const submitBtn = form.querySelector<HTMLButtonElement>('button[type="submit"]');
+        if (submitBtn) submitBtn.disabled = true;
+        status.removeAttribute("data-state");
+        status.textContent = "";
+
+        try {
+          const response = await fetch("/api/subscribe", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email: emailInput.value, segment: segmentInput.value, source }),
+          });
+          if (!response.ok) throw new Error("request failed");
+          status.dataset.state = "ok";
+          status.textContent = status.dataset.success || "";
+          form.reset();
+        } catch {
+          status.dataset.state = "error";
+          status.textContent = status.dataset.error || "";
+        } finally {
+          if (submitBtn) submitBtn.disabled = false;
+        }
+      });
+    });
+  }
+
+  document.addEventListener("astro:page-load", initSubscribeForms);
+</script>

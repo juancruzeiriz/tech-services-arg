@@ -1,0 +1,208 @@
+---
+// Versión pública y acotada de gtm/factory/score.py -- pega una URL, llama a
+// site/functions/api/audit.js (Cloudflare Pages Function), y muestra los
+// hallazgos con el mismo copy de venta que gtm/factory/findings.py exporta
+// (ver gtm/factory/findings_export.py).
+//
+// Uso previsto (ver pipeline.md, objeción "ya tengo sitio web"): mostrarlo
+// EN LA LLAMADA con un prospecto, no como imán de tráfico frío -- no hay
+// nada en este sitio que lo promocione activamente todavía.
+import SubscribeForm from "./SubscribeForm.astro";
+import { getLangFromUrl, useTranslations } from "../i18n/utils";
+
+const lang = getLangFromUrl(Astro.url);
+const t = useTranslations(lang);
+---
+<section class="audit-checker" data-audit-checker data-lang={lang}>
+  <form data-audit-form>
+    <input
+      type="url"
+      name="url"
+      required
+      placeholder={t("audit.placeholder")}
+      data-audit-url
+      aria-label={t("audit.placeholder")}
+    />
+    <button type="submit" class="btn btn-primary">{t("audit.submit")}</button>
+  </form>
+
+  <p
+    class="audit-status"
+    data-audit-status
+    role="status"
+    aria-live="polite"
+    data-loading={t("audit.loading")}
+    data-error={t("audit.error")}
+    data-rate-limited={t("audit.rateLimited")}
+  ></p>
+
+  <div class="audit-results" data-audit-results hidden>
+    <p class="audit-score" data-audit-score></p>
+    <h3 data-audit-findings-heading>{t("audit.findingsHeading")}</h3>
+    <ul class="audit-findings" data-audit-findings-list></ul>
+    <p class="audit-empty" data-audit-empty hidden>{t("audit.emptyGood")}</p>
+    <p class="audit-disclaimer">{t("audit.disclaimer")}</p>
+
+    <div data-audit-subscribe hidden>
+      <SubscribeForm source="audit_page" />
+    </div>
+  </div>
+</section>
+
+<style>
+  .audit-checker { max-width: 42rem; }
+
+  .audit-checker form {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+  }
+  .audit-checker input[type="url"] {
+    flex: 1 1 18rem;
+    padding: 0.85rem 1.1rem;
+    border-radius: 0.6rem;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--fg);
+    font: inherit;
+  }
+  .audit-checker input[type="url"]:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+  }
+
+  .audit-status {
+    margin: 1rem 0 0;
+    color: var(--fg-muted);
+    font-size: 0.9rem;
+    min-height: 1.2em;
+  }
+  .audit-status[data-state="error"] { color: var(--color-accent); }
+
+  .audit-results { margin-top: 2rem; }
+  .audit-score {
+    font-size: var(--text-h3);
+    font-weight: 600;
+    margin: 0 0 1.5rem;
+  }
+  .audit-results h3 { font-size: 1.1rem; margin: 0 0 1rem; }
+
+  .audit-findings {
+    list-style: none;
+    margin: 0 0 1.5rem;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.9rem;
+  }
+  .audit-findings li {
+    border-left: 3px solid var(--color-accent);
+    padding: 0.1rem 0 0.1rem 1rem;
+    color: var(--fg);
+    font-size: 0.95rem;
+    line-height: 1.5;
+  }
+
+  .audit-empty { color: var(--fg-muted); }
+  .audit-disclaimer {
+    color: var(--fg-muted);
+    font-size: 0.82rem;
+    max-width: 56ch;
+    margin: 0;
+  }
+</style>
+
+<script>
+  interface AuditFinding {
+    code: string;
+    evidence: string;
+    severity: string;
+    sales_line_en: string;
+    sales_line_es: string;
+  }
+
+  interface AuditResponse {
+    url: string;
+    performance: number | null;
+    findings: AuditFinding[];
+    error?: string;
+  }
+
+  function initAuditChecker() {
+    const root = document.querySelector<HTMLElement>("[data-audit-checker]");
+    if (!root || root.dataset.bound === "true") return;
+    root.dataset.bound = "true";
+
+    const lang = root.dataset.lang === "en" ? "en" : "es";
+    const form = root.querySelector<HTMLFormElement>("[data-audit-form]");
+    const urlInput = root.querySelector<HTMLInputElement>("[data-audit-url]");
+    const status = root.querySelector<HTMLElement>("[data-audit-status]");
+    const results = root.querySelector<HTMLElement>("[data-audit-results]");
+    const scoreEl = root.querySelector<HTMLElement>("[data-audit-score]");
+    const list = root.querySelector<HTMLUListElement>("[data-audit-findings-list]");
+    const empty = root.querySelector<HTMLElement>("[data-audit-empty]");
+    const subscribeWrap = root.querySelector<HTMLElement>("[data-audit-subscribe]");
+    const findingsHeading = root.querySelector<HTMLElement>("[data-audit-findings-heading]");
+    if (!form || !urlInput || !status || !results || !scoreEl || !list || !empty || !subscribeWrap || !findingsHeading) {
+      return;
+    }
+
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const targetUrl = urlInput.value.trim();
+      if (!targetUrl) return;
+
+      results.hidden = true;
+      subscribeWrap.hidden = true;
+      status.removeAttribute("data-state");
+      status.textContent = status.dataset.loading || "";
+
+      const submitBtn = form.querySelector<HTMLButtonElement>('button[type="submit"]');
+      if (submitBtn) submitBtn.disabled = true;
+
+      try {
+        const response = await fetch(`/api/audit?url=${encodeURIComponent(targetUrl)}`);
+        if (response.status === 429) {
+          status.dataset.state = "error";
+          status.textContent = status.dataset.rateLimited || "";
+          return;
+        }
+        if (!response.ok) throw new Error("audit failed");
+        const data: AuditResponse = await response.json();
+        renderResults(data);
+        status.textContent = "";
+      } catch {
+        status.dataset.state = "error";
+        status.textContent = status.dataset.error || "";
+      } finally {
+        if (submitBtn) submitBtn.disabled = false;
+      }
+    });
+
+    function renderResults(data: AuditResponse) {
+      if (!scoreEl || !list || !empty || !results || !subscribeWrap || !findingsHeading) return;
+
+      scoreEl.textContent =
+        data.performance === null || data.performance === undefined
+          ? ""
+          : `${data.performance}/100`;
+      scoreEl.hidden = data.performance === null || data.performance === undefined;
+
+      list.innerHTML = "";
+      const findings = data.findings || [];
+      empty.hidden = findings.length > 0;
+      findingsHeading.hidden = findings.length === 0;
+
+      for (const finding of findings) {
+        const li = document.createElement("li");
+        li.textContent = lang === "en" ? finding.sales_line_en : finding.sales_line_es;
+        list.appendChild(li);
+      }
+
+      results.hidden = false;
+      subscribeWrap.hidden = false;
+    }
+  }
+
+  document.addEventListener("astro:page-load", initAuditChecker);
+</script>
