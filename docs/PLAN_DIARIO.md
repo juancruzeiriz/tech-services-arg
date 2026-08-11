@@ -47,8 +47,12 @@ calibrado".
   `600182d`). Los 20 metros sí cumplían la fórmula exacta. Hallazgo de la fórmula de
   metros: Houston y Phoenix quedan casi empatados (690k vs 675k) — la distancia entre
   #1 y #2 depende enteramente del multiplicador 1.5 de `mini_tcpa_risk`, un número
-  fijado a mano. Detalle completo en la ficha del Nodo 1 en `PROCESOS.md`. Par
-  oficio×metro para el resto del plan: pendiente de elegir.
+  fijado a mano. **Par elegido, con datos reales de un barrido de 539 negocios (15
+  oficios × 20 metros vía Places API), no del ranking original del catálogo:
+  `tree_service` (poda y tala de árboles) × Albuquerque, NM** — justificación completa
+  en la ficha del Nodo 1 en `PROCESOS.md`. Los oficios de mayor ticket del ranking
+  original (roofer, hvac, plumber) resultaron saturados de negocios ya digitalizados
+  en las 20 ciudades probadas (0-3% sin sitio propio) — el hallazgo central del día.
 
 - [x] **Día 4** (2026-08-11, Nodo 2) — `simulate` corrido sobre 5 pares con el mismo
   seed: reveló que `_PRESENCE_WEIGHTS` es global, no varía por oficio ni metro —

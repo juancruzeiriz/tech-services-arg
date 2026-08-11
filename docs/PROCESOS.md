@@ -282,6 +282,26 @@ mal acá invalida todo lo que sigue.
   la elección de metro #1 depende de cuánto se confíe en el multiplicador 1.5, que es
   un número fijado a mano, no medido.
 
+**Par elegido (2026-08-11): `tree_service` (poda y tala de árboles) × Albuquerque, NM.**
+
+1. Barrido real con `discover` sobre los 15 oficios × 20 metros del catálogo (539
+   negocios revisados vía Places API): `tree_service × Albuquerque` da el mayor "valor
+   esperado" (% sin sitio × ticket promedio) del catálogo junto con `tree_service ×
+   Miami` — 23,5% sin sitio propio sobre un ticket de 1.800 USD.
+2. Los oficios de mayor ticket "obvio" del ranking original (roofer, hvac, plumber,
+   pest_control) están saturados de negocios ya digitalizados en las 20 ciudades
+   probadas (0-3% sin sitio) — el ángulo de urgencia alta no compensa la ausencia casi
+   total de prospectos reales que cumplan el perfil de la oferta.
+3. Albuquerque no tiene `mini_tcpa_risk` (a diferencia de Miami, que sí), así que las
+   primeras llamadas no dependen de una ley estatal de telemarketing más estricta que
+   la exención B2B federal — una variable menos para el Día 9.
+4. Urgencia `medium` (una rama caída en la tormenta sí apura, una poda de rutina no) da
+   un ángulo de venta más natural que cercos o pintura, que quedaron muy cerca en el
+   ranking pero son compras 100% meditadas, sin ningún apuro que vender.
+5. La muestra real en Albuquerque es de 17 negocios, la más chica de las candidatas del
+   top — conviene confirmarla con una muestra mayor (Día 10) antes de comprometer el
+   guion de venta a este par, pero es el mejor punto de partida con los datos de hoy.
+
 ---
 
 ### 2. Discover
@@ -319,6 +339,42 @@ plata, le importa su reputación, y su web no está a la altura — no está pel
   los dos como si dieran lo mismo, y en una muestra real no dio lo mismo. Repetir
   con 3-4 metros medianos (ni el más grande ni el más chico del catálogo) antes de
   tratar cualquiera de los dos números como calibrado.
+- (2026-08-11) **Barrido completo, 15 oficios × 20 metros, 539 negocios reales
+  vía Places API.** Confirma y refina la hipótesis de arriba — no es solo el
+  tamaño del metro, es el oficio en sí. Agregado por oficio (suma de las 3
+  primeras ciudades probadas, `MIN_REVIEWS` bajado a 20):
+
+  | Oficio | Ticket | % sin sitio | Valor esperado (%×ticket) |
+  |---|---|---|---|
+  | Electricista | 750 | 10,1% | 76 |
+  | Cercos | 2.500 | 9,6% | 240 |
+  | Poda de árboles | 1.800 | 9,1% | 164 |
+  | Reparación de electrodomésticos | 325 | 7,2% | 23 |
+  | Remoción de escombros | 300 | 6,5% | 20 |
+  | Paisajismo | 900 | 6,4% | 58 |
+  | Pintor | 2.800 | 5,8% | 162 |
+  | Cerrajero | 200 | 4,9% | 10 |
+  | Mantenimiento de piletas | 450 | 3,7% | 17 |
+  | Puertas de garaje | 500 | 2,4% | 12 |
+  | Canaletas | 800 | 1,7% | 14 |
+  | HVAC | 2.434 | 1,1% | 27 |
+  | Techista, plomero, control de plagas | — | 0,0% | 0 |
+
+  Ampliado a los 20 metros completos para los 4 candidatos con mejor valor
+  esperado (cercos, poda de árboles, pintor, electricista — 68 negocios más
+  revisados). Top 3 combinaciones individuales oficio×metro (muestra ≥15):
+
+  | Oficio × metro | Muestra | % sin sitio | Valor esperado |
+  |---|---|---|---|
+  | Poda de árboles × Miami, FL | 21 | 23,8% | 429 |
+  | Poda de árboles × Albuquerque, NM | 17 | 23,5% | 424 |
+  | Cercos × Bakersfield, CA | 15 | 13,3% | 333 |
+
+  El electricista, pese a rankear alto en el agregado de 3 ciudades, resultó
+  volátil: 0% en Houston/Dallas/Vegas/Denver/Fresno/Orlando, pero 28-36% en
+  las ciudades fronterizas con más población hispana (El Paso, Laredo,
+  McAllen) — el agregado de 20 metros lo bajó a 65 de valor esperado, último
+  entre los 4 candidatos. Decisión del par final en la ficha del Nodo 1.
 
 **Bitácora** —
 
