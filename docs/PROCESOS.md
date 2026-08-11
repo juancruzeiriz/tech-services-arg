@@ -267,7 +267,20 @@ mal acá invalida todo lo que sigue.
 
 **Problemas conocidos** —
 
+- (2026-08-11) Tres entradas de `trades.yaml` (`pool_service`, `appliance_repair`,
+  `locksmith`) tenían el `rank` invertido respecto a la fórmula documentada en la
+  cabecera del archivo. No había ningún comentario que lo justificara ni ningún commit
+  posterior a la carga inicial que lo explicara — era un error de carga, no una
+  decisión de recurrencia no escrita. Corregido en `600182d`. Los 20 metros sí cumplían
+  la fórmula exacta.
+
 **Bitácora** —
+
+- (2026-08-11) Houston (score 690.000) y Phoenix (675.360) quedan casi empatados; lo
+  único que los separa es la penalización de `mini_tcpa_risk` de Texas. Sin esa
+  penalización Houston daría 1.035.000 y no habría contienda. Vale tenerlo presente:
+  la elección de metro #1 depende de cuánto se confíe en el multiplicador 1.5, que es
+  un número fijado a mano, no medido.
 
 ---
 
@@ -286,7 +299,36 @@ plata, le importa su reputación, y su web no está a la altura — no está pel
 
 **Problemas conocidos** —
 
+- (2026-08-11) `discover` real sobre `hvac × Houston, TX` con `limit=40`: de 39
+  calificados, **1 solo no tiene sitio (2,6%)**. `simulate.py` asume 20% `NONE` +
+  15% `SOCIAL_ONLY` = 35% sin sitio propio; la encuesta de Jobber citada en
+  `validation.md` dice 45-56%. Ninguno de los dos números se sostuvo con datos
+  reales en este metro — `_PRESENCE_WEIGHTS` de `simulate.py` está siendo muy
+  optimista para un metro grande y competitivo. Hipótesis: Houston tiene cadenas
+  nacionales y franquicias (John Moore Services, 1-800-PLUMBER, Aire Serv,
+  Service Experts) que saturan los primeros resultados por relevancia — todas ya
+  digitalizadas. El metro más grande del catálogo puede ser el peor lugar para
+  buscar el prospecto "sin sitio" que la oferta necesita.
+- (2026-08-11) Contraprueba en `locksmith × Laredo, TX` (el metro más chico y más
+  hispano del catálogo, sin filtro de reseñas/rating): solo **4 locksmiths en
+  total** en toda la búsqueda, 1 de 4 sin sitio (25%, más cerca de lo esperado,
+  pero n=4 no prueba nada por sí solo). Con `MIN_REVIEWS=50` estándar, **0
+  calificaban** — el filtro deja el metro entero sin prospectos.
+- Hipótesis falsable para seguir en el Día 10: el ratio de "sin sitio" depende más
+  del **tamaño/competitividad del metro** que del oficio — `simulate.py` trata a
+  los dos como si dieran lo mismo, y en una muestra real no dio lo mismo. Repetir
+  con 3-4 metros medianos (ni el más grande ni el más chico del catálogo) antes de
+  tratar cualquiera de los dos números como calibrado.
+
 **Bitácora** —
+
+- (2026-08-11) `simulate.py` usa `_PRESENCE_WEIGHTS` global, igual para cualquier
+  oficio y metro — confirmado corriendo el mismo `seed=42` en 5 pares distintos:
+  `locksmith×El Paso` y `pool_service×Tucson` dieron la distribución de presencia
+  web *idéntica* (6 sin sitio, 4 solo redes, 20 con sitio, de 30). El simulador no
+  modela ninguna diferencia real entre verticales o metros — sirve para ejercitar
+  el pipeline (su propósito declarado), no para estimar el ratio de calificación
+  real de un par específico. Para eso hace falta `discover` real, no `simulate`.
 
 ---
 

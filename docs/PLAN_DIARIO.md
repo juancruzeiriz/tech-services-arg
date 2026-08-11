@@ -41,15 +41,26 @@ calibrado".
   vivo a 375px (aparece, oculta los links de escritorio, funciona). No había nada que arreglar
   ahí.
 
-- [ ] **Día 3** (45 min, Nodo 1) — Leer `gtm/catalog/trades.yaml` y `metros.yaml` completos.
-  Reconstruir a mano las dos fórmulas de `rank` con 3 ejemplos del catálogo. Elegir 1 oficio × 1
-  metro y escribir en 5 renglones por qué ese y no el #2 del ranking. *Salida: par elegido, con
-  justificación escrita.*
+- [x] **Día 3** (2026-08-11, Nodo 1) — Reconstruidas a mano las dos fórmulas de `rank`.
+  Encontrada y corregida una discrepancia real: `pool_service`, `appliance_repair` y
+  `locksmith` tenían el rank invertido respecto a la fórmula documentada (fix en
+  `600182d`). Los 20 metros sí cumplían la fórmula exacta. Hallazgo de la fórmula de
+  metros: Houston y Phoenix quedan casi empatados (690k vs 675k) — la distancia entre
+  #1 y #2 depende enteramente del multiplicador 1.5 de `mini_tcpa_risk`, un número
+  fijado a mano. Detalle completo en la ficha del Nodo 1 en `PROCESOS.md`. Par
+  oficio×metro para el resto del plan: pendiente de elegir.
 
-- [ ] **Día 4** (45 min, Nodo 2) — Leer `gtm/factory/discover.py` completo. Correr `simulate`
-  con el par elegido, después `discover` real con `--limit 10`. Contar cuántos de los devueltos
-  califican y por qué filtro se cae cada uno de los descartados. *Salida: ratio de calificación
-  real, no supuesto.*
+- [x] **Día 4** (2026-08-11, Nodo 2) — `simulate` corrido sobre 5 pares con el mismo
+  seed: reveló que `_PRESENCE_WEIGHTS` es global, no varía por oficio ni metro —
+  `locksmith×El Paso` y `pool_service×Tucson` dieron la distribución de presencia web
+  *idéntica*. `simulate` no puede responder "ratio de calificación real" por diseño.
+  `discover` real sobre `hvac×Houston, TX` (limit=40): de 39 calificados, solo **1 sin
+  sitio (2,6%)** — muy por debajo del 35% que asume `simulate.py` y del 45-56% de
+  Jobber citado en `validation.md`. Contraprueba en `locksmith×Laredo, TX` (metro más
+  chico del catálogo): con `MIN_REVIEWS=50` estándar, **0 prospectos calificaban** —
+  el filtro deja el metro entero afuera. Hipótesis abierta para el Día 10: el ratio de
+  "sin sitio" depende más del tamaño/competitividad del metro que del oficio. Detalle
+  completo en la ficha del Nodo 2 en `PROCESOS.md`.
 
   > Verificado el pipeline en simulación en esta máquina: `simulate` → `generate --all` →
   > `deploy` → `contact --queue` corren sin errores (requiere `PYTHONPATH=$(pwd)`,
