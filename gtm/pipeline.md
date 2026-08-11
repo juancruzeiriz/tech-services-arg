@@ -193,8 +193,12 @@ honrado), mientras que GDPR exige consentimiento previo o interés legítimo dem
 El mismo pipeline que es legal en USA sería una infracción desde el primer email si se
 apuntara a Europa. Razonamiento completo en [`docs/WHY.md`](../docs/WHY.md#2-por-qué-estados-unidos).
 
-**WhatsApp no aplica.** En USA el canal es teléfono y SMS; además la Business API exige
-plantillas aprobadas y opt-in previo, así que el envío en frío es inviable.
+**WhatsApp no aplica _para prospectar_.** En USA el canal es teléfono y SMS; además la
+Business API exige plantillas aprobadas y opt-in previo, así que el envío en frío es
+inviable. Esto vale para el contacto en frío, que es de lo que trata este documento —
+**no** descarta WhatsApp como producto que se le instala a un cliente para que atienda
+a los suyos, donde el cliente final escribe primero y el opt-in se resuelve solo. Ese
+caso es distinto y está analizado en [`docs/WHATSAPP_BOT.md`](../docs/WHATSAPP_BOT.md).
 
 **Cobro desde USA.** Escrow al principio; después Stripe/Wise con 50% adelanto. Facturar
 con Factura E: exportación de servicios, sin IVA ni derechos de exportación, y no computa

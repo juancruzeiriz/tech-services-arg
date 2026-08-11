@@ -527,3 +527,5 @@ experimentos, y con el hash del commit como prueba de que fue antes de ver datos
 - [`docs/WHY.md`](WHY.md) — por qué home services, por qué USA
 - [`docs/CHANNELS.md`](CHANNELS.md) — por qué no hay WhatsApp/Telegram/SMS en frío
 - [`docs/PLAN_DIARIO.md`](PLAN_DIARIO.md) — las 20 sesiones para recorrer este mapa
+- [`docs/SERVICIOS_FUTUROS.md`](SERVICIOS_FUTUROS.md) — lo que todavía no existe, con plan de implementación
+- [`docs/WHATSAPP_BOT.md`](WHATSAPP_BOT.md) — WhatsApp como producto vendible (distinto de WhatsApp como canal de prospección)

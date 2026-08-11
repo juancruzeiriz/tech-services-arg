@@ -72,6 +72,13 @@ del proyecto mencionaba WhatsApp, Google Maps administrado o un sistema de
 cobros propio: ninguno de los tres está en el paquete actual (ver
 [`offers/website-call-capture.md`](offers/website-call-capture.md)).
 
+Ojo con el alcance de esa decisión: descarta WhatsApp **como canal de prospección
+en frío**, no como producto vendible. Un bot que atiende a los clientes *del*
+cliente es el caso inverso —el cliente final escribe primero, la ventana de
+servicio se abre sola y los mensajes de respuesta no se cobran— y se analiza
+aparte en [`docs/WHATSAPP_BOT.md`](../docs/WHATSAPP_BOT.md). No está en el paquete
+actual y no entra al experimento pre-registrado, pero no está descartado.
+
 ## Qué NO responde esta investigación
 
 Si tu redacción, tu precio o tu metro/oficio elegido convierten. Eso solo lo mide
