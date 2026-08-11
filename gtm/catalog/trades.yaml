@@ -321,7 +321,7 @@
   article_en: "a"
   avg_ticket_usd: 450    # estimado, recurrente
   urgency: low
-  rank: 12
+  rank: 14
   services_en:
     - {title: "Weekly service", body: "Chemicals balanced, skimmed, filter checked."}
     - {title: "Equipment repair", body: "Pumps, heaters and filters fixed, not replaced by default."}
@@ -348,7 +348,7 @@
   article_en: "an"
   avg_ticket_usd: 325    # estimado
   urgency: medium         # heladera rota apremia, secarropas no tanto
-  rank: 13
+  rank: 12
   services_en:
     - {title: "Refrigerator repair", body: "Diagnosed same-day before the food spoils."}
     - {title: "Washer & dryer", body: "Most repairs done in a single visit."}
@@ -375,7 +375,7 @@
   article_en: "a"
   avg_ticket_usd: 200    # estimado
   urgency: high           # quedarse afuera es la definición de urgente
-  rank: 14
+  rank: 13
   services_en:
     - {title: "Lockout service", body: "Locked out of your home, car or business, fast."}
     - {title: "Rekeying", body: "New key control without replacing the whole lock."}
