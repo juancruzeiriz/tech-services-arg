@@ -503,7 +503,45 @@ vertical no está en catálogo.
 
 **Problemas conocidos** —
 
+- (2026-08-11) **El bloque "What we do" (las 4 tarjetas de servicios) es byte-por-byte
+  idéntico entre cualquier par de prospectos del mismo oficio**, confirmado con `diff` real
+  sobre las 8 demos generadas de `tree_service × Albuquerque`: título y cuerpo de las 4
+  tarjetas ("Emergency removal / Storm-damaged and fallen trees, cleared fast.", etc.) no
+  cambian ni un carácter entre Davids Tree Removal, Legacy Tree Company, Treepros y las otras
+  5 — lo único que varía en todo el HTML es nombre, teléfono, dirección, rating y conteo de
+  reseñas. `--ai-copy` (`copy_ai.py`) **no toca este bloque**: solo varía 5 slots 100%
+  genéricos (`cta_body`, `trust_serving_label`, `trust_fast_label`, `services_heading`,
+  `reviews_heading`), nunca `services_html`, que sale fijo de `trade.services()` en
+  `trades.yaml`. Es el bloque con más texto de la página y el más fácil de comparar
+  lado a lado o de buscar en Google con una frase exacta ("Storm-damaged and fallen trees,
+  cleared fast" + nombre de otro negocio) — si eso pasa, la demo deja de ser "tu sitio hecho
+  a medida" para ser evidencia de que es una plantilla. Hipótesis falsable para el Día 13:
+  si se le muestran 2 demos del mismo oficio a alguien ajeno al proyecto, reconoce el patrón
+  en el bloque de servicios en menos de lo que tarda en leerlo — probarlo con una persona
+  real antes de asumir que `--ai-copy` (que ya existe pero no cubre esto) alcanza.
+
 **Bitácora** —
+
+- (2026-08-11) Corrido el pipeline real hasta acá (`discover` → `score` → `generate --all`)
+  sobre `tree_service × Albuquerque, NM`: 8/9 calificados, 8 demos generadas. Servidas
+  localmente (`.claude/launch.json`, config `demos`, `python -m http.server`) para abrirlas
+  de verdad en vez de solo leer el código. Cada demo es un único archivo HTML autocontenido
+  de ~5,3 KB, **cero requests externos** (confirmado con `read_network_requests`: una sola
+  entrada, la del propio HTML) — carga instantánea en el sentido literal: no hay nada que
+  esperar más allá de la latencia de red hasta donde se hostee. Notas de 3 renglones por
+  demo, viewport móvil (375×812):
+  - **Davids Tree Removal (sin sitio propio, pain=100)** — la demo es la primera presencia
+    digital real de este negocio. Botón de llamar arriba de todo, teléfono tocable, reseñas
+    reales (78, 5★). Para este caso el "es plantilla" importa poco: no hay nada previo con
+    qué compararla, y es estrictamente mejor que no tener nada.
+  - **Legacy Tree Company (ya tiene sitio propio profesional, pain=62)** — acá sí importa:
+    esta demo compite contra un sitio real con 903 reseñas y personal certificado. El
+    contenido de servicios es genérico donde el sitio real de este negocio es específico
+    (arboristas certificados ISA, equipo con nombre y foto) — la demo gana en velocidad
+    móvil pura, pero pierde en especificidad si el dueño la compara con lo que ya tiene.
+  - **Treepros LLC (al borde del corte, pain=50)** — el caso más favorable para la demo:
+    el sitio real de este negocio no tiene teléfono tocable ni HTTPS (hallazgos confirmados
+    a mano en el Día 5); la demo sí tiene ambos. Acá la comparación es claramente a favor.
 
 ---
 
@@ -522,6 +560,14 @@ directamente el email — es una regla dura, no una convención.
 **Problemas conocidos** —
 
 **Bitácora** —
+
+- (2026-08-11) `deploy --dry-run` corrido de verdad sobre las 8 demos del Nodo 5: se comporta
+  exactamente como documenta el código (calcula URLs, no copia nada a `gtm/public/`, no
+  escribe el índice). `GTM_DEMO_BASE_URL` en `.env.personal` sigue siendo el placeholder
+  `https://demo.example.com` — no es un bug, pero es el dato pendiente antes de un deploy
+  real: hoy no hay ningún hosting de demos configurado, distinto de `tech-services-arg.pages.dev`
+  (el portfolio) y del proyecto de Cloudflare Pages de las demos que sí existe en
+  `cloudflare/README.md` pero cuyo dominio real no está anotado acá.
 
 ---
 

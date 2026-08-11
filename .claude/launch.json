@@ -12,6 +12,12 @@
       "runtimeExecutable": "C:/Users/Juan/AppData/Local/node-portable/node-v24.19.0-win-x64/node.exe",
       "runtimeArgs": ["D:/workspace/tech-services-arg/site/node_modules/astro/astro.js", "dev", "--root", "D:/workspace/tech-services-arg/site", "--port", "4321", "--host"],
       "port": 4321
+    },
+    {
+      "name": "demos",
+      "runtimeExecutable": "D:/workspace/tech-services-arg/venv/Scripts/python.exe",
+      "runtimeArgs": ["-m", "http.server", "8899", "--directory", "D:/workspace/tech-services-arg/gtm/build/demos"],
+      "port": 8899
     }
   ]
 }

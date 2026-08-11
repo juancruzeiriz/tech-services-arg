@@ -87,9 +87,17 @@ calibrado".
   a ojo, 1 de acuerdo claro, 1 donde mi propio chequeo a mano encontró el bug del punto (2).
   Detalle completo, con las tres comparaciones, en la ficha del Nodo 3 en `PROCESOS.md`.
 
-- [ ] **Día 6** (45 min, Nodos 5+6) — `generate --all` + `deploy --dry-run`. Abrir 3 demos en el
-  celular. Cronometrar cuánto tardan en cargar y en cuántos segundos se nota que es plantilla.
-  *Salida: nota de 3 renglones por demo.*
+- [x] **Día 6** (2026-08-11, Nodos 5+6) — Corrido `generate --all` + `deploy --dry-run` sobre
+  los 8 calificados de `tree_service × Albuquerque, NM`, servidas localmente para abrirlas de
+  verdad (viewport móvil). Carga: instantánea, cada demo es un único HTML autocontenido de
+  ~5,3 KB, cero requests externos (confirmado con la pestaña de red). Hallazgo real, no
+  solo impresión a ojo: **el bloque "What we do" es byte-por-byte idéntico entre cualquier
+  par de prospectos del mismo oficio** (confirmado con `diff` sobre las 8 demos) — y
+  `--ai-copy` no lo cubre, solo varía 5 slots secundarios (CTA, labels, encabezados), nunca
+  las 4 tarjetas de servicio. Es el bloque más largo de la página y el más fácil de reconocer
+  como plantilla en una comparación lado a lado. Notas de 3 renglones por demo (una sin sitio
+  propio, una que compite contra un sitio real bueno, una que compite contra uno malo) en la
+  ficha del Nodo 5 en `PROCESOS.md`.
 
 - [ ] **Día 7** (45 min, Nodos 7+8+9) — `contact --queue`. Leer la cola completa. Leer el guion
   de llamada **en voz alta** y el email generado completo. *Salida: marcas en el texto de lo que
