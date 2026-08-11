@@ -12,7 +12,10 @@
 // URL que se envía, antes de que el prospecto llegue a ver el HTML.
 //
 // Variables de entorno (Cloudflare Pages > Settings > Environment variables):
-//   SUPABASE_URL         https://<project-ref>.supabase.co
+//   SUPABASE_URL         https://<project-ref>.supabase.co -- el origin
+//                        pelado, SIN /rest/v1 (restBase() abajo tolera que
+//                        igual venga con /rest/v1 pegado, pero no lo asumas
+//                        al cargar la variable).
 //   SUPABASE_ANON_KEY    la anon key PÚBLICA del proyecto -- nunca la
 //                        service_role key: esto corre en el edge, visible
 //                        para cualquiera que inspeccione el tráfico.
@@ -30,7 +33,7 @@ export async function onRequestGet(context) {
     return new Response("Not found", { status: 404 });
   }
 
-  const supabaseUrl = env.SUPABASE_URL;
+  const supabaseUrl = restBase(env.SUPABASE_URL);
   const anonKey = env.SUPABASE_ANON_KEY;
   if (!supabaseUrl || !anonKey) {
     // Sin config no se puede resolver el token, pero un error de configuración
@@ -49,6 +52,20 @@ export async function onRequestGet(context) {
 
   const destination = new URL(`/${link.demo_slug}/`, request.url);
   return Response.redirect(destination.toString(), 302);
+}
+
+// Tolera que SUPABASE_URL venga como el origin pelado (formato correcto,
+// documentado más arriba) o con `/rest/v1` ya pegado y/o una barra final --
+// mismo bug encontrado y corregido en site/functions/api/subscribe.js.
+// Devuelve `null` si el valor no es una URL válida.
+function restBase(rawUrl) {
+  if (!rawUrl) return null;
+  try {
+    const url = new URL(rawUrl);
+    return `${url.protocol}//${url.host}`;
+  } catch {
+    return null;
+  }
 }
 
 async function lookupLink(supabaseUrl, anonKey, token) {
