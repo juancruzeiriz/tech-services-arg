@@ -62,10 +62,10 @@ def _category_score(lighthouse: dict[str, Any], category: str) -> int | None:
 def _audit_failed(lighthouse: dict[str, Any], audit_id: str) -> bool:
     """True si Lighthouse corrió esta auditoría puntual y dio mal (score < 1).
 
-    `tap-targets` y `font-size` son señales que la propia forensics.py NO
-    puede medir desde el HTML crudo (dependen del layout ya renderizado) —
-    por eso viven acá y no ahí, aunque ambas terminan como el mismo tipo de
-    Finding con evidencia citable.
+    `target-size` es una señal que la propia forensics.py NO puede medir
+    desde el HTML crudo (depende del layout ya renderizado) — por eso vive
+    acá y no ahí, aunque termina como el mismo tipo de Finding con evidencia
+    citable que las de forensics.py.
     """
     raw = lighthouse.get("audits", {}).get(audit_id, {}).get("score")
     return raw is not None and float(raw) < 1.0
@@ -106,10 +106,17 @@ async def score_website(
 
     performance = _category_score(lighthouse, "performance")
     audits = lighthouse.get("audits", {})
-    viewport = audits.get("viewport", {}).get("score")
+    # "viewport" y "tap-targets" son los IDs que Lighthouse usaba hasta 2025;
+    # PageSpeed Insights los renombró a "meta-viewport" y "target-size" (
+    # confirmado en vivo el 2026-08-11 contra la API real: los IDs viejos ya
+    # no aparecen en la respuesta, así que `_audit_failed`/este `.get()` con
+    # el nombre viejo devolvía siempre "sin señal" y `mobile` quedaba en 0
+    # para absolutamente todos los sitios, sin que ningún test lo detectara
+    # porque todos mockean `score_website` entero — ver test_score.py).
+    viewport = audits.get("meta-viewport", {}).get("score")
 
     lab_findings: list[Finding] = []
-    if _audit_failed(lighthouse, "tap-targets"):
+    if _audit_failed(lighthouse, "target-size"):
         lab_findings.append(
             Finding(
                 code="tap_targets",
@@ -117,14 +124,12 @@ async def score_website(
                 weight=FINDINGS["tap_targets"].weight,
             )
         )
-    if _audit_failed(lighthouse, "font-size"):
-        lab_findings.append(
-            Finding(
-                code="tiny_font",
-                evidence="texto por debajo del tamaño legible en celular",
-                weight=FINDINGS["tiny_font"].weight,
-            )
-        )
+    # "font-size" (texto ilegible en celular) no tiene reemplazo: Lighthouse
+    # lo sacó de la API sin dejar un ID sucesor (confirmado el 2026-08-11
+    # contra la lista completa de audits de una respuesta real). El Finding
+    # `tiny_font` sigue existiendo en findings.py porque el concepto de venta
+    # sigue siendo válido, pero hoy no hay forma de detectarlo automático —
+    # si Google reintroduce la señal bajo otro ID, reactivar acá.
 
     return PainScore(
         place_id="",  # lo completa score_prospect

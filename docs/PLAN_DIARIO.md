@@ -73,9 +73,19 @@ calibrado".
   > `--no-probe` — las URLs simuladas no responden de verdad, así que sin esa flag todo cae a
   > "no se ubicó formulario" en vez de detectar el formulario real.
 
-- [ ] **Día 5** (60 min, Nodos 3+4) — Leer `score.py` y `PainScore.score` en `types.py` línea por
-  línea. Correr `score` sobre los 10 del día 4. Mirar `sub_scores` de cada uno. Recién después,
-  abrir 3 de esos sitios a mano en el celular. *Salida: comparación score-vs-juicio en 3 casos.*
+- [x] **Día 5** (2026-08-11, Nodos 3+4) — Corrido `score` real sobre los 10 prospectos de
+  `tree_service × Albuquerque, NM`. Encontrados y corregidos **dos bugs de producción** al leer
+  `sub_scores` línea por línea: (1) `score_website` buscaba audits de Lighthouse por IDs que
+  Google renombró (`viewport`/`tap-targets`/`font-size`) — la dimensión `mobile`, el peso más
+  alto del score, daba 0 de dolor en el 100% de los sitios puntuados en la sesión, sin que
+  ningún test lo detectara (todos mockean `score_website` entero). (2) `probe_url_async`
+  trataba cualquier 4xx como "reachable" — un prospecto con el sitio 404 de verdad se puntuó
+  como si no tuviera ningún problema (9/100) en vez del máximo dolor posible. Impacto medido:
+  calificados sobre los mismos 10 pasó de 2/10 a 6/10. Agregados `tests/gtm/test_score.py` y
+  `tests/gtm/test_net.py`, que antes no existían. Comparación score-vs-juicio en 3 casos reales
+  (abiertos en el navegador, no en un celular físico): 1 caso donde el score corrigió mi lectura
+  a ojo, 1 de acuerdo claro, 1 donde mi propio chequeo a mano encontró el bug del punto (2).
+  Detalle completo, con las tres comparaciones, en la ficha del Nodo 3 en `PROCESOS.md`.
 
 - [ ] **Día 6** (45 min, Nodos 5+6) — `generate --all` + `deploy --dry-run`. Abrir 3 demos en el
   celular. Cronometrar cuánto tardan en cargar y en cuántos segundos se nota que es plantilla.

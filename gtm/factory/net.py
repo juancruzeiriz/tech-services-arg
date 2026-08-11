@@ -208,7 +208,7 @@ async def probe_url_async(client: httpx.AsyncClient, url: str) -> bool:
     """Como `probe_url`, sin reintentos: "no responde" es el dato que buscamos."""
     try:
         response = await client.get(url)
-        return response.status_code < 500
+        return response.status_code < 400
     except httpx.HTTPError:
         return False
 
@@ -246,7 +246,17 @@ def fetch_text(url: str, timeout: float = DEFAULT_TIMEOUT_SECONDS) -> tuple[str,
 
 
 def probe_url(url: str, timeout: float = DEFAULT_TIMEOUT_SECONDS) -> bool:
-    """Devuelve True si la URL responde algo que no sea un error de servidor.
+    """Devuelve True si la URL responde 2xx/3xx -- una página que existe de verdad.
+
+    Antes el corte era "< 500" (cualquier error de cliente contaba como
+    "reachable"): un sitio real que devuelve 404 -- probado el 2026-08-11 con
+    un prospecto real (`leos-tree-service.com`, caído de verdad, confirmado
+    con curl sin importar el User-Agent) -- pasaba igual a `score_website`, y
+    PageSpeed le devolvió un puntaje casi perfecto (probablemente de una
+    corrida cacheada de cuando el sitio sí andaba), maquillando lo que
+    debería ser el mejor ángulo de venta posible ("tu sitio ni siquiera
+    carga") como un negocio sin dolor digital. Un 404 es tan roto como un
+    500 para quien intenta llamar a ese negocio desde el buscador.
 
     Sin reintentos a propósito: acá "no responde" no es un fallo del pipeline, es
     justamente el dato que queremos medir (y el mejor ángulo de venta que existe).
@@ -254,6 +264,6 @@ def probe_url(url: str, timeout: float = DEFAULT_TIMEOUT_SECONDS) -> bool:
     try:
         with httpx.Client(timeout=timeout, follow_redirects=True) as client:
             response = client.get(url)
-        return response.status_code < 500
+        return response.status_code < 400
     except httpx.HTTPError:
         return False

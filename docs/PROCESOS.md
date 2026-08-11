@@ -395,10 +395,11 @@ plata, le importa su reputación, y su web no está a la altura — no está pel
 
 **Cómo** — `gtm/factory/score.py::score_prospect` orquesta PageSpeed Insights (Lighthouse
 mobile), CrUX (datos de campo reales), forensics sobre el HTML crudo y última fecha de cambio
-real (Wayback CDX). `PainScore.score` en `types.py` combina 5 dimensiones (conversion 2.0,
-speed 1.5, mobile 1.5, seo 1.0, modernity 0.8) con **OR ruidoso** por dimensión — dos hallazgos
-en la misma dimensión duelen más que uno solo, nunca se promedian entre sí. Sin sitio = 100
-automático. Sitio caído = 95. `is_qualified` corta en `score >= 45`.
+real (Wayback CDX). `PainScore.score` en `types.py` combina 5 dimensiones (mobile 2.0,
+conversion 2.0, speed 1.0, seo 1.0, modernity 0.8 — corregido acá el 2026-08-11, la ficha decía
+"speed 1.5, mobile 1.5", desactualizado respecto a `_DIMENSION_WEIGHTS`) con **OR ruidoso** por
+dimensión — dos hallazgos en la misma dimensión duelen más que uno solo, nunca se promedian
+entre sí. Sin sitio = 100 automático. Sitio caído = 95. `is_qualified` corta en `score >= 45`.
 
 **Para qué** — Es el filtro que decide en qué prospecto vale la pena gastar el costo (bajo pero
 no cero) de generar una demo. Sin esto, se generarían demos parejo para negocios que ya tienen
@@ -409,7 +410,58 @@ arriba que determinan qué llega a puntuarse.
 
 **Problemas conocidos** —
 
+- (2026-08-11, **corregido**) `score_website` buscaba los audits de Lighthouse por sus IDs
+  viejos (`viewport`, `tap-targets`, `font-size`), que Google renombró/retiró de PageSpeed
+  Insights en algún momento antes de esta fecha. Confirmado en vivo contra la API real: esos
+  tres IDs ya no aparecen en la respuesta, así que `mobile_friendly` quedaba siempre en `None`
+  y el hallazgo `tap_targets` nunca se disparaba — la dimensión `mobile` (el peso más alto del
+  score, 2.0) daba **0 de dolor en el 100% de los 90+ sitios reales puntuados** en esta sesión,
+  sin que ningún test lo notara: los únicos tests de `score_prospect`/`score_all` mockean
+  `score_website` entero, así que el parseo real del payload de Lighthouse no tenía cobertura.
+  Fix: `viewport`→`meta-viewport`, `tap-targets`→`target-size`; `font-size` no tiene sucesor
+  (Lighthouse lo sacó de la API sin reemplazo) y quedó deshabilitado con comentario. Agregado
+  `tests/gtm/test_score.py`, que antes no existía. Impacto medido sobre los mismos 10
+  prospectos reales de Albuquerque: calificados (`score >= 45`) pasó de 2/10 a 6/10.
+- (2026-08-11, **corregido**) `probe_url_async`/`probe_url` trataban cualquier status
+  `< 500` como "reachable", incluido 404. Un prospecto real (`leos-tree-service.com`) tiene
+  el sitio caído de verdad (404 confirmado con `curl`, sin importar el User-Agent), pero
+  pasaba el probe igual y se mandaba a puntuar con PageSpeed, que devolvió un puntaje casi
+  perfecto (probablemente una corrida cacheada de cuando el sitio sí andaba) — el negocio
+  quedó puntuado en 9/100 (sin dolor) cuando la realidad es la mejor línea de venta posible
+  ("tu sitio ni siquiera carga"). Fix: el corte pasa a `< 400`. Mismo prospecto, con el fix:
+  95/100, `is_qualified=True`. Agregado `tests/gtm/test_net.py`, que antes no existía.
+- **Límite conocido, no arreglado a propósito**: con el fix de arriba, un sitio real y
+  funcional (`bacastrees.com`, verificado con `curl` normal: 200 tras dos redirects) también
+  cae en "no reachable" porque el sitio bloquea al cliente HTTP del pipeline — probado con
+  el User-Agent propio y con uno de navegador real, ambos reciben 403 sin redirigir, lo que
+  sugiere bloqueo por fingerprint TLS/HTTP más que por el header. Imitar el fingerprint de un
+  navegador real para evadir esto no se hace: `net.py` ya documenta la decisión de
+  identificarse en vez de disfrazarse. Consecuencia práctica: un `reachable=False` es una
+  señal fuerte, no una certeza — antes de usar "tu sitio no carga" como línea de venta en una
+  llamada real, conviene un chequeo humano rápido. Relevante para el Día 12 (¿la línea de
+  venta del hallazgo más grave suena natural?) y el Día 14 (tasa de `UNREACHABLE`).
+
 **Bitácora** —
+
+- (2026-08-11) **Comparación score-vs-juicio propio, 3 casos reales** (poda de árboles ×
+  Albuquerque, con los dos fixes de arriba ya aplicados):
+  - **Legacy Tree Company (score 65, calificado)** — mi lectura del contenido a ojo: sitio
+    con pinta profesional, 908 reseñas a 4.9★, personal certificado, teléfono tocable, CTAs
+    claros. A ojo yo lo hubiera descartado (pain bajo, ~15-25). El score tenía razón y yo no:
+    Lighthouse mobile mide `performance=32/100` (rendimiento real, no apariencia) y
+    `target-size` reprobado (botones muy juntos) — dos problemas técnicos invisibles leyendo
+    el contenido, que "verse profesional" no compensa en un celular real.
+  - **Treepros LLC (score 46-47, al borde del corte)** — acá coincidimos: mirando la página
+    a mano no encontré ningún link `tel:` entre los elementos interactivos (confirma
+    `no_tel_link` a ojo), más URL sin HTTPS. Caso de acuerdo claro entre algoritmo y ojo.
+  - **Leo's Tree Service (score 9→95 con el fix)** — el caso que encontró el bug de arriba:
+    mi propio chequeo a mano (la página literalmente dice "404 - Page not found") es lo que
+    disparó la investigación que llevó al fix de `probe_url_async`. Acá el juicio humano
+    encontró lo que el algoritmo (antes del fix) se perdía.
+  - Conclusión del ejercicio: en 1 de 3 casos el score corrige al ojo (mide algo que no se ve
+    a simple vista), en 1 de 3 coinciden, y en 1 de 3 el ojo encontró un bug real del score.
+    Ninguno de los tres es "el score siempre tiene razón" ni "el ojo siempre tiene razón" —
+    exactamente por eso vale la pena seguir haciendo este ejercicio en más casos.
 
 ---
 
