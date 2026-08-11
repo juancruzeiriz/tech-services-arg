@@ -6,12 +6,11 @@ porque el proyecto de Pages del portfolio tiene su **root directory** en
 `site/` — Cloudflare detecta `functions/` como sibling de `dist/` y las
 publica automáticamente al desplegar, sin config adicional.
 
-**Estado actual: código listo, no desplegado.** `juancruzeiriz.com` todavía
-se sirve desde GitHub Pages (`.github/workflows/site.yml`), que es estático
-puro y no puede ejecutar ninguna de las dos Functions. Migrar el proyecto a
-Cloudflare Pages (crear el proyecto, apuntar el root directory a `site/`,
-mover el DNS) es un paso manual pendiente — hasta que pase, `/api/audit` y
-`/api/subscribe` no responden en producción.
+**Estado actual: desplegado y en producción.** El proyecto de Cloudflare
+Pages (`tech-services-arg.pages.dev`) se redespliega solo con cada push a
+`main`; `juancruzeiriz.com` apunta ahí vía *Custom domains* (ver
+`docs/PROCESOS.md`). GitHub Pages está apagado. `/api/audit` y
+`/api/subscribe` responden en producción.
 
 ## `functions/api/audit.js` — GET /api/audit?url=
 
@@ -54,8 +53,16 @@ Variables de entorno:
 
 | Variable | Nota |
 |---|---|
-| `SUPABASE_URL` | `https://<project-ref>.supabase.co` |
+| `SUPABASE_URL` | `https://<project-ref>.supabase.co` — el origin pelado, **sin** `/rest/v1`. Un valor con `/rest/v1` ya pegado produce un 404 silencioso de PostgREST (`restBase()` en el código lo tolera, pero cargalo bien igual) |
 | `SUPABASE_ANON_KEY` | la anon key **pública**, nunca la `service_role` |
+
+**Nota sobre `Prefer` en `subscribe.js`:** el insert a `subscribers` no manda
+`resolution=ignore-duplicates`, a propósito — esa preferencia genera un
+`ON CONFLICT DO NOTHING`, y como la tabla solo tiene policy de `INSERT` (sin
+`SELECT`), Postgres no puede resolver el conflicto y rechaza el insert entero
+con `42501`, no solo con emails duplicados. Un email repetido revienta la
+unicidad del índice y vuelve como 409 normal, que el código ya trata como
+éxito.
 
 ## Antes del primer deploy
 

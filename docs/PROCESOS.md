@@ -187,8 +187,11 @@ durante la Fase B del [plan diario](PLAN_DIARIO.md), con hipótesis falsables, n
 **Qué** — El sitio propio (juancruzeiriz.com) y el perfil que un prospecto encuentra si te
 googlea antes de contestar.
 
-**Cómo** — Astro estático, `site/src/`. Deploy a GitHub Pages vía Actions, dominio propio con
-HTTPS en Cloudflare (DNS only, no proxied).
+**Cómo** — Astro estático, `site/src/`. Deploy a Cloudflare Pages
+(`tech-services-arg.pages.dev`), redeploy automático con cada push a `main` —
+ya no hay workflow de GitHub Actions para esto. El dominio propio
+(`juancruzeiriz.com`) se corta a Cloudflare (*Custom domains* del proyecto,
+DNS proxied) — ver el estado del corte antes de asumirlo terminado.
 
 **Para qué** — Es el mecanismo #5 de "resolver la falta de marca" en `pipeline.md`: presencia
 verificable. Sin esto, el prospecto que googlea antes de responder no encuentra nada y el

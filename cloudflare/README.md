@@ -10,13 +10,12 @@ no tiene que poder afectar al otro.
 | Demos de prospección | `gtm/public/` (generado por `gtm/factory/deploy.py`) | `cloudflare/functions/` — descrito abajo |
 | Portfolio (`juancruzeiriz.com`) | `site/dist/` (generado por `astro build`) | `site/functions/` — ver `site/functions/README.md` |
 
-El portfolio **todavía se sirve desde GitHub Pages** (`.github/workflows/site.yml`,
-estático puro). Migrar ese proyecto a Cloudflare Pages es un paso manual
-pendiente -- crear el proyecto en el dashboard de Cloudflare, apuntar el
-root directory a `site/`, mover el DNS, y recién ahí `site/functions/`
-empieza a servir de verdad. Hasta que eso pase, `/api/audit` y
-`/api/subscribe` existen como código pero no están desplegados en ningún
-lado.
+El portfolio ya está migrado a Cloudflare Pages (`tech-services-arg.pages.dev`,
+redeploy automático con cada push a `main`); `site/functions/` sirve de
+verdad y `/api/audit`, `/api/subscribe` responden en producción. El dominio
+propio (`juancruzeiriz.com`) apunta a Cloudflare vía *Custom domains* del
+proyecto — ver `docs/PROCESOS.md` para el estado del DNS. `.github/workflows/`
+ya no tiene ningún workflow de deploy (GitHub Pages se apagó).
 
 ## Demos de prospección
 
@@ -39,7 +38,7 @@ variables**:
 
 | Variable | Valor | Nota |
 |---|---|---|
-| `SUPABASE_URL` | `https://<project-ref>.supabase.co` | El REST endpoint del proyecto |
+| `SUPABASE_URL` | `https://<project-ref>.supabase.co` | El origin pelado, **sin** `/rest/v1` — la Function lo concatena ella misma. Un valor con `/rest/v1` ya pegado (fácil de copiar así del dashboard de Supabase) produce un 404 silencioso; `restBase()` en el código lo tolera igual, pero no vale la pena depender de eso |
 | `SUPABASE_ANON_KEY` | la anon key **pública** | Nunca la `service_role` key acá — esto corre en el edge, visible para cualquiera |
 
 ### Antes del primer deploy
