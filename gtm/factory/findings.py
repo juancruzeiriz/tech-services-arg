@@ -23,6 +23,18 @@ from gtm.factory.types import Language
 # el idioma que pida `sales_line`.
 _DATE_EVIDENCE_CODES = frozenset({"stale_since"})
 
+# Mismo problema que _DATE_EVIDENCE_CODES, versión numérica: forensics.py no
+# sabe en qué idioma se va a mandar el mensaje cuando detecta el hallazgo, así
+# que guarda los números crudos separados por "|" y acá se arma la frase en el
+# idioma que corresponda. Hasta el 2026-08-11 estos dos guardaban la frase ya
+# armada *en español*, hardcodeada, sin importar el idioma del mensaje final
+# -- encontrado leyendo emails en inglés generados de verdad (Día 7 del plan
+# diario): "Buttons and links are too small to tap reliably (botones o
+# enlaces muy chicos o muy juntos entre sí)." Español metido en medio de un
+# mensaje en inglés.
+_TABLE_LAYOUT_EVIDENCE_CODE = "table_layout"
+_DATED_PALETTE_EVIDENCE_CODE = "dated_palette"
+
 
 class Severity(StrEnum):
     CRITICAL = "critical"
@@ -75,13 +87,48 @@ class Finding:
         return template.format(evidence=self._formatted_evidence(language))
 
     def _formatted_evidence(self, language: Language) -> str:
-        if self.code not in _DATE_EVIDENCE_CODES:
-            return self.evidence
+        if self.code in _DATE_EVIDENCE_CODES:
+            try:
+                parsed = date.fromisoformat(self.evidence)
+            except ValueError:
+                return self.evidence  # evidencia ya no-ISO (o corrupta): mostrar tal cual
+            return format_month_year(parsed, language.value)
+
+        if self.code == _TABLE_LAYOUT_EVIDENCE_CODE:
+            return self._formatted_table_count(language)
+
+        if self.code == _DATED_PALETTE_EVIDENCE_CODE:
+            return self._formatted_color_count(language)
+
+        return self.evidence
+
+    def _formatted_table_count(self, language: Language) -> str:
+        count_raw, _, nested_raw = self.evidence.partition("|")
         try:
-            parsed = date.fromisoformat(self.evidence)
+            count = int(count_raw)
+            nested = int(nested_raw) if nested_raw else 0
         except ValueError:
-            return self.evidence  # evidencia ya no-ISO (o corrupta): mostrar tal cual
-        return format_month_year(parsed, language.value)
+            return self.evidence  # evidencia vieja o corrupta: mostrar tal cual
+
+        if language is Language.ES:
+            base = f"{count} tabla{'s' if count != 1 else ''} de maquetación"
+            if nested:
+                base += f" ({nested} anidada{'s' if nested != 1 else ''})"
+        else:
+            base = f"{count} layout table{'s' if count != 1 else ''}"
+            if nested:
+                base += f" ({nested} nested)"
+        return base
+
+    def _formatted_color_count(self, language: Language) -> str:
+        try:
+            count = int(self.evidence)
+        except ValueError:
+            return self.evidence  # evidencia vieja o corrupta: mostrar tal cual
+
+        if language is Language.ES:
+            return f"{count} colores saturados"
+        return f"{count} saturated colours"
 
 
 FINDINGS: dict[str, FindingSpec] = {
@@ -124,8 +171,8 @@ FINDINGS: dict[str, FindingSpec] = {
         Dimension.MOBILE,
         Severity.CRITICAL,
         3.0,
-        "Your site was never built for phones ({evidence}) — visitors have to pinch and zoom.",
-        "Tu sitio nunca se hizo para celulares ({evidence}): hay que hacer zoom con dos dedos.",
+        "Your site was never built for phones (no {evidence} tag) — visitors have to pinch and zoom.",
+        "Tu sitio nunca se hizo para celulares (sin etiqueta {evidence}): hay que hacer zoom con dos dedos.",
     ),
     "table_layout": FindingSpec(
         Dimension.MODERNITY,
@@ -173,8 +220,8 @@ FINDINGS: dict[str, FindingSpec] = {
         Dimension.SEO,
         Severity.MEDIUM,
         1.5,
-        "Your site does not tell Google it is a local business ({evidence}).",
-        "Tu sitio no le dice a Google que sos un negocio local ({evidence}).",
+        "Your site does not tell Google it is a local business (no {evidence} markup).",
+        "Tu sitio no le dice a Google que sos un negocio local (sin datos estructurados {evidence}).",
     ),
     "tap_targets": FindingSpec(
         Dimension.MOBILE,

@@ -269,7 +269,7 @@ def build_call_script(
         f"already built one for you as a sample. It is online right now.\n"
         f"Can I text you the link so you can look at it later? … Great, it is going to "
         f"this number.\n"
-        f"[Enviar SMS: {link}]\n"
+        f"[Send SMS: {link}]\n"
         f"No obligation — if you like it I can point it at your domain, if not keep it."
     )
 

@@ -99,9 +99,21 @@ calibrado".
   propio, una que compite contra un sitio real bueno, una que compite contra uno malo) en la
   ficha del Nodo 5 en `PROCESOS.md`.
 
-- [ ] **Día 7** (45 min, Nodos 7+8+9) — `contact --queue`. Leer la cola completa. Leer el guion
-  de llamada **en voz alta** y el email generado completo. *Salida: marcas en el texto de lo que
-  suena falso o forzado.*
+- [x] **Día 7** (2026-08-11, Nodos 7+8+9) — Corrido `contact --queue` real sobre los 8
+  prospectos de Albuquerque: 4 llamadas + 4 formularios. Leída la cola completa, el guion de
+  llamada en voz alta y 3 emails reales (inglés y español). Encontrados y corregidos **dos
+  bugs de mezcla de idiomas confirmados en vivo**, no solo "suena forzado": (1) el guion de
+  llamada tenía "[Enviar SMS: {link}]" hardcodeado en español en la rama de inglés — se
+  escuchaba literalmente en medio del guion en inglés. (2) Investigar eso llevó a un problema
+  más grande: 7 de los 15 hallazgos del catálogo guardaban su evidencia en prosa española
+  hardcodeada, colándose en emails en inglés (confirmado en el email real de Legacy Tree
+  Company). Arreglados los 7 extendiendo el mismo mecanismo que ya usaba `stale_since`
+  (evidencia neutral, se traduce recién al renderizar). Agregados tests de regresión en
+  `test_contact.py` y `test_findings.py` (10 casos nuevos entre los dos). Además, sin
+  arreglar a propósito (son datos, no código): `GTM_UNSUBSCRIBE_URL` sigue siendo un
+  placeholder que no funciona, y `GTM_PHYSICAL_ADDRESS` tiene un typo de espaciado — los dos
+  se cuelan en cada email real, ver la nota agregada al Día 19. Detalle completo en la ficha
+  del Nodo 8 en `PROCESOS.md`.
 
 - [ ] **Día 8** (60 min, Nodos 10-13, cierre de fase) — Leer `pipeline.md` (guiones, objeciones),
   `validation.md`, `decision_criteria.yaml` completos. Correr `ledger report`. Releer el mapa
@@ -156,7 +168,12 @@ calibrado".
 
 - [ ] **Día 19** (45 min) — **Riesgo.** Correr `pytest tests/gtm/test_outreach.py -k canspam`.
   Revisar: ley mini-TCPA del estado elegido, no grabar llamadas, Factura E para el cobro desde
-  USA. Dar de alta el email de envío (Zoho Mail) — es la única credencial que falta hoy.
+  USA. Dar de alta el email de envío (Zoho Mail). **Actualizado (Día 7):** no es la única
+  credencial que falta — `GTM_UNSUBSCRIBE_URL` sigue siendo el placeholder
+  `https://example.com/unsubscribe` (`validate_compliance()` solo chequea que el string esté
+  en el cuerpo, no que la URL funcione de verdad) y `GTM_PHYSICAL_ADDRESS` tiene un espacio
+  faltante ("1Victorica y La Pampa"). Los dos van en cada email real por exigencia de
+  CAN-SPAM — confirmar y arreglar acá antes del primer envío.
 
 - [ ] **Día 20** (60 min) — **Cierre.** Reescribir `PROCESOS.md` con todo lo aprendido en las 19
   sesiones anteriores, republicar el Artifact. Escribir el plan concreto de las primeras 25

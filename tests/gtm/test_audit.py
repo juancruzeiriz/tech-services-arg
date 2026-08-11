@@ -20,7 +20,7 @@ def _score(**overrides: object) -> PainScore:
         "mobile_friendly": False,
         "findings": (
             Finding(code="no_tel_link", evidence="555-0142", weight=3.0),
-            Finding(code="dated_palette", evidence="9 colores distintos, alta saturación", weight=1.0),
+            Finding(code="dated_palette", evidence="9", weight=1.0),
         ),
     }
     defaults.update(overrides)

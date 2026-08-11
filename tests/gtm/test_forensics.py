@@ -28,8 +28,12 @@ def test_detecta_maquetacion_con_tablas():
 
 
 def test_la_evidencia_de_tablas_cuenta_las_anidadas():
+    """Evidencia cruda "count|nested" -- findings.py la traduce a prosa en el
+    idioma correcto recién al renderizar (ver _formatted_table_count)."""
     hallazgos = {f.code: f for f in analyse_html(_VIEJO, "http://x.com")}
-    assert "2" in hallazgos["table_layout"].evidence
+    count, _, nested = hallazgos["table_layout"].evidence.partition("|")
+    assert count == "2"
+    assert nested == "1"
 
 
 def test_detecta_universal_analytics_apagado():

@@ -224,6 +224,16 @@ class TestMensajes:
         assert "Can I text you the link" in script
         assert _demo().url in script
 
+    def test_guion_de_llamada_en_ingles_no_mezcla_idiomas(self):
+        """Regresión: la nota entre corchetes que le recuerda al vendedor mandar
+        el SMS ("[Enviar SMS: ...]") estaba hardcodeada en español en las DOS
+        ramas de build_call_script -- incluida la rama en inglés, que la leía
+        en voz alta como "[Send SMS: ...]" debería decir. Encontrado leyendo el
+        guion en voz alta (Día 7 del plan diario), no por inspección de código."""
+        script = build_call_script(_prospect(), _demo())
+        assert "Enviar" not in script
+        assert "[Send SMS:" in script
+
 
 class TestMensajesEnEspanol:
     def test_mensaje_de_formulario_lleva_el_link_y_precio(self):

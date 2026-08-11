@@ -46,6 +46,78 @@ class TestEvidenciaDeFecha:
         assert "http://x.com" in finding.sales_line(Language.ES)
 
 
+class TestEvidenciaBilingue:
+    """Regresión (Día 7 del plan diario, 2026-08-11): siete hallazgos guardaban
+    su evidencia como prosa ya armada *en español*, hardcodeada en
+    forensics.py/score.py -- se colaba tal cual dentro de mensajes en inglés
+    ("Buttons and links are too small to tap reliably (botones o enlaces muy
+    chicos o muy juntos entre sí)."). Encontrado leyendo emails reales
+    generados con outreach.py, no por inspección de código. Cada test acá
+    reproduce la evidencia real que forensics.py/score.py generan hoy y
+    confirma que la línea en inglés no trae ninguna palabra en español."""
+
+    def test_no_viewport_arma_la_frase_en_ingles(self):
+        finding = Finding(code="no_viewport", evidence='<meta name="viewport">')
+        linea = finding.sales_line(Language.EN)
+        assert 'no <meta name="viewport"> tag' in linea
+        assert "sin" not in linea
+
+    def test_table_layout_arma_la_frase_en_ingles_con_plural_correcto(self):
+        finding = Finding(code="table_layout", evidence="3|1")
+        linea = finding.sales_line(Language.EN)
+        assert "3 layout tables (1 nested)" in linea
+        assert "tablas" not in linea
+        assert "anidadas" not in linea
+
+    def test_table_layout_singular_no_agrega_s_de_mas(self):
+        finding = Finding(code="table_layout", evidence="1|0")
+        linea = finding.sales_line(Language.EN)
+        assert "1 layout table)" in linea
+        assert "tables)" not in linea
+
+    def test_table_layout_evidencia_vieja_no_lanza(self):
+        """Evidencia de una corrida anterior al fix (sin el separador "|")
+        no debe romper el render -- se muestra tal cual."""
+        finding = Finding(code="table_layout", evidence="2 tablas de maquetación")
+        assert "2 tablas de maquetación" in finding.sales_line(Language.ES)
+
+    def test_no_tel_link_cita_el_numero_real_sin_traducir(self):
+        """El fix además mejora la evidencia: antes describía la situación en
+        prosa, ahora cita el número encontrado -- un dato verificable de
+        verdad, igual en cualquier idioma."""
+        finding = Finding(code="no_tel_link", evidence="(505) 555-0142")
+        assert "(505) 555-0142" in finding.sales_line(Language.EN)
+        assert "(505) 555-0142" in finding.sales_line(Language.ES)
+
+    def test_no_local_schema_arma_la_frase_en_ingles(self):
+        finding = Finding(code="no_local_schema", evidence="LocalBusiness")
+        linea = finding.sales_line(Language.EN)
+        assert "no LocalBusiness markup" in linea
+        assert "datos estructurados" not in linea
+
+    def test_dated_palette_arma_la_frase_en_ingles(self):
+        finding = Finding(code="dated_palette", evidence="9")
+        linea = finding.sales_line(Language.EN)
+        assert "9 saturated colours" in linea
+        assert "colores" not in linea
+
+    def test_dated_palette_evidencia_vieja_no_lanza(self):
+        finding = Finding(code="dated_palette", evidence="9 colores distintos")
+        assert "9 colores distintos" in finding.sales_line(Language.ES)
+
+    def test_tap_targets_ya_no_trae_prosa_en_espanol(self):
+        finding = Finding(code="tap_targets", evidence="Lighthouse target-size")
+        linea = finding.sales_line(Language.EN)
+        assert "chicos" not in linea
+        assert "juntos" not in linea
+        assert "Lighthouse target-size" in linea
+
+    def test_no_social_presence_evidencia_es_neutral(self):
+        finding = Finding(code="no_social_presence", evidence="facebook.com, instagram.com")
+        assert "facebook.com, instagram.com" in finding.sales_line(Language.EN)
+        assert "facebook.com, instagram.com" in finding.sales_line(Language.ES)
+
+
 def test_no_hay_hallazgo_sin_severidad_declarada():
     for code, spec in FINDINGS.items():
         assert isinstance(spec.severity, Severity), f"{code} sin severidad"

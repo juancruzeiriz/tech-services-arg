@@ -120,7 +120,12 @@ async def score_website(
         lab_findings.append(
             Finding(
                 code="tap_targets",
-                evidence="botones o enlaces muy chicos o muy juntos entre sí",
+                # El nombre del audit de Lighthouse, no una descripción del
+                # problema en español: ya lo dice el template de
+                # findings.py, y esta evidencia era antes una traducción
+                # hardcodeada que se colaba tal cual dentro de emails en
+                # inglés (encontrado leyendo emails reales en el Día 7).
+                evidence="Lighthouse target-size",
                 weight=FINDINGS["tap_targets"].weight,
             )
         )

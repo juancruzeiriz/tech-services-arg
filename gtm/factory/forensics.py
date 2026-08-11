@@ -74,7 +74,10 @@ def _check_https(url: str, findings: list[Finding]) -> None:
 
 def _check_viewport(soup: BeautifulSoup, findings: list[Finding]) -> None:
     if soup.find("meta", attrs={"name": "viewport"}) is None:
-        findings.append(Finding(code="no_viewport", evidence="sin <meta name=\"viewport\">"))
+        # Evidencia sin "sin"/"missing": esas palabras viven en el template de
+        # findings.py, que ya está en el idioma correcto -- acá solo va el
+        # dato neutral (el nombre de la etiqueta), igual en cualquier idioma.
+        findings.append(Finding(code="no_viewport", evidence='<meta name="viewport">'))
 
 
 def _is_presentational_table(table: object) -> bool:
@@ -96,10 +99,10 @@ def _check_tables(soup: BeautifulSoup, findings: list[Finding]) -> None:
     if not presentational:
         return
     nested = sum(1 for t in presentational if t.find_parent("table") is not None)
-    detail = f"{len(presentational)} tablas de maquetación"
-    if nested:
-        detail += f" ({nested} anidadas)"
-    findings.append(Finding(code="table_layout", evidence=detail))
+    # "count|nested" crudo, sin prosa: findings.py arma la frase en el idioma
+    # correcto recién al renderizar (mismo mecanismo que ya usa stale_since
+    # para la fecha) -- acá no se sabe en qué idioma va a salir el mensaje.
+    findings.append(Finding(code="table_layout", evidence=f"{len(presentational)}|{nested}"))
 
 
 def _check_analytics(soup: BeautifulSoup, findings: list[Finding]) -> None:
@@ -143,8 +146,12 @@ def _check_tel_link(soup: BeautifulSoup, findings: list[Finding]) -> None:
     if has_tel_link:
         return
     text = soup.get_text()
-    if _PHONE_RE.search(text):
-        findings.append(Finding(code="no_tel_link", evidence="número visible en texto, sin enlace tel:"))
+    match = _PHONE_RE.search(text)
+    if match:
+        # El número encontrado, no una descripción de la situación: es un dato
+        # citable de verdad (y, de paso, no necesita traducción -- un número
+        # de teléfono se lee igual en cualquier idioma).
+        findings.append(Finding(code="no_tel_link", evidence=match.group(0)))
 
 
 def _check_local_schema(soup: BeautifulSoup, findings: list[Finding]) -> None:
@@ -152,7 +159,9 @@ def _check_local_schema(soup: BeautifulSoup, findings: list[Finding]) -> None:
     for tag in scripts:
         if "LocalBusiness" in (tag.string or ""):
             return
-    findings.append(Finding(code="no_local_schema", evidence="sin JSON-LD de tipo LocalBusiness"))
+    # "sin"/"missing" vive en el template de findings.py; acá solo el nombre
+    # del tipo de schema, neutral en cualquier idioma.
+    findings.append(Finding(code="no_local_schema", evidence="LocalBusiness"))
 
 
 def _check_social_links(soup: BeautifulSoup, findings: list[Finding]) -> None:
@@ -166,8 +175,11 @@ def _check_social_links(soup: BeautifulSoup, findings: list[Finding]) -> None:
     )
     if has_social:
         return
+    # Los dominios que se buscaron, no una frase armada: ya lo dice el
+    # template de findings.py que no hay link, y "facebook.com"/"instagram.com"
+    # no cambian de idioma.
     findings.append(
-        Finding(code="no_social_presence", evidence="sin enlaces a Facebook o Instagram")
+        Finding(code="no_social_presence", evidence=", ".join(_SOCIAL_DOMAINS))
     )
 
 
@@ -178,8 +190,11 @@ def _check_palette(html: str, findings: list[Finding]) -> None:
         return
     signal = palette_age_signal(normalised)
     if signal > _DATED_PALETTE_THRESHOLD:
+        # Solo el número, crudo: findings.py arma "N colores saturados"/"N
+        # saturated colours" en el idioma correcto al renderizar (mismo
+        # mecanismo que table_layout, ver _formatted_color_count).
         findings.append(
-            Finding(code="dated_palette", evidence=f"{len(set(normalised))} colores distintos, alta saturación")
+            Finding(code="dated_palette", evidence=str(len(set(normalised))))
         )
 
 

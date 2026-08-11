@@ -609,7 +609,52 @@ primer teléfono que atiendan destruye la venta y la reputación.
 
 **Problemas conocidos** —
 
+- (2026-08-11, **corregido**) `build_call_script` tenía la nota entre corchetes que le
+  recuerda al vendedor mandar el link ("[Enviar SMS: {link}]") **hardcodeada en español en
+  las dos ramas**, incluida la de inglés — leyendo el guion en voz alta sobre un prospecto
+  real (`Davids Tree Removal`) apareció literalmente: *"Can I text you the link... [Enviar
+  SMS: https://...] No obligation..."*, español metido en medio de un guion en inglés.
+  Ningún test lo cazaba: el único test de `no_mezcla_idiomas` que existía cubría el mensaje
+  de formulario en español, nunca el guion de llamada en inglés — el espejo exacto nunca se
+  escribió. Fix: `[Enviar SMS]` → `[Send SMS]` en la rama EN. Agregado
+  `test_guion_de_llamada_en_ingles_no_mezcla_idiomas`.
+- (2026-08-11, **corregido, alcance mayor**) El bug de arriba resultó ser un caso de un
+  problema más grande: **7 de los 15 hallazgos del catálogo** (`no_viewport`, `table_layout`,
+  `no_tel_link`, `no_local_schema`, `no_social_presence`, `dated_palette`, `tap_targets`)
+  guardaban su evidencia como prosa ya armada *en español* en `forensics.py`/`score.py`,
+  hardcodeada — confirmado en el email real generado para Legacy Tree Company: *"Buttons and
+  links are too small to tap reliably (botones o enlaces muy chicos o muy juntos entre sí)."*
+  El diseño de `Finding`/`FindingSpec` ya resuelve este problema para `stale_since`
+  (`_DATE_EVIDENCE_CODES`: evidencia en formato neutral ISO, se traduce a prosa recién al
+  renderizar, porque `forensics.py` no sabe en qué idioma va a salir el mensaje final) — los
+  otros 7 simplemente no seguían ese patrón. Fix: extendido el mismo mecanismo
+  (`_formatted_table_count`, `_formatted_color_count` en `findings.py`) para `table_layout` y
+  `dated_palette` (evidencia numérica cruda, ej. `"3|1"`), y movida la palabra "sin"/"no" al
+  template bilingüe para `no_viewport`/`no_local_schema` (evidencia = solo el dato técnico
+  neutral, ej. `'<meta name="viewport">'`). De paso, `no_tel_link` mejoró: antes describía la
+  situación en prosa ("número visible en texto, sin enlace tel:"), ahora cita el número de
+  teléfono real encontrado — un dato más específico y citable, y que además no necesita
+  traducción. Agregada `TestEvidenciaBilingue` en `tests/gtm/test_findings.py` (9 casos).
+  Verificado de punta a punta regenerando `score` → `outreach` sobre los 8 prospectos reales
+  de Albuquerque: el email de Legacy Tree Company pasó de la frase mixta de arriba a
+  *"(Lighthouse target-size)"*.
+
 **Bitácora** —
+
+- (2026-08-11) Leídos en voz alta la cola completa, 3 emails reales (inglés y español) y el
+  guion de llamada, sobre los 8 prospectos reales de `tree_service × Albuquerque`. Además del
+  bug de arriba: la dirección postal en `.env.personal`
+  (`GTM_PHYSICAL_ADDRESS=1Victorica y La Pampa, Caba, Argentina`) tiene un espacio faltante
+  entre "1" y "Victorica" — se cuela igual en cada email real (CAN-SPAM exige la dirección
+  postal física en cada mensaje), así que hoy cada email sale con ese typo. No lo corregí yo:
+  es un dato personal real y no sé si falta un espacio o falta el número de puerta/piso —
+  confirmar con Juan antes de tocarlo. Además, `GTM_UNSUBSCRIBE_URL` sigue siendo el
+  placeholder `https://example.com/unsubscribe` — `validate_compliance()` solo chequea que el
+  string esté presente en el cuerpo, **no** que la URL funcione de verdad; con el valor actual,
+  cualquier email real saldría con un mecanismo de baja que no existe, lo cual no cumple
+  CAN-SPAM aunque el validador automático lo deje pasar. Ninguno de los dos bloquea seguir el
+  plan diario, pero los dos hay que resolverlos antes del primer envío real (Día 19 ya tiene
+  anotado dar de alta el email de Zoho; falta agregar ahí la URL de baja real).
 
 ---
 
