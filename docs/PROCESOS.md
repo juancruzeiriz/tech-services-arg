@@ -881,6 +881,61 @@ primer teléfono que atiendan destruye la venta y la reputación.
   CAN-SPAM aunque el validador automático lo deje pasar. Ninguno de los dos bloquea seguir el
   plan diario, pero los dos hay que resolverlos antes del primer envío real (Día 19 ya tiene
   anotado dar de alta el email de Zoho; falta agregar ahí la URL de baja real).
+- (2026-08-12, Día 19) **Construido el mecanismo de baja real, confirmado el hallazgo
+  estructural de que era imposible detectarlo desde el gate de CI.** `validate_compliance()`
+  (`outreach.py:249-275`) valida con `in`/`startswith`: `https://example.com/unsubscribe` pasa
+  las 4 validaciones de `SenderIdentity.validate()` (`types.py:684-698`) sin problema, y
+  `tests/gtm/conftest.py:60` usaba **el mismo placeholder** como fixture — `pytest -k canspam`
+  daba verde con la config real rota, porque el suite validaba al validador, no al despliegue.
+  Arreglado en dos capas: (1) `SenderIdentity.validate()` ahora rechaza cualquier
+  `unsubscribe_url` en un dominio reservado por RFC 2606 (`example.com`/`.org`/`.net`/`.edu`) —
+  un chequeo sin falsos positivos posibles, nadie usa esos dominios en producción; (2) la
+  fixture de `conftest.py` y la de `test_pipeline.py` pasaron a `tests.gtm.example`, un dominio
+  distinto tanto del placeholder real como del rechazado, para que el suite deje de compartir
+  el punto ciego con `.env.personal`.
+- (2026-08-12, Día 19) **Diseñado el mecanismo con un límite real, no ideal: no hay token por
+  email.** `SenderIdentity.unsubscribe_url` es una URL fija para todos los envíos —
+  `outreach.py` no genera un token por mensaje (a diferencia de `demo_links`/`v/[token].js`, que
+  sí trackea aperturas de demo por token). Con un link fijo no hay forma de saber, solo con el
+  clic, a qué dirección llegó ese mensaje puntual. Decisión: en vez de replicar la
+  infraestructura de tokens (etapa nueva, exige tocar `outreach.py`/`generate.py` para grabar un
+  token por email enviado), la página de baja (`site/functions/api/unsubscribe.js`, GET sirve
+  un formulario, POST procesa) le pide el email a quien hace clic. Sigue cumpliendo CAN-SPAM: la
+  ley exige un mecanismo funcional, no específicamente un link de un clic sin fricción.
+- (2026-08-12, Día 19, **corregido, encontrado escribiendo el test**) `sync_unsubscribes`
+  (`ledger.py`) tenía `suppression = suppression or SuppressionList()` — bug real: `SuppressionList`
+  define `__len__`, así que una lista **vacía** (el caso normal, recién creada) es *falsy* en
+  Python, y el `or` la reemplazaba en silencio por una instancia nueva sin `path`, que escribe en
+  el `gtm/suppression.jsonl` real del repo en vez del que pasó el caller. Lo cazó el primer test
+  (`test_vuelca_bajas_pendientes_a_la_supresion_local`), que esperaba la baja en la instancia de
+  `tmp_path` y no la encontró — y de hecho escribió 2 filas reales en `gtm/suppression.jsonl`
+  antes del fix (limpiadas a mano). Cambiado a `if suppression is None: suppression =
+  SuppressionList()`.
+- (2026-08-12, Día 19, **hallazgo, no arreglado — fuera de alcance del día**) `gtm/send/worker.py`
+  nunca chequeaba la lista de supresión antes de enviar un email real: `_send_one` iba directo de
+  `revalidate_before_send` a `smtp.send_async`, sin consultar `SuppressionList` por `place_id` ni
+  por email. Sin este chequeo, sincronizar bajas a `gtm/suppression.jsonl` con
+  `sync_unsubscribes` sería puramente decorativo — nada en el camino de envío real lo lee.
+  Arreglado agregando el chequeo al principio de `_send_one` (por `place_id` y por `to_address`,
+  vía el método nuevo `SuppressionList.reason_for_key`) y marcando el mensaje `mark_failed` con
+  `FailureKind.COMPLIANCE` si está suprimido. Cubierto por
+  `test_suprimido_por_place_id_no_se_envia` y `test_suprimido_por_email_no_se_envia` en
+  `tests/gtm/test_send_worker.py`.
+- **Verificado en vivo contra la Supabase real** (no solo en tests): aplicada
+  `0007_unsubscribes.sql` (`python -m gtm.store.migrate`); confirmado que la anon key puede
+  INSERTAR (201) pero no puede SELECCIONAR (200, `[]` vacío pese a haber una fila) — la RLS
+  insert-only funciona igual que en `subscribers`/`demo_views`; corrido
+  `python -m gtm.factory.ledger sync-unsubscribes` de punta a punta contra una fila real
+  insertada por script, confirmado que aparece en la lista de supresión local y que
+  `synced_at` evita reprocesarla. Fila y entradas de prueba borradas después de verificar.
+- **Sigue sin resolver, y queda para Juan:** la dirección postal
+  (`GTM_PHYSICAL_ADDRESS=1Victorica y La Pampa, Caba, Argentina` — falta un espacio o un
+  número de puerta/piso, no lo sé), la alta de la casilla de envío en Zoho Mail
+  (`GTM_SMTP_HOST`/`USER`/`PASSWORD`, `GTM_BOUNCE_ADDRESS`, `GTM_DAILY_SEND_CAP` no están en
+  `.env.personal`), y el dominio real de `GTM_DEMO_BASE_URL`/`GTM_UNSUBSCRIBE_URL` (hoy
+  placeholders) para que Cloudflare Pages sirva `/api/unsubscribe` de verdad — sin esto,
+  `SenderIdentity.validate()` sigue rechazando cualquier intento de mandar un email real, que es
+  la protección correcta hasta que el dominio exista.
 
 ---
 

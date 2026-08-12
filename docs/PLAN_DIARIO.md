@@ -250,14 +250,24 @@ calibrado".
   comentario sobre por qué v1 estaba mal calibrado (el error de potencia estadística). Correr
   `pytest tests/gtm/test_ledger_criteria.py`. Confirmar por escrito, con fecha, que no se toca.
 
-- [ ] **Día 19** (45 min) — **Riesgo.** Correr `pytest tests/gtm/test_outreach.py -k canspam`.
-  Revisar: ley mini-TCPA del estado elegido, no grabar llamadas, Factura E para el cobro desde
-  USA. Dar de alta el email de envío (Zoho Mail). **Actualizado (Día 7):** no es la única
-  credencial que falta — `GTM_UNSUBSCRIBE_URL` sigue siendo el placeholder
-  `https://example.com/unsubscribe` (`validate_compliance()` solo chequea que el string esté
-  en el cuerpo, no que la URL funcione de verdad) y `GTM_PHYSICAL_ADDRESS` tiene un espacio
-  faltante ("1Victorica y La Pampa"). Los dos van en cada email real por exigencia de
-  CAN-SPAM — confirmar y arreglar acá antes del primer envío.
+- [x] **Día 19** (2026-08-12, Nodo 8) — **El gate de CI nunca podía cazar el placeholder porque
+  usaba el mismo.** `validate_compliance()` valida con `in`/`startswith`, así que
+  `https://example.com/unsubscribe` pasaba las 4 validaciones de `SenderIdentity.validate()` —
+  y `tests/gtm/conftest.py` usaba **ese mismo placeholder** como fixture, así que
+  `pytest -k canspam` daba verde con la config real rota. Arreglado: `validate()` ahora rechaza
+  cualquier `unsubscribe_url` en un dominio reservado por RFC 2606 (`example.com` y variantes),
+  y las fixtures de test pasaron a un dominio distinto. Construido el mecanismo de baja real:
+  migración `0007_unsubscribes.sql` (RLS insert-only, verificado en vivo contra la Supabase real
+  — anon key inserta con 201, no puede leer, `[]` vacío), `site/functions/api/unsubscribe.js`
+  (formulario de email, no link de un clic — el sistema no genera token por email enviado) y
+  `ledger sync-unsubscribes`, corrido de punta a punta. Al escribirlo se encontraron y arreglaron
+  dos bugs reales: un `suppression or SuppressionList()` que por el `__len__` de la clase
+  reemplazaba en silencio una lista vacía por una que escribe en el archivo real del repo, y que
+  `gtm/send/worker.py` nunca chequeaba la lista de supresión antes de enviar — sin eso, la baja
+  sería decorativa. Mini-TCPA de NM (Día 9) sigue vigente sin cambios. Sigue pendiente, para
+  Juan: la dirección postal (¿falta un espacio o un número?), alta de Zoho Mail, y el dominio
+  real para que `/api/unsubscribe` sirva de algo — hasta entonces `validate()` bloquea cualquier
+  envío real, que es la protección correcta. Detalle completo en la ficha del Nodo 8.
 
 - [ ] **Día 20** (60 min) — **Cierre.** Reescribir `PROCESOS.md` con todo lo aprendido en las 19
   sesiones anteriores, republicar el Artifact. Escribir el plan concreto de las primeras 25
