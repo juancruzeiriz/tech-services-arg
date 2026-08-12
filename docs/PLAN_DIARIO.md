@@ -172,17 +172,30 @@ calibrado".
   Si la correlación es mala, el problema son los pesos de dimensión o el corte de 45 — no el
   código.
 
-- [ ] **Día 12** (45 min, Nodo 4) — ¿Cuántos hallazgos salen por prospecto en promedio? ¿Hay
-  falsos positivos (revisar en particular `dated_palette`, `legacy_jquery`)? ¿La línea de venta
-  del hallazgo más grave se lee natural en voz alta delante de un plomero?
+- [x] **Día 12** (2026-08-12, Nodo 4, parcial) — Las dos preguntas que se pueden responder sin
+  voz humana, hechas: 1,9 hallazgos por prospecto en promedio sobre los 8 reales de Albuquerque
+  que sí puntuó PageSpeed; y sí hay un falso positivo real en `dated_palette` —
+  `legacytreecompany.com` lo dispara porque 7 de sus 37 colores detectados son, exactos, la
+  paleta *default* del editor de bloques de WordPress (Gutenberg), CSS que se carga siempre que
+  el sitio usa bloques, la use el diseño visible o no. `legacy_jquery` no se disparó ni una vez
+  en esta muestra, sin datos para juzgarlo. Detalle completo en la ficha del Nodo 4. **Pendiente,
+  necesita a alguien escuchando**: si la línea de venta del hallazgo más grave suena natural en
+  voz alta delante de un plomero — eso no se puede evaluar sin un oído humano.
 
 - [ ] **Día 13** (45 min, Nodos 5+6) — ¿La demo se reconoce como plantilla? Mostrarle 2 demos a
   alguien que no sabe nada del proyecto y preguntarle qué negocio es. Medir el Lighthouse de la
-  propia demo generada.
+  propia demo generada. *No se pudo avanzar sin ayuda: mostrarle la demo a alguien ajeno
+  necesita a esa persona, y medir el Lighthouse de la demo propia necesita que esté publicada
+  de verdad — `GTM_DEMO_BASE_URL` sigue siendo el placeholder (ver Nodo 6), así que hoy no hay
+  URL pública que PageSpeed pueda analizar.*
 
-- [ ] **Día 14** (45 min, Nodo 7) — Tasa de detección de formulario: de N sitios con presencia
-  web, cuántos resuelven a `CONTACT_FORM`, cuántos caen a teléfono y cuántos quedan
-  `UNREACHABLE`. Cada `UNREACHABLE` es un prospecto puntuado y tirado.
+- [x] **Día 14** (2026-08-12, Nodo 7) — `resolve_all` corrido de verdad (con probe real, no
+  `--no-probe`) sobre los 10 prospectos de Albuquerque: 9/10 tienen sitio propio, y de esos 9,
+  5 resolvieron a `CONTACT_FORM` (55,6%) y 4 cayeron a teléfono (44,4%) por no encontrarse
+  formulario. **Cero `UNREACHABLE`** — nadie se pierde del todo en esta muestra. Revisados a
+  mano los 2 casos de caída a teléfono más dudosos: ninguno es un falso negativo del detector
+  (uno no tiene ningún `<form>` en su home, el otro no respondió al momento de la corrida).
+  Detalle en la ficha del Nodo 7.
 
 - [ ] **Día 15** (45 min, Nodo 8) — Leer los 3 mensajes en los 2 idiomas, en voz alta. El
   español no es traducción del inglés: ¿suena a alguien de Argentina hablándole a un dueño de

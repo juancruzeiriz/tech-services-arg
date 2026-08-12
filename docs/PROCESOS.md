@@ -526,7 +526,37 @@ citable, el gancho es indistinguible del spam genérico que ya descartaron veint
 
 **Problemas conocidos** —
 
+- (2026-08-12) **Falso positivo probable en `dated_palette`, confirmado con evidencia real.**
+  `_check_palette` (`forensics.py`) cuenta cualquier código hex que aparezca en el HTML crudo,
+  sin distinguir si el color se usa de verdad en el diseño visible o si es solo CSS boilerplate
+  que nunca se renderiza. Disparado sobre `legacytreecompany.com` (signal 0.57, sobre el
+  umbral 0.4): de los 37 colores distintos encontrados, 7 —`0693e3`, `00d084`, `8ed1fc`,
+  `ff6900`, `fcb900`, `f78da7`, `abb8c3`— son, dígito por dígito, la paleta *default* del editor
+  de bloques de WordPress (Gutenberg: "vivid cyan blue", "vivid green cyan", "pale cyan blue",
+  "luminous vivid orange", "luminous vivid amber", "pale pink"). Esas clases CSS
+  (`.has-vivid-cyan-blue-color`, etc.) se cargan con cualquier sitio WordPress que use bloques,
+  las use el tema o no — no son evidencia de que el diseño real del sitio sea saturado ni viejo.
+  El resto de los colores encontrados (`81c100`, `116600`, `003399`) sí parecen la paleta real
+  del negocio (verdes de árbol, azules de marca). Sin poder distinguir "color en el CSS cargado"
+  de "color que aparece en pantalla" (haría falta render real, que es justo lo que `net.py`
+  evita para no depender de Chrome/Node), el heurístico va a seguir marcando falsos positivos en
+  cualquier sitio WordPress con Gutenberg — que es la mayoría del mercado de home services chico.
+  No arreglado: bajar el peso de esta señal o excluir la paleta de Gutenberg conocida son las
+  dos opciones más baratas, pendiente de decidir antes de usar `dated_palette` como línea de
+  venta citada en una llamada real (el hallazgo sigue sumando al score compuesto igual, pero no
+  debería citarse solo por esto).
+- (2026-08-12) `legacy_jquery` no se disparó ni una vez en los 8 sitios reales puntuados de
+  `tree_service × Albuquerque` — sin datos para juzgar si tiene falsos positivos o negativos en
+  este par. Pendiente revisar con una muestra más grande o un vertical con webs más viejas.
+
 **Bitácora** —
+
+- (2026-08-12) Sobre los 8 prospectos reales de `tree_service × Albuquerque` que sí pudo
+  puntuar PageSpeed (2 de 10 fallaron por error transitorio de la API, ver Nodo 3): promedio de
+  **1,9 hallazgos por prospecto** (rango 0-5). Frecuencia por código: `stale_since` 4/8,
+  `no_local_schema` 3/8, `tap_targets` 2/8, `no_https` 2/8, `no_social_presence` 2/8,
+  `dated_palette` 1/8 (ver el falso positivo de arriba), `no_tel_link` 1/8. Ninguno de los
+  hallazgos de mayor severidad (`CRITICAL`) apareció en esta muestra puntual.
 
 ---
 
@@ -646,6 +676,20 @@ tienen sitio, así que no tienen formulario, pero sí teléfono, y son pocos —
 **Problemas conocidos** —
 
 **Bitácora** —
+
+- (2026-08-12) `resolve_all` corrido de verdad (con `probe_site=True`, no `--no-probe`) sobre
+  los 10 prospectos de `tree_service × Albuquerque`: 9/10 tienen sitio propio (`HAS_SITE`), y
+  de esos 9, **5 resolvieron a `CONTACT_FORM` (55,6%) y 4 cayeron a teléfono (44,4%)** por no
+  encontrarse un formulario. **Cero `UNREACHABLE`** en esta muestra — nadie se pierde del todo.
+  Revisados los 2 casos de caída a teléfono más dudosos a mano, no son falsos negativos del
+  detector: `a1treehauling.com` no tiene ni un solo `<form>` en su home (confirmado contando
+  los tags), y `hugomantreeservicesnm.com` directamente no respondió al momento de la corrida
+  (posible caída temporal del sitio, no un bug de `find_contact_form`). El otro caso a
+  teléfono, `bacastrees.com`, es el bloqueo por fingerprint TLS/HTTP ya documentado en el Nodo
+  3 — coherente entre ambos nodos. Conclusión puntual: en este par, la tasa de detección de
+  formulario es alta y ningún prospecto se "tira" — la preocupación del **Qué** de este nodo
+  (cada `UNREACHABLE` es un prospecto puntuado y tirado) no se materializó en esta muestra de
+  10, aunque n=10 es chico para generalizar a otros metros.
 
 ---
 
