@@ -59,7 +59,7 @@ flowchart TD
 | 0 | Carta de presentación | `site/` → juancruzeiriz.com | Lo que ven cuando te googlean. No es parte del pipeline: es el nodo de confianza del que cuelgan todos los demás |
 | 1 | Elección de nicho | `gtm/catalog/trades.yaml`, `metros.yaml` | `rank` de oficio = ticket × peso de urgencia; `rank` de metro = población × %hispano ÷ 1.5 si hay riesgo mini-TCPA |
 | 2 | Discover | `gtm/factory/discover.py` | Google Places API. Filtro: ≥50 reseñas, ≥4.0 rating, con teléfono. Orden: sin sitio primero |
-| 3 | Ponderación (pain score) | `gtm/factory/score.py` + `PainScore.score` en `types.py` | PageSpeed + CrUX + forensics HTML + Wayback → 5 dimensiones combinadas con OR ruidoso. Corte `is_qualified`: score ≥ 45 |
+| 3 | Ponderación (pain score) | `gtm/factory/score.py` + `PainScore.score` en `types.py` | PageSpeed + CrUX + forensics HTML + Wayback → 5 dimensiones combinadas con OR ruidoso. Corte `is_qualified`: score ≥ 45. Antes de asignar dolor 100 por "sin sitio", `verify.py` (Día 8) corrobora contra un dominio derivado del nombre — sin eso, un negocio con dominio propio no vinculado en Maps recibía un email diciendo "no tenés sitio", falso y verificable en la primera llamada |
 | 4 | Catálogo de hallazgos | `gtm/factory/findings.py` (15 códigos) | Cada defecto detectable lleva su evidencia citable y su línea de venta en EN/ES |
 | 5 | Generate | `gtm/factory/generate.py`, `gtm/template/site.html` | Renderiza la demo con datos reales del negocio. `noindex`, marcada como preview de terceros |
 | 6 | Deploy | `gtm/factory/deploy.py` | Copia al directorio publicable y asigna URL única. Sin URL viva no hay pitch |
@@ -89,6 +89,7 @@ erDiagram
     PROSPECT ||--o{ OUTREACHEMAIL : recibe
     PROSPECT ||--o{ FUNNELEVENT : registra
     PROSPECT ||--o{ SUPPRESSIONENTRY : puede-estar-en
+    UNSUBSCRIBE ||--o| SUPPRESSIONENTRY : sincroniza-a
 
     PROSPECT {
         string place_id PK
@@ -129,11 +130,22 @@ erDiagram
         string key_hash
         string reason
     }
+    UNSUBSCRIBE {
+        uuid id PK
+        string email
+        timestamptz requested_at
+        timestamptz synced_at
+    }
 ```
 
 `FUNNELEVENT` y `SUPPRESSIONENTRY` guardan **solo hashes SHA-256** de `place_id`/teléfono/dominio
 normalizados, nunca el dato de contacto — es la regla que permite que `funnel.jsonl` y
 `suppression.jsonl` vivan en git (ver [`gtm/README.md`](../gtm/README.md#reglas-que-el-código-hace-cumplir)).
+`UNSUBSCRIBE` es la única tabla de esta lista que vive solo en Postgres, no en JSONL (Día 19,
+`gtm/store/schema/0007_unsubscribes.sql`): recibe el clic real de baja vía
+`site/functions/api/unsubscribe.js` (RLS insert-only, igual que `demo_views`/`subscribers`), y
+`gtm/factory/ledger.py::sync_unsubscribes` la vuelca a `SUPPRESSIONENTRY` local, marcando
+`synced_at` para no reprocesar.
 
 ---
 
@@ -167,7 +179,10 @@ flowchart LR
 Tres bucles concretos:
 
 1. **Supresión → discover.** Un `place_id` ya contactado o que pidió baja nunca vuelve a
-   aparecer en una corrida nueva — se filtra en `contact.py::main` antes de llegar a la cola.
+   aparecer en una corrida nueva — se filtra en `contact.py::main` antes de llegar a la cola. La
+   baja puede entrar por dos caminos desde el Día 19: a mano (`ledger suppress`) o real, por el
+   prospecto haciendo clic en el link de baja del email (`site/functions/api/unsubscribe.js` →
+   tabla `unsubscribes` → `sync_unsubscribes` la vuelca acá).
 2. **Embudo → elección de nicho.** `/dashboard/economics` correlaciona dolor↔conversión por
    cohorte (oficio×metro×idioma). Es la única fuente legítima para cambiar de nicho — nunca una
    corazonada a mitad del experimento.
@@ -439,6 +454,23 @@ plata, le importa su reputación, y su web no está a la altura — no está pel
   `gtm/build/data/`: `prospects-abq-strict-l40.json`,
   `prospects-abq-loose.json`, `scores-abq-loose.json`,
   `prospects-laredo-loose.json`, `prospects-laredo-raw.json`.
+
+- (2026-08-12, Día 20) **Techo real de inventario, medido a fondo: 21-22 calificados
+  únicos, no 25.** Para armar el plan de las primeras llamadas reales, se corrió `discover`
+  con `--min-reviews 0 --min-rating 0.0 --limit 100` (cero filtro, el mismo experimento del
+  contraprueba de Laredo pero acá) sobre `tree_service × Albuquerque, NM`: **32 negocios
+  totales** con teléfono (el filtro de teléfono es fijo en `discover.py`, no depende de los
+  flags). Puntuados los 31 no puntuados todavía (1 falló en PageSpeed, reintentado aparte,
+  no calificó): **22 calificados**, deduplicados por teléfono. Con el filtro estándar
+  (`50/4.0`) el techo era 11; con el laxo del Día 10 (`20/3.5`), 17; con cero filtro, el
+  techo real y final es 22. **Un caso sin resolver:** dos entradas "Legacy Tree Company" con
+  el mismo nombre pero teléfonos distintos ((505) 312-8865 y (505) 210-8482) — probablemente
+  una ficha de Google Business duplicada/vieja del mismo negocio, no dos negocios reales.
+  Verificar a mano contra el sitio antes de llamar a los dos; si es la misma empresa, el
+  techo real es **21**. Archivos: `prospects-abq-wide.json`, `prospects-abq-zero.json`,
+  `prospects-abq-newonly.json`, `scores-abq-newonly.json`. Implicancia directa para el plan
+  de las 25 llamadas del Día 20: **no hay 25 en este metro con este oficio** — se cierra con
+  21-22 como primera tanda real, no con un número redondeado a lo que decía el plan.
 
 - (2026-08-11) `simulate.py` usa `_PRESENCE_WEIGHTS` global, igual para cualquier
   oficio y metro — confirmado corriendo el mismo `seed=42` en 5 pares distintos:
@@ -824,6 +856,11 @@ directamente el email — es una regla dura, no una convención.
 
 **Problemas conocidos** —
 
+- (2026-08-12, Día 20) **Vacío a propósito, no por olvido: nunca corrió un deploy real**, solo
+  `--dry-run`. Bloqueado por lo mismo que el Nodo 8 ya documenta como pendiente de Juan:
+  `GTM_DEMO_BASE_URL` sigue en `https://demo.example.com`. Se llena con datos reales la primera
+  vez que haya un dominio de verdad detrás.
+
 **Bitácora** —
 
 - (2026-08-11) `deploy --dry-run` corrido de verdad sobre las 8 demos del Nodo 5: se comporta
@@ -1137,6 +1174,11 @@ significa heredar guardias 24/7, incompatible con 5-10 hs semanales.
 
 **Bitácora** —
 
+- (2026-08-12, Día 20) **Vacío a propósito: ningún prospecto llegó a este paso todavía.**
+  Ningún proveedor de missed-call-text-back está elegido ni contratado — es decisión posterior a
+  la primera venta cobrada (nivel 5 de `decision_criteria.yaml`), no algo para resolver antes de
+  tener un cliente real. Se llena con el primer caso real.
+
 ---
 
 ### 13. Ledger y decisión
@@ -1257,3 +1299,4 @@ experimentos, y con el hash del commit como prueba de que fue antes de ver datos
 - [`docs/PLAN_DIARIO.md`](PLAN_DIARIO.md) — las 20 sesiones para recorrer este mapa
 - [`docs/SERVICIOS_FUTUROS.md`](SERVICIOS_FUTUROS.md) — lo que todavía no existe, con plan de implementación
 - [`docs/WHATSAPP_BOT.md`](WHATSAPP_BOT.md) — WhatsApp como producto vendible (distinto de WhatsApp como canal de prospección)
+- [Artifact publicado de este mapa](https://claude.ai/code/artifact/ed5bc8d8-c6e5-4fa4-982b-7d55960c36fd) — navegable desde el celular (Día 20). Los links relativos de esta lista no resuelven ahí, es una copia estática — para navegar el repo, usar este archivo directamente.

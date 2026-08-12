@@ -308,10 +308,19 @@ calibrado".
   real para que `/api/unsubscribe` sirva de algo — hasta entonces `validate()` bloquea cualquier
   envío real, que es la protección correcta. Detalle completo en la ficha del Nodo 8.
 
-- [ ] **Día 20** (60 min) — **Cierre.** Reescribir `PROCESOS.md` con todo lo aprendido en las 19
-  sesiones anteriores, republicar el Artifact. Escribir el plan concreto de las primeras 25
-  llamadas reales: qué días, a qué hora del huso horario del metro elegido, con qué guion ya
-  calibrado.
+- [x] **Día 20** (2026-08-12) — **Cierre.** Pasada de consolidación sobre `PROCESOS.md`: los 3
+  diagramas actualizados con lo que sumaron los Días 8 (`verify.py`, capa 2 de ausencia digital)
+  y 19 (mecanismo de baja real, tabla `unsubscribes`). De los 5 nodos que arrancaron vacíos, 3 se
+  llenaron con hallazgos reales (10, 11, 13 — Días 16 y 17); los 2 que siguen vacíos (6-Deploy,
+  12-Entrega) quedaron documentados explícitamente como vacíos a propósito: ningún deploy real ni
+  ninguna entrega ocurrieron todavía, no es un olvido. [Artifact
+  publicado](https://claude.ai/code/artifact/ed5bc8d8-c6e5-4fa4-982b-7d55960c36fd) — primera
+  publicación real, no "re", el repo nunca había tenido una URL guardada. **El hallazgo más
+  importante del día:** armando la lista de las 25 llamadas, se corrió `discover` a filtro cero
+  sobre `tree_service × Albuquerque, NM` — el techo real de inventario (32 negocios totales con
+  teléfono en Google Places, todos puntuados) es **21-22 calificados, no 25**. El plan de abajo
+  se arma con el número real medido, no con el redondeado que traía este mismo archivo desde el
+  Día 1. Detalle en la ficha del Nodo 2.
 
 ---
 
@@ -319,4 +328,104 @@ calibrado".
 
 Empieza la Fase de ejecución de `gtm/plan_aprendizaje.md` (semanas 5-8): los 200 contactos
 reales. A las primeras `llamadas_de_calibracion: 50` del `corte_temprano_por_costo`, se
-recalcula el corte por costo — ya definido en el yaml, no hay que decidir nada nuevo ahí.
+recalcula el corte por costo — ya definido en el yaml, no hay que decidir nada nuevo ahí. Los
+21-22 de abajo son la primera tanda hacia esas 50, no el total.
+
+### Bloqueador antes de la primera llamada — no es opcional
+
+El guion de apertura (Día 16, ya calibrado) dice literalmente *"ya te armé uno de muestra, está
+online ahora mismo"* y ofrece mandar el link por SMS ahí mismo. Hoy eso es **falso**:
+`GTM_DEMO_BASE_URL` y `GTM_UNSUBSCRIBE_URL` siguen en `.env.personal` como placeholders
+(`https://demo.example.com`, `https://example.com/unsubscribe`). Antes de la primera llamada
+real hace falta, en este orden:
+
+1. Dominio real para las demos (Cloudflare Pages, `cloudflare/README.md` ya tiene el proyecto
+   creado — falta el dominio final) → `GTM_DEMO_BASE_URL`.
+2. Ese mismo dominio sirviendo `/api/unsubscribe` (Día 19 ya escribió la función y la migración,
+   falta desplegarla) → `GTM_UNSUBSCRIBE_URL`.
+3. Corrida real de `generate` + `deploy` (sin `--dry-run`) sobre los 21-22 de la tabla, para que
+   el link que se promete en la llamada exista de verdad antes de ofrecerlo.
+4. La dirección postal corregida y el alta de Zoho Mail (`GTM_SMTP_*`) — necesarios para el canal
+   de email/formulario, no para la llamada en sí, pero sin esto no se puede mandar el seguimiento
+   Día 3 a nadie que conteste.
+
+Ninguno de los 4 requiere decidir nada nuevo — son datos y una cuenta, no diseño. Es la lista
+completa de lo que separa el pipeline de la primera llamada real.
+
+### A quién — 22 prospectos reales, ordenados por dolor (Nodo 2, Día 20)
+
+Universo completo de `tree_service × Albuquerque, NM` con teléfono (32 negocios, cero filtro de
+reseñas/rating), puntuados y deduplicados. Fuente: `gtm/build/data/prospects-abq-wide.json` +
+`-zero.json` + `-newonly.json`, `scores*.json` correspondientes.
+
+| # | Pain | Negocio | Teléfono | Sitio |
+|---|---|---|---|---|
+| 1 | 100 | Davids Tree Removal and yard maintenance | (505) 395-8074 | sin sitio |
+| 2 | 100 | Hector's Tree Care | (505) 263-9282 | sin sitio |
+| 3 | 100 | Pro Tree Service | (505) 785-4419 | sin sitio |
+| 4 | 100 | Gary's tree service | (505) 504-3727 | sin sitio |
+| 5 | 100 | VJ Stars Tree Services | (505) 305-8961 | con sitio |
+| 6 | 100 | Urgent Tree Removal & Trimming | (888) 217-0067 | sin sitio |
+| 7 | 100 | Morales Tree Care LLC | (505) 485-3603 | sin sitio |
+| 8 | 100 | Over the Top Tree and Yard Service | (505) 319-6784 | sin sitio |
+| 9 | 100 | Advanced Tree Services LLC | (505) 737-8887 | sin sitio |
+| 10 | 100 | All Around Forestry | (505) 601-6030 | sin sitio |
+| 11 | 100 | Albuquerque Tree Care | (505) 542-3135 | sin sitio |
+| 12 | 100 | Southwest Tree Specialists, Inc. | (505) 897-1606 | sin sitio |
+| 13 | 95 | Baca's Trees | (505) 899-6666 | con sitio |
+| 14 | 95 | Leo's Tree Service | (505) 930-3158 | con sitio |
+| 15 | 95 | Hugo man tree services | (505) 918-2117 | con sitio |
+| 16 | 95 | Red Shovel Landscape | (505) 243-2277 | con sitio |
+| 17 | 95 | Certified Albuquerque Tree Specialist | (505) 218-7396 | con sitio |
+| 18 | 64 | Legacy Tree Company | (505) 312-8865 | con sitio |
+| 19⚠️ | 63 | Legacy Tree Company | (505) 210-8482 | con sitio |
+| 20 | 56 | Monkey's Tree Services LLC | (505) 306-0194 | con sitio |
+| 21 | 46 | Treepros LLC. | (505) 274-3049 | con sitio |
+| 22 | 45 | Robert's Tree Service LLC | (505) 207-3413 | con sitio |
+
+⚠️ **#18 y #19 son probablemente el mismo negocio** (mismo nombre, ficha de Google distinta,
+teléfono distinto) — verificar contra el sitio real de Legacy Tree Company antes de llamar a los
+dos. Si es duplicado, el total real es **21**, no 22.
+
+### Cuándo — huso horario de Albuquerque (Mountain Time) traducido a Argentina
+
+Mountain Time está en horario de verano (MDT, UTC-6) en agosto; Argentina no tiene horario de
+verano (ART, UTC-3) — **Argentina va 3 horas adelantada**. Ventana recomendada para llamar a un
+contratista (evita el arranque de jornada cargando la camioneta y el cierre manejando de vuelta;
+no es un dato medido, es la práctica estándar de venta B2B en trades):
+
+| Hora en Albuquerque (MT) | Hora en Argentina (ART) |
+|---|---|
+| 10:00 – 12:00 | 13:00 – 15:00 |
+| 14:00 – 16:00 | 17:00 – 19:00 |
+
+Días preferidos: martes a jueves (se evita el lunes por acumulación de la semana y el viernes
+por cierre de jornada/semana — misma salvedad, es práctica estándar, no medición propia).
+
+### Con qué guion
+
+El guion recortado y cronometrado del Día 16 (`gtm/pipeline.md`, sección "Guion de
+apertura"), en el idioma que detecte `gtm/factory/lang.py::detect_language` por prospecto
+(default inglés, cambia a español solo con señal real en el nombre o el sitio — ninguno de los
+22 de la tabla mostró señal española en el nombre, así que la expectativa por defecto es que las
+22 aperturas salgan en inglés; confirmar corriendo `detect_language` sobre cada uno antes de
+llamar, no asumirlo). La llamada larga de 20 min (Nodo 11) y las 3 objeciones (`pipeline.md`)
+se ensayan en la llamada real, como quedó anotado en el Día 16 — no antes.
+
+### Ritmo y registro
+
+21-22 es menos de la mitad de las `llamadas_de_calibracion: 50` de
+`corte_temprano_por_costo` — no alcanza para recalcular el corte por costo todavía. Al agotar
+esta tanda, la continuación natural es un metro cercano en el mismo huso horario (Santa Fe o Rio
+Rancho, NM — no requiere re-decidir nada de `decision_criteria.yaml`, es más inventario del
+mismo par oficio/región) o revisar si aflojar el filtro de reseñas por debajo de 0 tiene sentido
+(no lo tiene: 0 ya es "sin filtro"). Cada llamada real se registra:
+
+```bash
+python -m gtm.factory.ledger record --place-id <id> --event contacted --channel phone --language en
+```
+
+`segmentacion_obligatoria` (`decision_criteria.yaml`) exige canal e idioma en cada evento — sin
+esto, el embudo segmentado que arma `/dashboard/funnel` queda sin datos para diagnosticar si el
+problema es "no atienden el teléfono" o "no responden en inglés" cuando lleguen los primeros
+resultados.
