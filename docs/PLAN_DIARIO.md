@@ -176,10 +176,22 @@ calibrado".
   Albuquerque en adelante, como flag explícito por corrida, sin tocar todavía las constantes de
   `discover.py`. Detalle completo en la ficha del Nodo 2.
 
-- [ ] **Día 11** (60 min, Nodo 3 — el día más denso) — Calibrar el score contra tu propio juicio
-  en 10 sitios reales: puntuar vos primero de 0-100 a ojo, después mirar el score del pipeline.
-  Si la correlación es mala, el problema son los pesos de dimensión o el corte de 45 — no el
-  código.
+- [x] **Día 11** (2026-08-12, Nodo 3, el día más denso) — Calibración contra juicio humano en 8
+  sitios comparables (de 10 puntuados a ciegas: 2 quedaron afuera del cruce, uno nunca se corrió
+  por `score.py`, otro no viene de ningún `discover` real). Resultado más duro de lo esperado:
+  correlación de rango **negativa** (Spearman ρ = -0,19, no solo "mala") y concordancia en el
+  corte de solo **2/8 (25%)**. El caso más claro: `legacytreecompany.com` calificó 10/100 a ojo
+  (responsive, rápido, buena info) contra 65/100 del pipeline — enteramente por el flag
+  `mobile_friendly=False` de PageSpeed (peso 2.0, el más alto), que contradice la lectura a mano
+  en viewport real. El inverso: `kikistreeservice.com` calificó 70/100 a ojo ("vieja, lenta")
+  contra 32/100 del pipeline (quedaría afuera de la cola) — la dimensión que sí coincide con el
+  juicio humano, `modernity`, tiene el peso más bajo (0.8) de las 5. Decisión: no se mueve el
+  corte de 45 (el problema es de orden, no de umbral) ni se tocan los pesos todavía — n=8 es
+  chico para eso, mismo criterio que el Día 12 con `dated_palette`. Queda la hipótesis falsable
+  para la próxima calibración con muestra mayor: subir el peso de `modernity` y auditar
+  `mobile_friendly` contra más casos reales. `dated_palette` no se contradice con esta muestra —
+  se sostiene `quotable=False` del Día 12 sin cambios. Detalle completo, con la tabla de 8
+  filas, en la ficha del Nodo 3.
 
 - [x] **Día 12** (2026-08-12, Nodo 4, cerrado con Miami) — Ampliada la muestra con `discover`
   real sobre `tree_service × Miami, FL` (20 calificados) para no calibrar nada sobre n=8.

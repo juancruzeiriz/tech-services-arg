@@ -534,6 +534,36 @@ arriba que determinan qué llega a puntuarse.
   dispararse con datos reales, y evaluar si vale la pena dar de alta `GTM_SEARCH_API_KEY` para
   la sub-capa B — nombres largos y descriptivos (como el de este caso) es exactamente donde la
   heurística de sub-capa A es más débil.
+- (2026-08-12, Día 11) **Calibración contra juicio humano: correlación de rango negativa, no
+  solo "mala".** n=8 comparables (de 10 intentados: 1 sin score porque nunca se corrió
+  `score.py` sobre ese prospecto — `abqtreeservices.com` quedó en `prospects.json` pero afuera
+  de `scores.json`; 1 fuera del dataset del pipeline por completo — `blossomtrees.net` no viene
+  de ningún `discover` registrado). Spearman ρ = **-0,19** sobre las 8 filas comparables (orden
+  invertido, no solo ruidoso) y concordancia en el binario calificar/no calificar (humano≥45 de
+  dolor vs `is_qualified`) de **2/8 (25%)**. El caso que más pesa: `legacytreecompany.com` —
+  juicio humano 10/100 ("responsive, carga rápido, buena info"), pipeline 65/100 (calificado),
+  enteramente por `sub_scores.mobile=96` — el flag `mobile_friendly=False` que reporta
+  PageSpeed (peso 2.0, el más alto del score) contradice directamente la lectura del mismo
+  sitio hecha a mano en viewport móvil. El caso inverso: `kikistreeservice.com` — humano 70/100
+  ("vieja, lenta, sin https"), pipeline 32/100 (**no** calificado, quedaría afuera de la cola de
+  demos) — `modernity=75` sí coincide con el juicio humano pero es el peso más bajo (0.8) de
+  las 5 dimensiones, mientras `mobile=0` y `speed=16` (bajo dolor) lo bajan del corte. "Se ve
+  viejo/vieja" aparece en 6 de los 8 sitios puntuados a mano — `modernity` es la dimensión en la
+  que más se apoya el juicio humano y la que menos pesa en la fórmula.
+  - **Decisión (n=8, no se cambian pesos todavía):** el problema no es el corte de 45 — mover
+    el umbral no arregla una correlación cercana a cero/negativa, eso exige reordenar, no
+    desplazar. No se toca `_DIMENSION_WEIGHTS` con esta muestra: es más chica que los n=11 sobre
+    los que el Día 12 ya decidió no tocar `dated_palette` sin más datos, mismo criterio aplica
+    acá. Hipótesis falsable para la próxima calibración (n≥15, ambos metros): "si se sube el
+    peso de `modernity` a la par de `mobile`/`conversion` (2.0) y se audita si `mobile_friendly`
+    de PageSpeed coincide con una lectura humana en viewport real sobre 5 casos más, la
+    concordancia en el corte sube de 25% a ≥60%". No implementado — próxima sesión de
+    calibración, con muestra mayor.
+  - `dated_palette` (diferido del Día 12): esta muestra **no lo contradice**. De los 4 sitios
+    donde disparó (legacytreecompany, onetwotree, miamistumpbrothers, samstreeservicefl),
+    ninguno está entre los dos de mayor dolor humano (nativetree=100, kikistreeservice=70 —
+    ninguno dispara `dated_palette`). Se sostiene la decisión del Día 12: `quotable=False`, sin
+    cambios.
 - (2026-08-12) **El camino `own_domain` disparó con datos reales**, cerrando el pendiente de
   arriba. `discover` sobre `tree_service × Miami, FL` (ver Nodo 2) trajo 4 prospectos `NONE`;
   al puntuarlos, `D&D Tree Service.` — sin `websiteUri` en su perfil de Maps, así que hubiera
@@ -566,6 +596,23 @@ arriba que determinan qué llega a puntuarse.
     a simple vista), en 1 de 3 coinciden, y en 1 de 3 el ojo encontró un bug real del score.
     Ninguno de los tres es "el score siempre tiene razón" ni "el ojo siempre tiene razón" —
     exactamente por eso vale la pena seguir haciendo este ejercicio en más casos.
+
+- (2026-08-12, Día 11) **Calibración ciega, 8 sitios comparables de 10 puntuados** (planilla en
+  `gtm/build/data/dia11_calibracion_ciega.md`, puntuados sin ver el score antes):
+
+  | Sitio | Humano | Pipeline | Calificado | sub_scores (speed/mobile/seo/modernity/conversion) |
+  |---|---|---|---|---|
+  | nativetree.com | 100 | 54 | Sí | 25/90/59/75/30 |
+  | legacytreecompany.com | 10 | 65 | Sí | 69/96/8/82/0 |
+  | onetwotree.com | 30 | 51 | Sí | 50/60/30/82/0 |
+  | monkeystreesservices.com | 25 | 53 | Sí | 14/90/59/75/30 |
+  | treeprosabq.com | 25 | 47 | Sí | 47/60/51/75/30 |
+  | miamistumpbrothers.com | 35 | 48 | Sí | 40/0/36/82/0 |
+  | kikistreeservice.com | 70 | 32 | No | 16/0/30/75/30 |
+  | samstreeservicefl.com | 20 | 43 | No | 41/0/30/82/0 |
+
+  Spearman ρ = **-0,19**. Concordancia en el corte = **2/8 (25%)**. Diagnóstico y decisión en
+  *Problemas conocidos* arriba.
 
 ---
 
