@@ -376,6 +376,18 @@ plata, le importa su reputación, y su web no está a la altura — no está pel
   McAllen) — el agregado de 20 metros lo bajó a 65 de valor esperado, último
   entre los 4 candidatos. Decisión del par final en la ficha del Nodo 1.
 
+- (2026-08-11) **Pendiente, evaluado y diferido a propósito**: sumar candidatos
+  nuevos desde una búsqueda general (no solo los que trae la barrida de Maps) se
+  consideró al implementar la Capa 2 de verificación (ver Nodo 3) y se descartó por
+  ahora. Motivo: `discover.py` identifica y filtra por `place_id` + `MIN_REVIEWS` +
+  `MIN_RATING` + teléfono (líneas 147-154); un resultado de búsqueda general no trae
+  ninguno de los tres, así que habría que re-resolver cada hallazgo contra Places de
+  todos modos — es una etapa nueva completa, no una extensión barata. Y el barrido de
+  539 negocios de arriba muestra que el cuello de botella no es cuántos negocios
+  encontrás, es el % sin sitio real — que la Capa 2 (Nodo 3) ya mueve en la dirección
+  correcta sin agregar una etapa. Revisar si esto sigue siendo cierto después de
+  correr la Capa 2 sobre unas cuantas corridas reales más.
+
 **Bitácora** —
 
 - (2026-08-11) `simulate.py` usa `_PRESENCE_WEIGHTS` global, igual para cualquier
@@ -440,6 +452,38 @@ arriba que determinan qué llega a puntuarse.
   señal fuerte, no una certeza — antes de usar "tu sitio no carga" como línea de venta en una
   llamada real, conviene un chequeo humano rápido. Relevante para el Día 12 (¿la línea de
   venta del hallazgo más grave suena natural?) y el Día 14 (tasa de `UNREACHABLE`).
+- (2026-08-11) `classify_web_presence` (`types.py`) solo reconocía Facebook/Instagram/
+  linktr.ee/Yelp/Nextdoor/Google-Business-Sites/Wix como "no es sitio propio, es un perfil de
+  terceros" (`WebPresence.SOCIAL_ONLY`). Sumados los directorios que un contratista de USA
+  también carga como "sitio" en su ficha de Maps: Angi, HomeAdvisor, Thumbtack, Porch, Houzz,
+  BBB, Yellow Pages, y los constructores de subdominio gratis (Weebly, GoDaddy Sites,
+  Squarespace, WordPress.com, Google Sites). Efecto: prospectos que antes se clasificaban
+  `HAS_SITE` (y se medían con PageSpeed sobre un perfil de directorio, no un sitio real) pasan
+  a `SOCIAL_ONLY` — agranda el pool de candidatos de ausencia digital real, en la dirección
+  contraria a la Capa 2 de abajo.
+- (2026-08-11) **Capa 2 de verificación de ausencia digital** (`gtm/factory/verify.py`):
+  antes de este día, "sin sitio" salía únicamente de `websiteUri` en el perfil de Maps
+  (`classify_web_presence`) — un negocio que tiene dominio propio y no lo vinculó ahí recibía
+  dolor 100 y el email decía "no tenés sitio web", una afirmación falsa y verificable en la
+  primera llamada. Ahora, antes de asignar ese dolor, `score_prospect` corre `verify_absence`:
+  deriva dominios candidatos del nombre (sub-capa A, gratis, siempre corre) y los corrobora
+  contra el teléfono/nombre del negocio en su HTML; si hay `GTM_SEARCH_API_KEY`/`GTM_SEARCH_CX`
+  configuradas, agrega una consulta a Google Programmable Search (sub-capa B) para los que la
+  sub-capa A no resolvió. **Corrido de verdad** sobre los 10 prospectos de
+  `tree_service × Albuquerque, NM`: de los 10, solo 1 (`Davids Tree Removal and yard
+  maintenance`) llega sin sitio a Maps. Sub-capa A probó
+  `davidstreeremovalandyardmaintenance.{com,net}` (derivado del nombre completo — no tiene
+  sufijo genérico tipo "LLC"/"Company" al final para generar una segunda variante más corta) y
+  no encontró nada; sin `GTM_SEARCH_API_KEY` configurada, sub-capa B no corrió. Resultado:
+  `digital_trace=unverified`, no `own_domain` ni `no_trace` — la ausencia queda sin confirmar
+  ni desmentir, que es el comportamiento honesto cuando no hay segunda fuente, no un falso
+  "confirmado sin sitio". Con este único caso no se puede probar el camino `own_domain` contra
+  datos reales; ese camino está cubierto por `tests/gtm/test_verify.py` con un caso sintético
+  (dominio que responde y cita el teléfono real). Pendiente para una sesión futura: correr esto
+  sobre un metro/oficio con más candidatos `NONE`/`SOCIAL_ONLY` para ver el camino `own_domain`
+  dispararse con datos reales, y evaluar si vale la pena dar de alta `GTM_SEARCH_API_KEY` para
+  la sub-capa B — nombres largos y descriptivos (como el de este caso) es exactamente donde la
+  heurística de sub-capa A es más débil.
 
 **Bitácora** —
 
@@ -522,6 +566,20 @@ vertical no está en catálogo.
 
 **Bitácora** —
 
+- (2026-08-11) Hasta este día, el idioma de la demo era un parámetro de la corrida entera
+  (`RunContext.language`) — para un metro genuinamente mixto como Albuquerque, eso es una
+  moneda al aire por negocio. Agregado `gtm/factory/lang.py::detect_language`: señal barata
+  del nombre del negocio (acentos, tokens como "hermanos"/"jardinería"/"poda"), y si el
+  llamador tiene el HTML del sitio a mano (nunca se descarga solo para esto), su atributo
+  `lang` o densidad de stopwords en español. `ctx.language` pasa a ser el **default** cuando
+  no hay señal, no una imposición — `run_pipeline` lo llama por prospecto en la etapa de
+  generate. `Demo` suma su propio campo `language` (antes no existía: la demo se renderizaba
+  con `lang` adentro del HTML, pero el objeto no lo recordaba). Encontrado en el camino:
+  `deploy()` reconstruía `Demo` campo por campo y perdía `language` en el paso generate→deploy
+  — mismo patrón de bug que ya afectaba al registro del embudo (`gtm/ui/routes/queue.py`
+  usaba `ctx.language` en vez de `demo.language`) y a la fila `demos` en Postgres
+  (`gtm/store/repo.py` mandaba `ctx.language.value` para todas las filas). Los tres, corregidos
+  juntos con tests de regresión.
 - (2026-08-11) Corrido el pipeline real hasta acá (`discover` → `score` → `generate --all`)
   sobre `tree_service × Albuquerque, NM`: 8/9 calificados, 8 demos generadas. Servidas
   localmente (`.claude/launch.json`, config `demos`, `python -m http.server`) para abrirlas
@@ -595,11 +653,15 @@ tienen sitio, así que no tienen formulario, pero sí teléfono, y son pocos —
 
 **Qué** — Escribir el texto real que ve el prospecto, en el formato del canal resuelto.
 
-**Cómo** — Tres builders: `outreach.py::build_body` (email, con validación CAN-SPAM
+**Cómo** — Cuatro builders: `outreach.py::build_body` (email, con validación CAN-SPAM
 obligatoria), `contact.py::build_form_message` (≤600 caracteres, sin firma ni dirección postal),
-`contact.py::build_call_script` (guion de 20 s). El gancho de "llamada perdida" **solo** se
+`contact.py::build_call_script` (guion de 20 s), y `contact.py::build_followup_message`
+(recordatorio corto del Día 3, ver Nodo 9). El gancho de "llamada perdida" **solo** se
 renderiza si hay una `missed_call_at` real registrada — si no, cae al ángulo medido por
-Lighthouse.
+Lighthouse. Los tres primeros cierran con un límite de tiempo ("te lo reservo 7 días" / "I'll
+hold it for you for 7 days") — agregado el 2026-08-11 siguiendo el resumen de estrategia de
+venta, verificado que no rompe el límite de `FORM_MESSAGE_MAX_CHARS` (el mensaje en español,
+el más ajustado de los dos, queda en 471+22=493 de 600) ni el gate de CAN-SPAM.
 
 **Para qué** — El orden importa: primero el hecho observado, después el link, recién al final
 el precio. Si el precio va arriba, se lee como publicidad. Y nunca se inventa un hecho: el
@@ -663,17 +725,32 @@ primer teléfono que atiendan destruye la venta y la reputación.
 **Qué** — La lista concreta y ordenada de a quién contactar, cómo y con qué mensaje.
 
 **Cómo** — `contact.py::render_queue` → `gtm/build/queue.md`, también disponible en `/queue` de
-la UI. Ordenada por `pain_score` descendente, separada en Llamadas / Formularios / Descartados.
+la UI. Ordenada por `pain_score` descendente, separada en Llamadas / Formularios /
+Seguimiento / Descartados.
 
 **Para qué** — Decisión de diseño central: **el pipeline prepara, no envía.** A 25 prospectos
 por semana, mandar a mano cuesta hora y media, convierte más, y evita de raíz el harvesting de
 direcciones (CAN-SPAM agravado) y el SMS en frío (TCPA).
 
-**Palancas** — Ninguna propia — hereda todo de los nodos 7 y 8.
+**Palancas** — `FunnelLedger.due_followups(now, nudge_after_days, close_after_days)`, que la
+cola hereda; el resto viene de los nodos 7 y 8.
 
 **Problemas conocidos** —
 
 **Bitácora** —
+
+- (2026-08-11) Agregada la cadencia de seguimiento Día 0/3/7 del resumen de estrategia de
+  venta. Deliberadamente **no** es un `FunnelEvent` nuevo (los cinco escalones son el
+  compromiso pre-registrado de `decision_criteria.yaml`, y agregar uno exigiría
+  re-registrar el experimento) — se DERIVA de lo que ya está: un `contacted` sin `replied`
+  (ni nada posterior) de la misma clave, hace 3 o 7+ días
+  (`FunnelLedger.due_followups`). Día 3: sección "Seguimiento" en `render_queue` con
+  `build_followup_message` listo para copiar; badge propio en `/queue`. Día 7: mismo lugar,
+  con el comando de `ledger suppress --reason not_interested` — que **no es permanente**
+  (`SuppressionReason.is_permanent`) y no baja la demo (nada en `deploy.py` la toca), cerrando
+  el pendiente del resumen de estrategia sobre no dar de baja la página todavía. Verificado
+  que `gtm/funnel.jsonl` está vacío (cero contactos reales registrados aún), así que este
+  cambio no contamina el experimento en curso.
 
 ---
 

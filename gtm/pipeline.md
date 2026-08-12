@@ -67,10 +67,34 @@ si cumple las tres condiciones a la vez:
 El orden del email importa: primero el hecho observado, después el link, y recién al
 final el precio. Si el precio va arriba, se lee como publicidad y se cierra.
 
+**Límite de tiempo, siempre.** Los tres mensajes (`outreach.build_body`,
+`contact.build_form_message`, `contact.build_call_script`) cierran con "te lo
+reservo 7 días" / "I'll hold it for you for 7 days" — evita que la oferta quede
+en el limbo sin respuesta. El día 3 sin respuesta, la cola de contacto ofrece un
+recordatorio corto (`contact.build_followup_message`); el día 7, la opción de
+marcarlo como no interesado por ahora sin bajar la demo (ver "Tiempos de
+seguimiento" más abajo).
+
 **Prohibido inventar.** No afirmar que llamaste si no llamaste. El código lo impide —
 el gancho de la llamada perdida requiere una observación registrada— pero la regla es
 tuya, no del código: el primer teléfono que atiendan destruye la venta y la reputación
 que estás tratando de construir.
+
+## Tiempos de seguimiento
+
+Día 0: mensaje inicial (teléfono o formulario, según el canal que resolvió
+`contact.py`). Día 3: si no respondió, la cola de contacto (`/queue` en la UI,
+`queue.md` en la CLI) muestra un recordatorio corto listo para copiar
+(`contact.build_followup_message`) — no repite el pitch entero. Día 7: si sigue
+sin respuesta, contarlo como no interesado por ahora, no dar de baja la demo
+todavía (el costo de dejarla online es casi cero) — un clic en la UI, o
+`python -m gtm.factory.ledger suppress --place-id ... --reason not_interested`
+por CLI, lo marca sin ser una supresión permanente (a diferencia de
+`opted_out`).
+
+`FunnelLedger.due_followups` calcula estos dos vencimientos a partir del
+evento `contacted` que ya se registra — no agrega un escalón nuevo al embudo
+pre-registrado (`decision_criteria.yaml`).
 
 ## Guion de apertura — llamada en frío (20 segundos)
 
@@ -88,7 +112,7 @@ acá, retocarlo ahí también para que no diverjan.
 > va a este número.
 > [Enviar SMS: {link}]
 > Sin compromiso — si te gusta lo apunto a tu dominio, si no te lo quedás
-> igual.
+> igual. Te lo reservo 7 días.
 
 **EN**
 
@@ -97,9 +121,9 @@ acá, retocarlo ahí también para que no diverjan.
 > sample. It is online right now.
 > Can I text you the link so you can look at it later? … Great, it is going
 > to this number.
-> [Enviar SMS: {link}]
+> [Send SMS: {link}]
 > No obligation — if you like it I can point it at your domain, if not keep
-> it.
+> it. I'll hold it for you for 7 days.
 
 ## Guion de la llamada (20 min)
 

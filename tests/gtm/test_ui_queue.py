@@ -110,6 +110,69 @@ class TestQueuePage:
         target_place_id = next(p.place_id for p in handle_a.result.contacts if p.is_actionable)
         assert f"item-{target_place_id}" in response.text
 
+    def test_badge_de_recordatorio_a_los_3_dias(self, client):
+        from datetime import UTC, datetime, timedelta
+
+        from gtm.factory.ledger import FunnelLedger
+        from gtm.factory.types import FunnelEvent
+
+        run_id = _create_simulated_run(client)
+        handle = client.app.state.registry.get(run_id)
+        target_place_id = next(p.place_id for p in handle.result.contacts if p.is_actionable)
+
+        FunnelLedger().record(
+            target_place_id, FunnelEvent.CONTACTED, at=datetime.now(UTC) - timedelta(days=4)
+        )
+
+        response = client.get(f"/queue?run_id={run_id}")
+
+        assert "día 3" in response.text.lower()
+
+    def test_badge_de_cierre_a_los_7_dias(self, client):
+        from datetime import UTC, datetime, timedelta
+
+        from gtm.factory.ledger import FunnelLedger
+        from gtm.factory.types import FunnelEvent
+
+        run_id = _create_simulated_run(client)
+        handle = client.app.state.registry.get(run_id)
+        target_place_id = next(p.place_id for p in handle.result.contacts if p.is_actionable)
+
+        FunnelLedger().record(
+            target_place_id, FunnelEvent.CONTACTED, at=datetime.now(UTC) - timedelta(days=8)
+        )
+
+        response = client.get(f"/queue?run_id={run_id}")
+
+        assert "día 7" in response.text.lower()
+
+    def test_sin_contacto_previo_no_hay_badge_de_seguimiento(self, client):
+        run_id = _create_simulated_run(client)
+
+        response = client.get(f"/queue?run_id={run_id}")
+
+        assert "día 3" not in response.text.lower()
+        assert "día 7" not in response.text.lower()
+
+    def test_usa_el_idioma_de_la_demo_no_el_de_la_corrida(self, client, monkeypatch):
+        """Regresión: la cola armaba el mensaje con `handle.ctx.language` --
+        el idioma de la corrida entera -- en vez de `demo.language` (detectado
+        por prospecto, gtm/factory/lang.py). Con `detect_language` forzado a
+        ES para todos y una corrida creada en EN, el mensaje tiene que salir
+        en español de todas formas."""
+        from gtm.factory import pipeline as pipeline_mod
+        from gtm.factory.types import Language
+
+        monkeypatch.setattr(
+            pipeline_mod, "detect_language", lambda prospect, *, default: Language.ES
+        )
+
+        run_id = _create_simulated_run(client, language="en")
+
+        response = client.get(f"/queue?run_id={run_id}")
+
+        assert "Hola," in response.text
+
 
 class TestRecordEvent:
     def test_registra_en_el_ledger_local(self, client, tmp_path):
@@ -138,6 +201,27 @@ class TestRecordEvent:
 
         record = json.loads((tmp_path / "funnel.jsonl").read_text(encoding="utf-8").strip())
         assert record["channel"] == plan.channel.value
+
+    def test_registra_el_idioma_de_la_demo_no_el_de_la_corrida(self, client, tmp_path, monkeypatch):
+        """Regresión: el evento del embudo grababa `handle.ctx.language` --
+        `decision_criteria.yaml` exige segmentar por idioma, y con el valor
+        de la corrida esa segmentación mentiría apenas hubiera un prospecto
+        detectado en el otro idioma dentro de la misma corrida."""
+        from gtm.factory import pipeline as pipeline_mod
+        from gtm.factory.types import Language
+
+        monkeypatch.setattr(
+            pipeline_mod, "detect_language", lambda prospect, *, default: Language.ES
+        )
+
+        run_id = _create_simulated_run(client, language="en")
+        handle = client.app.state.registry.get(run_id)
+        place_id = next(p.place_id for p in handle.result.contacts if p.is_actionable)
+
+        client.post(f"/queue/{run_id}/{place_id}/event", data={"event": "contacted"})
+
+        record = json.loads((tmp_path / "funnel.jsonl").read_text(encoding="utf-8").strip())
+        assert record["language"] == "es"
 
     def test_pagar_suprime_como_cliente(self, client, tmp_path):
         run_id = _create_simulated_run(client)

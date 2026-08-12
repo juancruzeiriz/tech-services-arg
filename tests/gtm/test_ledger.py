@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 import json
+from datetime import UTC, datetime, timedelta
 
 import pytest
 
 from gtm.factory.ledger import (
+    FollowupStage,
     FunnelLedger,
     LedgerError,
     SuppressionList,
@@ -245,6 +247,83 @@ class TestFunnelLedger:
     def test_el_clic_no_es_un_evento(self):
         """Medir clics invitaría a decidir con ellos, que es el error original."""
         assert "click" not in {e.value for e in FunnelEvent}
+
+
+class TestDueFollowups:
+    """Cadencia Día 0/3/7: `due_followups` no agrega un evento de embudo nuevo
+    (los cinco escalones son el compromiso pre-registrado de
+    decision_criteria.yaml) -- se DERIVA de un 'contacted' sin 'replied'
+    posterior de la misma clave."""
+
+    def test_sin_contactos_no_hay_pendientes(self, funnel):
+        assert funnel.due_followups() == []
+
+    def test_contacto_reciente_no_esta_pendiente(self, funnel):
+        now = datetime(2026, 8, 11, tzinfo=UTC)
+        funnel.record("a", FunnelEvent.CONTACTED, at=now)
+        assert funnel.due_followups(now) == []
+
+    def test_contacto_de_3_dias_es_nudge(self, funnel):
+        contacted_at = datetime(2026, 8, 1, tzinfo=UTC)
+        funnel.record("a", FunnelEvent.CONTACTED, at=contacted_at)
+
+        due = funnel.due_followups(contacted_at + timedelta(days=3))
+
+        assert len(due) == 1
+        assert due[0].stage is FollowupStage.NUDGE
+
+    def test_contacto_de_7_dias_es_close(self, funnel):
+        contacted_at = datetime(2026, 8, 1, tzinfo=UTC)
+        funnel.record("a", FunnelEvent.CONTACTED, at=contacted_at)
+
+        due = funnel.due_followups(contacted_at + timedelta(days=7))
+
+        assert len(due) == 1
+        assert due[0].stage is FollowupStage.CLOSE
+
+    def test_contacto_de_1_dia_no_esta_pendiente(self, funnel):
+        contacted_at = datetime(2026, 8, 1, tzinfo=UTC)
+        funnel.record("a", FunnelEvent.CONTACTED, at=contacted_at)
+
+        assert funnel.due_followups(contacted_at + timedelta(days=1)) == []
+
+    def test_prospecto_que_respondio_no_aparece(self, funnel):
+        contacted_at = datetime(2026, 8, 1, tzinfo=UTC)
+        funnel.record("a", FunnelEvent.CONTACTED, at=contacted_at)
+        funnel.record("a", FunnelEvent.REPLIED, at=contacted_at + timedelta(hours=2))
+
+        due = funnel.due_followups(contacted_at + timedelta(days=10))
+
+        assert due == []
+
+    def test_devuelve_la_clave_hasheada_no_el_place_id(self, funnel):
+        contacted_at = datetime(2026, 8, 1, tzinfo=UTC)
+        funnel.record("some-place-id", FunnelEvent.CONTACTED, at=contacted_at)
+
+        due = funnel.due_followups(contacted_at + timedelta(days=3))
+
+        assert due[0].key == hash_key("place_id", "some-place-id")
+
+    def test_un_nuevo_contacted_reabre_la_ventana(self, funnel):
+        """Reintentar un prospecto (CONTACTED es válido de nuevo, a
+        diferencia de OPTED_OUT) tiene que resetear el conteo de días."""
+        first_contact = datetime(2026, 8, 1, tzinfo=UTC)
+        funnel.record("a", FunnelEvent.CONTACTED, at=first_contact)
+
+        second_contact = datetime(2026, 8, 10, tzinfo=UTC)
+        funnel.record("a", FunnelEvent.CONTACTED, at=second_contact)
+
+        assert funnel.due_followups(second_contact + timedelta(days=1)) == []
+
+    def test_umbrales_configurables(self, funnel):
+        contacted_at = datetime(2026, 8, 1, tzinfo=UTC)
+        funnel.record("a", FunnelEvent.CONTACTED, at=contacted_at)
+
+        due = funnel.due_followups(
+            contacted_at + timedelta(days=2), nudge_after_days=1, close_after_days=5
+        )
+
+        assert due[0].stage is FollowupStage.NUDGE
 
 
 class TestCriterioPreRegistrado:

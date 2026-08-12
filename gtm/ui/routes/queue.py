@@ -19,7 +19,7 @@ from fastapi import APIRouter, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 
 from gtm.factory.contact import build_call_script, build_form_message
-from gtm.factory.ledger import FunnelLedger, SuppressionList, hash_key
+from gtm.factory.ledger import FollowupStage, FunnelLedger, SuppressionList, hash_key
 from gtm.factory.logs import get_logger
 from gtm.factory.types import ContactChannel, FunnelEvent, SuppressionReason
 from gtm.store import links, repo
@@ -32,6 +32,12 @@ _logger = get_logger(__name__)
 router = APIRouter(prefix="/queue")
 
 
+_FOLLOWUP_LABELS: dict[FollowupStage, str] = {
+    FollowupStage.NUDGE: "día 3 — recordatorio",
+    FollowupStage.CLOSE: "día 7 — cerrar",
+}
+
+
 def _queue_items(
     registry: RunRegistry, run_id: str | None, suppression: SuppressionList
 ) -> list[dict[str, Any]]:
@@ -41,6 +47,11 @@ def _queue_items(
     handles = registry.all()
     if run_id:
         handles = [h for h in handles if h.ctx.run_id == run_id]
+
+    # Cadencia de seguimiento (Día 0/3/7, `gtm/pipeline.md`): un solo cálculo
+    # para toda la cola, cruzado por clave hasheada contra cada item -- ver el
+    # docstring de `FunnelLedger.due_followups`.
+    due_by_key = {due.key: due for due in FunnelLedger().due_followups()}
 
     for handle in handles:
         if handle.result is None:
@@ -65,15 +76,19 @@ def _queue_items(
                 else demo.url
             )
 
+            # `demo.language`, no `handle.ctx.language`: se detecta por
+            # prospecto (`gtm.factory.lang.detect_language`, ver
+            # `pipeline.run_pipeline`) -- `ctx.language` es solo el default
+            # cuando la detección no encuentra señal, no la imposición.
             if plan.channel is ContactChannel.PHONE:
-                message = build_call_script(
-                    prospect, demo, language=handle.ctx.language, link_url=link_url
-                )
+                message = build_call_script(prospect, demo, language=demo.language, link_url=link_url)
             else:
                 message = build_form_message(
                     prospect, demo, handle.ctx.author_name,
-                    language=handle.ctx.language, link_url=link_url, price_usd=handle.ctx.offer_price_usd,
+                    language=demo.language, link_url=link_url, price_usd=handle.ctx.offer_price_usd,
                 )
+
+            due = due_by_key.get(hash_key("place_id", plan.place_id))
 
             items.append(
                 {
@@ -82,9 +97,10 @@ def _queue_items(
                     "prospect": prospect,
                     "plan": plan,
                     "demo": demo,
-                    "language": handle.ctx.language.value,
+                    "language": demo.language.value,
                     "message": message,
                     "link_url": link_url,
+                    "followup_label": _FOLLOWUP_LABELS[due.stage] if due else None,
                 }
             )
 
@@ -141,15 +157,22 @@ async def record_event(
 ) -> RedirectResponse:
     handle = registry.get(run_id)
     plan = None
+    demo = None
     if handle is not None and handle.result is not None:
         plan = next((p for p in handle.result.contacts if p.place_id == place_id), None)
+        demo = next((d for d in handle.result.demos if d.place_id == place_id), None)
 
     funnel_event = FunnelEvent(event)
     channel = plan.channel.value if plan else ""
     pain_score = plan.pain_score if plan else 0
     vertical = handle.ctx.vertical if handle else ""
     metro = handle.ctx.metro if handle else ""
-    language = handle.ctx.language.value if handle else ""
+    # `demo.language`, no `handle.ctx.language`: `decision_criteria.yaml`
+    # exige segmentar por idioma (`segmentacion_obligatoria`) y el idioma se
+    # detecta por prospecto (`gtm.factory.lang.detect_language`) -- con el
+    # valor de la corrida la segmentación mentiría apenas hubiera un
+    # prospecto detectado en el otro idioma dentro de la misma corrida.
+    language = demo.language.value if demo else (handle.ctx.language.value if handle else "")
 
     FunnelLedger().record(
         place_id,

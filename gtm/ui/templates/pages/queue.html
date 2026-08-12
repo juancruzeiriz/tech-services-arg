@@ -54,6 +54,7 @@
       <span class="badge {{ 'badge-danger' if item.plan.pain_score >= 70 else 'badge-warn' if item.plan.pain_score >= 45 else 'badge-muted' }}">dolor {{ item.plan.pain_score }}</span>
       <span class="badge badge-info">{{ 'teléfono' if item.plan.channel.value == 'phone' else 'formulario' }}</span>
       <span class="badge badge-muted">{{ item.language }}</span>
+      {% if item.followup_label %}<span class="badge badge-warn">{{ item.followup_label }}</span>{% endif %}
     </div>
     <a href="{{ item.link_url }}" target="_blank" rel="noopener" class="text-sm">ver demo →</a>
   </div>

@@ -64,8 +64,13 @@ class WebPresence(StrEnum):
     """Tiene sitio propio. La venta depende de qué tan malo sea (ver PainScore)."""
 
 
-# Dominios que no son un sitio web propio, solo un perfil en plataforma ajena.
-_SOCIAL_HOSTS: frozenset[str] = frozenset(
+# Dominios que no son un sitio web propio, solo un perfil en plataforma ajena: redes
+# sociales, directorios de terceros (Angi, HomeAdvisor, Thumbtack, Porch, Houzz, BBB,
+# Yellow Pages) y constructores de subdominio gratis (Weebly, GoDaddy Sites,
+# Squarespace, WordPress.com, Google Sites). Un perfil en cualquiera de estos no es
+# presencia web propia: el negocio no lo controla, no rankea a su nombre y puede
+# desaparecer si el directorio cierra la cuenta.
+_THIRD_PARTY_HOSTS: frozenset[str] = frozenset(
     {
         "facebook.com",
         "m.facebook.com",
@@ -75,8 +80,45 @@ _SOCIAL_HOSTS: frozenset[str] = frozenset(
         "nextdoor.com",
         "business.site",  # Google Business "sitios" autogenerados
         "wixsite.com",
+        "angi.com",
+        "homeadvisor.com",
+        "thumbtack.com",
+        "porch.com",
+        "houzz.com",
+        "bbb.org",
+        "yellowpages.com",
+        "weebly.com",
+        "godaddysites.com",
+        "squarespace.com",
+        "wordpress.com",
+        "sites.google.com",
     }
 )
+
+
+class DigitalTrace(StrEnum):
+    """Qué tan segura es la ausencia digital de un prospecto que Google Maps
+    reporta como `WebPresence.NONE`/`SOCIAL_ONLY` -- resultado de la Capa 2 de
+    verificación (`gtm.factory.verify.verify_absence`). Google Maps es una
+    sola fuente y el negocio pudo no vincular un dominio propio que sí existe;
+    este campo es la corroboración antes de asignar el dolor máximo (100) y
+    de afirmarle al prospecto, en el primer renglón del mensaje, que no
+    tiene sitio -- una afirmación que tiene que ser verdad."""
+
+    OWN_DOMAIN = "own_domain"
+    """Se encontró y corroboró un dominio propio: la ausencia era falsa."""
+
+    DIRECTORY_ONLY = "directory_only"
+    """Solo aparece en directorios de terceros (Yelp, Angi, Facebook...): sigue
+    siendo candidato de ausencia digital real, no tiene sitio que controle."""
+
+    NO_TRACE = "no_trace"
+    """Ninguna señal relevante encontrada: candidato de dolor máximo."""
+
+    UNVERIFIED = "unverified"
+    """No se pudo verificar (sin `GTM_SEARCH_API_KEY` o falló la red). Default:
+    se trata igual que `NO_TRACE` para el score, pero queda documentado que no
+    hubo una segunda fuente que lo confirme."""
 
 
 class Language(StrEnum):
@@ -179,7 +221,7 @@ def classify_web_presence(website: str | None) -> WebPresence:
     host = re.sub(r"^https?://", "", website.strip().lower()).split("/")[0]
     host = host.removeprefix("www.")
 
-    if any(host == social or host.endswith(f".{social}") for social in _SOCIAL_HOSTS):
+    if any(host == third_party or host.endswith(f".{third_party}") for third_party in _THIRD_PARTY_HOSTS):
         return WebPresence.SOCIAL_ONLY
 
     return WebPresence.HAS_SITE
@@ -302,6 +344,15 @@ class PainScore:
     last_changed: date | None = None
     """Última vez que el contenido del sitio cambió de verdad (Wayback CDX)."""
 
+    digital_trace: DigitalTrace = DigitalTrace.UNVERIFIED
+    """Resultado de la Capa 2 de verificación (`gtm.factory.verify`) cuando
+    `has_web_presence` es False. No participa en `score`: es informativo,
+    para que `notes` y el copy de venta sepan qué tan segura es la ausencia."""
+
+    verified_domain: str | None = None
+    """El dominio propio encontrado y corroborado, si `digital_trace` es
+    `OWN_DOMAIN`. None en cualquier otro caso."""
+
     @property
     def score(self) -> int:
         """Pain score compuesto 0-100.
@@ -403,6 +454,7 @@ class PainScore:
         data["score"] = self.score
         data["is_qualified"] = self.is_qualified
         data["sub_scores"] = self.sub_scores
+        data["digital_trace"] = self.digital_trace.value
         if self.last_changed is not None:
             data["last_changed"] = self.last_changed.isoformat()
         return data
@@ -437,6 +489,8 @@ class PainScore:
             crux_cls=data.get("crux_cls"),
             has_field_data=data.get("has_field_data", False),
             last_changed=date.fromisoformat(last_changed_raw) if last_changed_raw else None,
+            digital_trace=DigitalTrace(data.get("digital_trace", DigitalTrace.UNVERIFIED.value)),
+            verified_domain=data.get("verified_domain"),
         )
 
 
@@ -567,6 +621,13 @@ class Demo:
     url: str | None = None
     deployed_at: datetime | None = None
 
+    language: Language = Language.EN
+    """Idioma en el que se renderizó esta demo (`gtm.factory.lang.detect_language`
+    o el default de la corrida). Vive acá y no en la corrida porque la demo ya
+    se renderiza con `lang` adentro (`generate.render`) -- es un hecho de este
+    artefacto puntual, no de la corrida entera: dos prospectos de la misma
+    corrida pueden terminar en idiomas distintos."""
+
     @property
     def is_live(self) -> bool:
         """Una demo sin URL pública no sirve para prospectar: es un mockup."""
@@ -580,6 +641,7 @@ class Demo:
             "url": self.url,
             "deployed_at": self.deployed_at.isoformat() if self.deployed_at else None,
             "is_live": self.is_live,
+            "language": self.language.value,
         }
 
     @classmethod
@@ -592,6 +654,7 @@ class Demo:
             html_path=data["html_path"],
             url=data.get("url"),
             deployed_at=datetime.fromisoformat(deployed_at) if deployed_at else None,
+            language=Language(data.get("language", Language.EN.value)),
         )
 
 

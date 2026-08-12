@@ -29,6 +29,7 @@ import sys
 from collections import Counter
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from enum import StrEnum
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
@@ -274,6 +275,41 @@ class FunnelReport:
         return False, ""
 
 
+class FollowupStage(StrEnum):
+    """Etapa de la cadencia de seguimiento Día 0/3/7 (`gtm/pipeline.md`).
+
+    Deliberadamente no es un `FunnelEvent`: los cinco escalones del embudo son
+    el compromiso pre-registrado de `decision_criteria.yaml` y agregar uno
+    nuevo exigiría re-registrar el experimento. La cadencia se DERIVA de lo
+    que ya está -- un `CONTACTED` sin `REPLIED` (ni nada posterior) de la
+    misma clave -- no agrega un evento nuevo al embudo.
+    """
+
+    NUDGE = "nudge"
+    """Día 3: recordatorio corto, mismo canal."""
+
+    CLOSE = "close"
+    """Día 7: sin respuesta, dar por no interesado por ahora
+    (`SuppressionReason.NOT_INTERESTED`, no permanente) -- la demo sigue
+    online, el costo de dejarla es casi cero."""
+
+
+@dataclass(frozen=True, slots=True)
+class FollowupDue:
+    """Un prospecto contactado que no respondió, listo para su seguimiento.
+
+    `key` es la clave hasheada (`hash_key("place_id", ...)`), no el place_id:
+    el ledger nunca guarda identificadores en claro. El llamador (la cola de
+    contacto) recorre sus propios prospectos accionables y recalcula
+    `hash_key("place_id", plan.place_id)` para saber a cuál de ellos
+    corresponde cada `FollowupDue`.
+    """
+
+    key: str
+    days_since_contact: float
+    stage: FollowupStage
+
+
 class FunnelLedger:
     """Registro de eventos del embudo. Hace operativo a decision_criteria.yaml."""
 
@@ -293,6 +329,7 @@ class FunnelLedger:
         pain_score: int = 0,
         amount_usd: float = 0.0,
         note: str = "",
+        at: datetime | None = None,
     ) -> None:
         """Registra un evento. Los metadatos no son personales: sirven para segmentar.
 
@@ -300,6 +337,9 @@ class FunnelLedger:
         (`segmentacion_obligatoria`): sin ellos, "pocas respuestas" agregado no dice
         si el problema es el teléfono, el formulario, el inglés o el español —
         diagnósticos distintos con arreglos distintos.
+
+        `at`: inyectable para tests y para reconstruir eventos históricos (mismo
+        patrón que `store.repo`); por defecto, el momento real del registro.
         """
         channel_value = channel.value if isinstance(channel, ContactChannel) else channel
         language_value = language.value if isinstance(language, Language) else language
@@ -309,7 +349,7 @@ class FunnelLedger:
                 "key": hash_key("place_id", place_id),
                 "event": event.value,
                 "level": event.level,
-                "at": datetime.now(UTC).isoformat(),
+                "at": (at or datetime.now(UTC)).isoformat(),
                 "vertical": vertical,
                 "metro": metro,
                 "channel": channel_value,
@@ -367,6 +407,56 @@ class FunnelLedger:
             revenue_usd=revenue,
             spend_usd=spend_usd,
         )
+
+    def due_followups(
+        self,
+        now: datetime | None = None,
+        *,
+        nudge_after_days: int = 3,
+        close_after_days: int = 7,
+    ) -> list[FollowupDue]:
+        """Prospectos con un `CONTACTED` sin `REPLIED` (ni nada posterior) de
+        la misma clave, hace `nudge_after_days` o más.
+
+        No agrega ningún evento al embudo -- ver el docstring de
+        `FollowupStage`. `now` es un parámetro, no `datetime.now(UTC)` interno,
+        para que el resultado no dependa del reloj real de quien corre el test.
+        """
+        now = now or datetime.now(UTC)
+
+        last_contacted: dict[str, datetime] = {}
+        progressed: set[str] = set()
+
+        for record in _read(self.path):
+            key = record.get("key", "")
+            event = record.get("event", "")
+            if not key or not event:
+                continue
+
+            if event == FunnelEvent.CONTACTED.value:
+                try:
+                    last_contacted[key] = datetime.fromisoformat(record.get("at", ""))
+                except ValueError:
+                    continue
+                # Un contacto nuevo reabre la ventana: CONTACTED es válido de
+                # reintentar (a diferencia de OPTED_OUT), y si se reintentó es
+                # porque el ciclo anterior no llegó a nada -- vuelve a estar
+                # pendiente desde cero.
+                progressed.discard(key)
+            elif key in last_contacted:
+                progressed.add(key)
+
+        due: list[FollowupDue] = []
+        for key, contacted_at in last_contacted.items():
+            if key in progressed:
+                continue
+            days = (now - contacted_at).total_seconds() / 86400
+            if days < nudge_after_days:
+                continue
+            stage = FollowupStage.CLOSE if days >= close_after_days else FollowupStage.NUDGE
+            due.append(FollowupDue(key=key, days_since_contact=days, stage=stage))
+
+        return due
 
 
 def format_report(report: FunnelReport) -> str:

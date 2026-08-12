@@ -11,6 +11,7 @@ from gtm.factory.types import (
     ContactChannel,
     ContactPlan,
     Demo,
+    DigitalTrace,
     Language,
     OutreachEmail,
     PainScore,
@@ -40,12 +41,37 @@ class TestWebPresence:
     def test_redes_sociales_no_son_sitio_propio(self, website):
         assert classify_web_presence(website) is WebPresence.SOCIAL_ONLY
 
+    @pytest.mark.parametrize(
+        "website",
+        [
+            "https://www.angi.com/companylist/us/az/tucson/ramirez-plumbing-reviews-1234.htm",
+            "https://www.homeadvisor.com/rated.RamirezPlumbing.12345.html",
+            "https://www.thumbtack.com/az/tucson/plumbing/ramirez-plumbing",
+            "https://www.porch.com/ramirez-plumbing-tucson-az/pp",
+            "https://www.houzz.com/pro/ramirezplumbing",
+            "https://www.bbb.org/us/az/tucson/profile/plumber/ramirez-plumbing",
+            "https://www.yellowpages.com/tucson-az/ramirez-plumbing",
+            "https://ramirezplumbing.weebly.com",
+            "https://ramirezplumbing.godaddysites.com",
+            "https://ramirezplumbing.squarespace.com",
+            "https://ramirezplumbing.wordpress.com",
+            "https://sites.google.com/view/ramirezplumbing",
+        ],
+    )
+    def test_directorios_de_terceros_no_son_sitio_propio(self, website):
+        assert classify_web_presence(website) is WebPresence.SOCIAL_ONLY
+
     def test_sitio_propio(self):
         assert classify_web_presence("https://ramirezplumbing.com") is WebPresence.HAS_SITE
 
     def test_dominio_que_contiene_social_no_es_falso_positivo(self):
         # "notfacebook.com" no debe clasificarse como red social.
         assert classify_web_presence("https://notfacebook.com") is WebPresence.HAS_SITE
+
+    def test_dominio_que_contiene_directorio_no_es_falso_positivo(self):
+        # Mismo chequeo que arriba, pero para los directorios nuevos: un dominio
+        # propio que contiene "houzz" como substring no es Houzz.
+        assert classify_web_presence("https://myhouzzstyle.com") is WebPresence.HAS_SITE
 
 
 class TestProspectSlug:
@@ -184,6 +210,39 @@ class TestPainScoreSubScores:
         assert all(0 <= v <= 100 for v in s.sub_scores.values())
 
 
+class TestPainScoreDigitalTrace:
+    """`digital_trace`/`verified_domain` son el resultado de la Capa 2 de
+    verificación (`gtm/factory/verify.py`) -- no cambian la fórmula de
+    `score`, solo documentan qué tan seguros estamos de la ausencia digital."""
+
+    def test_default_es_unverified(self):
+        assert PainScore(place_id="x").digital_trace is DigitalTrace.UNVERIFIED
+        assert PainScore(place_id="x").verified_domain is None
+
+    def test_no_afecta_el_score(self):
+        """Dos PainScore idénticos salvo digital_trace deben dar el mismo score:
+        el campo es informativo, no una señal de dolor."""
+        sin_trace = PainScore(place_id="x", has_web_presence=False)
+        con_trace = PainScore(
+            place_id="x", has_web_presence=False, digital_trace=DigitalTrace.NO_TRACE
+        )
+        assert sin_trace.score == con_trace.score == 100
+
+    def test_roundtrip(self):
+        original = PainScore(
+            place_id="x",
+            has_web_presence=True,
+            performance=40,
+            digital_trace=DigitalTrace.OWN_DOMAIN,
+            verified_domain="https://legacytree.com",
+        )
+        restored = PainScore.from_dict(original.to_dict())
+        assert restored == original
+
+    def test_roundtrip_sin_digital_trace_cae_a_unverified(self):
+        assert PainScore.from_dict({"place_id": "x"}).digital_trace is DigitalTrace.UNVERIFIED
+
+
 class TestPainScoreRoundtripConHallazgos:
     def test_from_dict_reconstruye_los_findings(self):
         original = PainScore(
@@ -294,6 +353,21 @@ class TestRoundtripDict:
     def test_demo_sin_publicar(self):
         original = Demo(place_id="p1", slug="joes-plumbing-abc123", html_path="/tmp/index.html")
         assert Demo.from_dict(original.to_dict()) == original
+
+    def test_demo_con_idioma_detectado(self):
+        original = Demo(
+            place_id="p1",
+            slug="jardineria-lopez-abc123",
+            html_path="/tmp/index.html",
+            language=Language.ES,
+        )
+        assert Demo.from_dict(original.to_dict()) == original
+
+    def test_demo_idioma_default_es_ingles(self):
+        assert Demo(place_id="p1", slug="x", html_path="/tmp/index.html").language is Language.EN
+
+    def test_demo_roundtrip_sin_idioma_cae_a_ingles(self):
+        assert Demo.from_dict({"place_id": "p1", "slug": "x", "html_path": "/tmp/index.html"}).language is Language.EN
 
     def test_contact_plan_telefono(self):
         original = ContactPlan(

@@ -298,7 +298,9 @@ def generate(
             "bytes": len(markup.encode("utf-8")),
         },
     )
-    return Demo(place_id=prospect.place_id, slug=prospect.slug, html_path=str(html_path))
+    return Demo(
+        place_id=prospect.place_id, slug=prospect.slug, html_path=str(html_path), language=language
+    )
 
 
 def load_qualified_ids(scores_path: str) -> set[str] | None:

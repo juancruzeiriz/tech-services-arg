@@ -115,10 +115,37 @@ calibrado".
   se cuelan en cada email real, ver la nota agregada al Día 19. Detalle completo en la ficha
   del Nodo 8 en `PROCESOS.md`.
 
-- [ ] **Día 8** (60 min, Nodos 10-13, cierre de fase) — Leer `pipeline.md` (guiones, objeciones),
-  `validation.md`, `decision_criteria.yaml` completos. Correr `ledger report`. Releer el mapa
-  entero y corregir lo que resultó distinto de lo que creías al empezar. *Salida: mapa
-  corregido.*
+- [x] **Día 8** (2026-08-11, Nodos 2+3+8+9) — Distinto de lo planeado: en vez de solo releer
+  el mapa, llegó un documento de planificación externo señalando que el Paso 3 (detección de
+  ausencia digital) era insuficiente —una sola fuente, Google Maps— y una estrategia de venta
+  con piezas que no existían en el código. Implementado con TDD estricto, en 5 etapas:
+  1. `classify_web_presence` suma 12 directorios de terceros (Angi, HomeAdvisor, Thumbtack,
+     Porch, Houzz, BBB, Yellow Pages, Weebly, GoDaddy Sites, Squarespace, WordPress.com,
+     Google Sites) que antes contaban como `HAS_SITE`.
+  2. Capa 2 nueva (`gtm/factory/verify.py`): antes de asignarle a un prospecto el dolor máximo
+     por "no tiene sitio", corrobora contra un dominio derivado de su nombre (gratis, siempre
+     corre) y, con `GTM_SEARCH_API_KEY` opcional, contra Google Programmable Search. Corrida
+     de verdad sobre los 10 prospectos reales de Albuquerque: el único caso sin sitio salió
+     `unverified` (nombre demasiado largo para que la heurística de dominio le pegue, sin key
+     de búsqueda configurada) — resultado honesto, no un falso positivo, pero tampoco probó el
+     camino `own_domain` contra datos reales. Pendiente para una sesión futura con más
+     candidatos sin sitio.
+  3. Cadencia de seguimiento Día 0/3/7, derivada de eventos existentes
+     (`FunnelLedger.due_followups`), sin agregar un `FunnelEvent` al compromiso pre-registrado.
+  4. Límite de tiempo ("te lo reservo 7 días") en los tres mensajes.
+  5. Idioma detectado por prospecto (`gtm/factory/lang.py`) en vez de fijado por corrida —
+     encontró y corrigió tres lugares que perdían el idioma real en el camino (`deploy()`,
+     el registro del embudo en `/queue`, la fila de Postgres).
+
+  812 tests (79 nuevos; 2 fallan por timing de concurrencia, ya fallaban antes de esta sesión
+  y no están relacionados), mypy y ruff limpios. Descartado a propósito, con motivo escrito en
+  `PROCESOS.md` Nodo 2: sumar candidatos nuevos desde una búsqueda general (el documento lo
+  pedía) — reescribiría discover.py entero por un beneficio dudoso, dado que el cuello de
+  botella medido es el % sin sitio, no cuántos negocios se encuentran. Tampoco se tocó el
+  canal de contacto (el documento sugería SMS/WhatsApp en frío): `docs/CHANNELS.md` ya había
+  descartado eso por TCPA, y el código ya implementa el flujo correcto (llamar, pedir permiso,
+  recién ahí mandar el link). Detalle completo, con el razonamiento de cada etapa y lo que se
+  dejó afuera, en las fichas de los Nodos 2, 3, 8 y 9 de `PROCESOS.md`.
 
 ## Fase B — El CÓMO (días 9-16): debuggear cada pata
 

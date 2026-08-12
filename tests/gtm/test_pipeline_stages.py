@@ -9,7 +9,16 @@ from gtm.factory import deploy as deploy_mod
 from gtm.factory import discover as discover_mod
 from gtm.factory import net
 from gtm.factory import score as score_mod
-from gtm.factory.types import Demo, DeploymentError, PainScore, Prospect, WebPresence
+from gtm.factory import verify as verify_mod
+from gtm.factory.types import (
+    Demo,
+    DeploymentError,
+    DigitalTrace,
+    Language,
+    PainScore,
+    Prospect,
+    WebPresence,
+)
 
 
 def _place(
@@ -141,6 +150,79 @@ class TestScore:
         assert prospect.web_presence is WebPresence.SOCIAL_ONLY
         assert result.score == 100
         assert "redes" in result.notes[0]
+
+    async def test_verify_encuentra_dominio_propio_y_se_puntua_de_verdad(self, monkeypatch):
+        """El caso central de la Capa 2: Maps dice `NONE`, pero
+        `verify.verify_absence` corrobora un dominio propio -- el prospecto
+        tiene que salir medido, no con el dolor 100 automático."""
+
+        async def _found(*_args, **_kwargs):
+            return verify_mod.VerifyResult(DigitalTrace.OWN_DOMAIN, url="https://legacytree.com")
+
+        async def _lab(*_args, **_kwargs):
+            return PainScore(place_id="", performance=40, seo=60, accessibility=70)
+
+        monkeypatch.setattr(verify_mod, "verify_absence", _found)
+        monkeypatch.setattr(score_mod, "score_website", _lab)
+
+        prospect = Prospect(place_id="p", name="Legacy Tree Company", vertical="tree_service", metro="Albuquerque, NM")
+
+        result = await score_mod.score_prospect(self.CLIENT, prospect)
+
+        assert result.has_web_presence is True
+        assert result.digital_trace is DigitalTrace.OWN_DOMAIN
+        assert result.verified_domain == "https://legacytree.com"
+        assert result.performance == 40
+        assert result.score != 100
+
+    async def test_verify_directory_only_mantiene_dolor_maximo_pero_guarda_el_trace(self, monkeypatch):
+        async def _directory(*_args, **_kwargs):
+            return verify_mod.VerifyResult(DigitalTrace.DIRECTORY_ONLY)
+
+        async def _explode(*_args, **_kwargs):
+            pytest.fail("no debe llamarse: no hay dominio propio que medir")
+
+        monkeypatch.setattr(verify_mod, "verify_absence", _directory)
+        monkeypatch.setattr(score_mod, "score_website", _explode)
+
+        prospect = Prospect(place_id="p", name="X", vertical="plumber", metro="Tucson, AZ")
+
+        result = await score_mod.score_prospect(self.CLIENT, prospect)
+
+        assert result.score == 100
+        assert not result.has_web_presence
+        assert result.digital_trace is DigitalTrace.DIRECTORY_ONLY
+
+    async def test_search_api_key_y_cx_se_pasan_a_verify(self, monkeypatch):
+        captured: dict = {}
+
+        async def _capture(_client, _prospect, *, search_api_key=None, search_cx=None):
+            captured["search_api_key"] = search_api_key
+            captured["search_cx"] = search_cx
+            return verify_mod.VerifyResult(DigitalTrace.UNVERIFIED)
+
+        monkeypatch.setattr(verify_mod, "verify_absence", _capture)
+
+        prospect = Prospect(place_id="p", name="X", vertical="plumber", metro="Tucson, AZ")
+        await score_mod.score_prospect(
+            self.CLIENT, prospect, search_api_key="key123", search_cx="cx456"
+        )
+
+        assert captured == {"search_api_key": "key123", "search_cx": "cx456"}
+
+    async def test_verify_absence_enabled_false_no_llama_a_verify(self, monkeypatch):
+        async def _explode(*_args, **_kwargs):
+            pytest.fail("no debe llamarse con verify_absence_enabled=False")
+
+        monkeypatch.setattr(verify_mod, "verify_absence", _explode)
+
+        prospect = Prospect(place_id="p", name="X", vertical="plumber", metro="Tucson, AZ")
+        result = await score_mod.score_prospect(
+            self.CLIENT, prospect, verify_absence_enabled=False
+        )
+
+        assert result.digital_trace is DigitalTrace.UNVERIFIED
+        assert result.score == 100
 
     async def test_sitio_caido_no_se_puntua_con_lighthouse(self, monkeypatch):
         async def _down(*_args, **_kwargs):
@@ -283,6 +365,30 @@ class TestScore:
         results = await score_mod.score_all(prospects)
 
         assert [r.place_id for r in results] == ["fine"]
+
+    async def test_score_all_reenvia_los_parametros_de_verificacion(self, monkeypatch):
+        """`score_all` es el punto de entrada real (CLI y UI): si no reenvía
+        `search_api_key`/`search_cx`/`verify_absence_enabled` a
+        `score_prospect`, la Capa 2 queda inalcanzable desde afuera."""
+        captured: list[dict] = []
+
+        async def _capture(_client, prospect, _api_key=None, *, crux_api_key=None, **kwargs):
+            captured.append(kwargs)
+            return PainScore(place_id=prospect.place_id)
+
+        monkeypatch.setattr(score_mod, "score_prospect", _capture)
+
+        prospects = [Prospect(place_id="p", name="X", vertical="plumber", metro="Tucson, AZ")]
+        await score_mod.score_all(
+            prospects,
+            search_api_key="key123",
+            search_cx="cx456",
+            verify_absence_enabled=False,
+        )
+
+        assert captured == [
+            {"search_api_key": "key123", "search_cx": "cx456", "verify_absence_enabled": False}
+        ]
 
     async def test_puntua_el_lote_en_paralelo(self, monkeypatch):
         """En serie, 6 sitios de 50ms tardarían 300ms."""
@@ -427,6 +533,32 @@ class TestDeploy:
                 "https://demos.example.com",
                 public_dir=tmp_path / "public",
             )
+
+    def test_preserva_el_idioma_detectado(self, tmp_path):
+        """Regresión: `deploy()` reconstruía `Demo` campo por campo y perdía
+        cualquier campo que no copiara a mano -- `language` (detectado por
+        prospecto, ver gtm/factory/lang.py) se perdía en el camino generate
+        -> deploy, y todas las demos volvían a salir en inglés sin importar
+        lo que `generate()` hubiera detectado."""
+        source = tmp_path / "src" / "index.html"
+        source.parent.mkdir(parents=True)
+        source.write_text("<html></html>", encoding="utf-8")
+
+        result = deploy_mod.deploy(
+            [
+                Demo(
+                    place_id="p",
+                    slug="jardineria-lopez-abc123",
+                    html_path=str(source),
+                    language=Language.ES,
+                )
+            ],
+            "https://demos.example.com",
+            dry_run=True,
+            public_dir=tmp_path / "public",
+        )
+
+        assert result[0].language is Language.ES
 
 
 class TestNet:

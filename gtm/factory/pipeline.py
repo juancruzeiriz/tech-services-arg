@@ -39,6 +39,7 @@ from gtm.factory.contact import resolve_all
 from gtm.factory.deploy import deploy as deploy_demos
 from gtm.factory.discover import MIN_RATING, MIN_REVIEWS, discover
 from gtm.factory.generate import generate
+from gtm.factory.lang import detect_language
 from gtm.factory.ledger import SuppressionList
 from gtm.factory.logs import get_logger
 from gtm.factory.outreach import build_email
@@ -335,12 +336,18 @@ async def run_pipeline(
     demos: list[Demo] = []
     for prospect in targets:
         try:
+            # `ctx.language` es el default de la corrida, no una imposición:
+            # el par oficio×metro elegido (ver docs/PLAN_DIARIO.md Día 3)
+            # tiene una población de negocios genuinamente mixta -- una señal
+            # fuerte del nombre de ESTE prospecto puntual gana por sobre el
+            # idioma general de la corrida.
+            effective_language = detect_language(prospect, default=ctx.language)
             demo = await asyncio.to_thread(
                 generate,
                 prospect,
                 ctx.author_name,
                 ctx.author_url,
-                ctx.language,
+                effective_language,
                 demos_dir=ctx.demos_dir,
             )
         except GenerationError as exc:

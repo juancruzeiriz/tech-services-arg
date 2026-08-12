@@ -385,8 +385,12 @@ async def persist_run(pool: AsyncConnectionPool | None, ctx: RunContext, result:
         [run_prospect_row(ctx.run_id, p, i) for i, p in enumerate(result.prospects)],
     )
     await upsert(pool, "scores", [score_row(ctx.run_id, s) for s in result.scores])
+    # `d.language`, no `ctx.language`: el idioma se detecta por prospecto
+    # (`gtm.factory.lang.detect_language`, `ctx.language` es solo el default
+    # cuando la detección no encuentra señal) -- ver el mismo principio
+    # aplicado a `funnel_events` en `gtm.ui.routes.queue`.
     await upsert(
-        pool, "demos", [demo_row(ctx.run_id, d, ctx.language.value) for d in result.demos]
+        pool, "demos", [demo_row(ctx.run_id, d, d.language.value) for d in result.demos]
     )
     await upsert(pool, "contacts", [contact_row(ctx.run_id, c) for c in result.contacts])
     await upsert(

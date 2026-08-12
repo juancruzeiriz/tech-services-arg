@@ -198,7 +198,7 @@ Dos cosas que hace que tu configuración actual no hace:
 
 Si lo querés, son USD {price_usd} por única vez y lo puedo apuntar a tu dominio en 48
 horas. Reembolso completo dentro de los 14 días, sin preguntas. Si no lo querés,
-quedate con el link igual — no me costó nada hacerlo y es tuyo.
+quedate con el link igual — no me costó nada hacerlo y es tuyo. Te lo reservo 7 días.
 
 ¿Vale una llamada de 10 minutos?
 
@@ -230,7 +230,8 @@ Two things it does that your current setup does not:
 
 If you want it, it is ${price_usd} one time and I can point it at your domain within
 48 hours. Full refund within 14 days, no questions. If you do not want it,
-keep the link anyway — it cost me nothing to make and it is yours.
+keep the link anyway — it cost me nothing to make and it is yours. I'll hold it
+for you for 7 days.
 
 Worth a 10-minute call?
 

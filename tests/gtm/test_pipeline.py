@@ -116,6 +116,70 @@ class TestRunPipelineSimulado:
         demo_html = (ctx.demos_dir / result.demos[0].slug / "index.html").read_text(encoding="utf-8")
         assert '<html lang="es">' in demo_html
 
+    async def test_idioma_detectado_por_prospecto_no_el_de_la_corrida(
+        self, tmp_path, empty_suppression, monkeypatch
+    ):
+        """`ctx.language` es el default, no la imposición: si
+        `lang.detect_language` encuentra una señal distinta para un
+        prospecto puntual, la demo de ESE prospecto tiene que reflejarla."""
+        from gtm.factory import pipeline as pipeline_mod
+
+        ctx = RunContext.create(
+            "hvac",
+            "Tucson, AZ",
+            root=tmp_path / "runs",
+            simulated=True,
+            limit=6,
+            seed=1,
+            language=Language.EN,
+            author_name="Test",
+            author_url="https://example.com",
+            base_url="https://demos.example.com",
+        )
+
+        # Fuerza a que TODOS los prospectos detecten español, sin importar el
+        # nombre sintético real que produzca simulate.py.
+        monkeypatch.setattr(
+            pipeline_mod, "detect_language", lambda prospect, *, default: Language.ES
+        )
+
+        result = await run_pipeline(ctx, suppression=empty_suppression)
+
+        assert result.demos
+        assert all(d.language is Language.ES for d in result.demos)
+
+    async def test_ctx_language_es_el_default_pasado_a_detect_language(
+        self, tmp_path, empty_suppression, monkeypatch
+    ):
+        from gtm.factory import pipeline as pipeline_mod
+
+        ctx = RunContext.create(
+            "hvac",
+            "Tucson, AZ",
+            root=tmp_path / "runs",
+            simulated=True,
+            limit=6,
+            seed=1,
+            language=Language.ES,
+            author_name="Test",
+            author_url="https://example.com",
+            base_url="https://demos.example.com",
+        )
+
+        captured_defaults: list[Language] = []
+
+        def _capture(prospect, *, default):
+            captured_defaults.append(default)
+            return default
+
+        monkeypatch.setattr(pipeline_mod, "detect_language", _capture)
+
+        result = await run_pipeline(ctx, suppression=empty_suppression)
+
+        assert result.demos
+        assert captured_defaults
+        assert all(default is Language.ES for default in captured_defaults)
+
     async def test_reporta_progreso(self, ctx, empty_suppression):
         events: list[ProgressEvent] = []
         await run_pipeline(ctx, emit=events.append, suppression=empty_suppression)

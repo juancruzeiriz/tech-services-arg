@@ -23,7 +23,7 @@ from typing import Any
 
 import httpx
 
-from gtm.factory import artifacts, config, forensics
+from gtm.factory import artifacts, config, forensics, verify
 from gtm.factory.archive import last_meaningful_change
 from gtm.factory.crux import CruxMetrics, classify_inp, classify_lcp, fetch_crux_metrics
 from gtm.factory.findings import FINDINGS, Finding
@@ -36,7 +36,7 @@ from gtm.factory.net import (
     probe_url_async,
     request_json_async,
 )
-from gtm.factory.types import PainScore, Prospect, ScoringError, WebPresence
+from gtm.factory.types import DigitalTrace, PainScore, Prospect, ScoringError, WebPresence
 
 _logger = get_logger(__name__)
 
@@ -167,32 +167,69 @@ async def _fetch_crux_safe(
         return None
 
 
+def _absence_note(prospect: Prospect, presence: WebPresence, trace: DigitalTrace) -> str:
+    """Nota para un prospecto sin dominio propio corroborado. La base depende de
+    lo que Maps ya decía; `trace` agrega qué tan segura quedó esa ausencia
+    después de la Capa 2 (`verify.verify_absence`)."""
+    if presence is WebPresence.SOCIAL_ONLY:
+        base = (
+            f"Solo presencia en redes ({prospect.website}): "
+            "no controla su canal ni aparece en búsquedas de servicio."
+        )
+    else:
+        base = "Sin sitio web: el negocio es invisible fuera de Google Maps."
+
+    if trace is DigitalTrace.DIRECTORY_ONLY:
+        return f"{base} Tampoco tiene dominio propio en una búsqueda general: solo directorios de terceros."
+    if trace is DigitalTrace.NO_TRACE:
+        return f"{base} Confirmado con una búsqueda general: sin rastro de dominio propio."
+    return base  # UNVERIFIED: no hubo segunda fuente que lo confirme
+
+
 async def score_prospect(
     client: httpx.AsyncClient,
     prospect: Prospect,
     api_key: str | None = None,
     *,
     crux_api_key: str | None = None,
+    search_api_key: str | None = None,
+    search_cx: str | None = None,
+    verify_absence_enabled: bool = True,
 ) -> PainScore:
     """Puntúa un prospecto, degradando a señales estructurales si no hay sitio medible."""
     presence = prospect.web_presence
 
-    if presence is WebPresence.NONE:
-        return PainScore(
-            place_id=prospect.place_id,
-            has_web_presence=False,
-            notes=("Sin sitio web: el negocio es invisible fuera de Google Maps.",),
+    if presence in (WebPresence.NONE, WebPresence.SOCIAL_ONLY):
+        # Google Maps es una sola fuente: el negocio pudo no vincular un
+        # dominio propio que sí existe. La Capa 2 (`verify.verify_absence`)
+        # confirma la ausencia -- o la desmiente -- antes de asignar el
+        # dolor máximo. Nunca lanza (ver su docstring), así que no hace
+        # falta un try/except acá.
+        trace = (
+            await verify.verify_absence(
+                client, prospect, search_api_key=search_api_key, search_cx=search_cx
+            )
+            if verify_absence_enabled
+            else verify.VerifyResult(DigitalTrace.UNVERIFIED)
         )
 
-    if presence is WebPresence.SOCIAL_ONLY:
-        # Un perfil de Facebook no es un sitio: no rankea, no convierte y no es suyo.
+        if trace.kind is DigitalTrace.OWN_DOMAIN:
+            assert trace.url is not None  # invariante de VerifyResult
+            return await _score_site(
+                client,
+                prospect,
+                trace.url,
+                api_key,
+                crux_api_key=crux_api_key,
+                digital_trace=trace.kind,
+                verified_domain=trace.url,
+            )
+
         return PainScore(
             place_id=prospect.place_id,
             has_web_presence=False,
-            notes=(
-                f"Solo presencia en redes ({prospect.website}): "
-                "no controla su canal ni aparece en búsquedas de servicio.",
-            ),
+            digital_trace=trace.kind,
+            notes=(_absence_note(prospect, presence, trace.kind),),
         )
 
     assert prospect.website is not None  # garantizado por HAS_SITE
@@ -204,9 +241,30 @@ async def score_prospect(
             notes=(f"El sitio {prospect.website} no responde.",),
         )
 
-    measured = await score_website(client, prospect.website, api_key)
+    return await _score_site(client, prospect, prospect.website, api_key, crux_api_key=crux_api_key)
+
+
+async def _score_site(
+    client: httpx.AsyncClient,
+    prospect: Prospect,
+    url: str,
+    api_key: str | None,
+    *,
+    crux_api_key: str | None,
+    digital_trace: DigitalTrace = DigitalTrace.UNVERIFIED,
+    verified_domain: str | None = None,
+) -> PainScore:
+    """Mide dolor real sobre `url`: Lighthouse, CrUX, forense y Wayback.
+
+    `url` es un parámetro y no `prospect.website` directo porque puede venir
+    de dos lugares distintos: el sitio que Maps ya reportaba (`HAS_SITE`), o
+    un dominio propio recién corroborado por la Capa 2 de verificación para
+    un prospecto que Maps reportaba sin sitio (`digital_trace`/`verified_domain`
+    documentan ese segundo caso).
+    """
+    measured = await score_website(client, url, api_key)
     if measured is None:
-        raise ScoringError(f"No se pudo puntuar {prospect.website} para {prospect.name!r}")
+        raise ScoringError(f"No se pudo puntuar {url} para {prospect.name!r}")
 
     notes: list[str] = []
     if measured.performance is not None and measured.performance < 50:
@@ -221,16 +279,16 @@ async def score_prospect(
     # puede alargar la etapa en serie, y las tres funciones ya se tragan sus
     # propios errores (ver sus docstrings), así que ninguna puede tumbarla.
     html_result, crux_metrics, last_changed = await asyncio.gather(
-        fetch_text_async(client, prospect.website),
-        _fetch_crux_safe(client, prospect.website, crux_api_key),
-        last_meaningful_change(client, _host_of(prospect.website)),
+        fetch_text_async(client, url),
+        _fetch_crux_safe(client, url, crux_api_key),
+        last_meaningful_change(client, _host_of(url)),
     )
 
     findings: list[Finding] = list(measured.findings)  # tap_targets/tiny_font, si Lighthouse los vio
 
     if html_result is not None:
         _, html = html_result
-        findings.extend(forensics.analyse_html(html, prospect.website))
+        findings.extend(forensics.analyse_html(html, url))
 
     if crux_metrics is not None:
         lcp_ms = crux_metrics.lcp_ms
@@ -274,6 +332,8 @@ async def score_prospect(
         crux_cls=crux_metrics.cls if crux_metrics else None,
         has_field_data=crux_metrics is not None,
         last_changed=last_changed,
+        digital_trace=digital_trace,
+        verified_domain=verified_domain,
     )
 
 
@@ -287,6 +347,9 @@ async def score_all(
     concurrency: int = DEFAULT_CONCURRENCY,
     *,
     crux_api_key: str | None = None,
+    search_api_key: str | None = None,
+    search_cx: str | None = None,
+    verify_absence_enabled: bool = True,
     on_item: Callable[[str], None] | None = None,
 ) -> list[PainScore]:
     """Puntúa una lista de prospectos en paralelo.
@@ -294,6 +357,11 @@ async def score_all(
     Un fallo individual no aborta la corrida: `gather_limited` propagaría la primera
     excepción y perderíamos los 49 prospectos que sí se puntuaron, así que cada
     tarea captura su propio error y devuelve None.
+
+    `search_api_key`/`search_cx`/`verify_absence_enabled` se reenvían tal cual a
+    `score_prospect`: es el punto de entrada real desde la CLI (`--no-verify`) y
+    desde la UI, así que si no reenvía esto la Capa 2 de verificación queda
+    inalcanzable desde afuera de `score_prospect`.
 
     `on_item`, si se pasa, se llama una vez por prospecto terminado (con su
     place_id) — es lo que le permite a la UI mostrar progreso en vivo sin que
@@ -305,7 +373,15 @@ async def score_all(
 
         async def _one(prospect: Prospect) -> PainScore | None:
             try:
-                score = await score_prospect(client, prospect, api_key, crux_api_key=crux_api_key)
+                score = await score_prospect(
+                    client,
+                    prospect,
+                    api_key,
+                    crux_api_key=crux_api_key,
+                    search_api_key=search_api_key,
+                    search_cx=search_cx,
+                    verify_absence_enabled=verify_absence_enabled,
+                )
             except ScoringError as exc:
                 _logger.warning(
                     "prospecto sin puntuar",
@@ -354,6 +430,14 @@ def main(argv: list[str] | None = None) -> int:
         default=_DEFAULT_SCORE_CONCURRENCY,
         help=f"requests simultáneas a PageSpeed (default: {_DEFAULT_SCORE_CONCURRENCY})",
     )
+    parser.add_argument(
+        "--no-verify",
+        action="store_true",
+        help=(
+            "no corre la Capa 2 de verificación de ausencia digital (gtm.factory.verify): "
+            "para corridas offline o cuando no hace falta gastar la cuota de búsqueda"
+        ),
+    )
     args = parser.parse_args(argv)
 
     config.ensure_dirs()
@@ -366,8 +450,18 @@ def main(argv: list[str] | None = None) -> int:
     # Mismo proyecto de Google Cloud habilita las dos APIs: si no hay una key
     # dedicada para CrUX, la de PageSpeed también sirve.
     crux_api_key = config.optional_env("CRUX_API_KEY") or api_key
+    search_api_key = config.optional_env("GTM_SEARCH_API_KEY") or None
+    search_cx = config.optional_env("GTM_SEARCH_CX") or None
     scores = asyncio.run(
-        score_all(prospects, api_key, args.concurrency, crux_api_key=crux_api_key)
+        score_all(
+            prospects,
+            api_key,
+            args.concurrency,
+            crux_api_key=crux_api_key,
+            search_api_key=search_api_key,
+            search_cx=search_cx,
+            verify_absence_enabled=not args.no_verify,
+        )
     )
 
     artifacts.write_scores(output_path, scores)

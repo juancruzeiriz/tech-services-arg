@@ -272,3 +272,22 @@ class TestDemoViva:
         body = build_body(prospect, live_demo, sender, language=Language.ES, price_usd=690)
         assert "USD 690" in body
         assert "USD 950" not in body
+
+
+class TestLimiteDeLaOferta:
+    """"Esto lo tengo reservado para vos por los próximos 7 días" (resumen de
+    estrategia de venta) -- el email también lo lleva, no solo el mensaje corto."""
+
+    def test_en_ingles_menciona_los_7_dias(self, prospect, live_demo, sender):
+        body = build_body(prospect, live_demo, sender)
+        assert "7 days" in body
+
+    def test_en_espanol_menciona_los_7_dias(self, prospect, live_demo, sender):
+        body = build_body(prospect, live_demo, sender, language=Language.ES)
+        assert "7 días" in body
+
+    def test_no_rompe_el_gate_de_canspam(self, prospect, live_demo, sender):
+        """La línea nueva no puede desplazar la dirección postal o el link de
+        baja fuera del cuerpo -- ver validate_compliance."""
+        email = build_email(prospect, live_demo, sender)
+        validate_compliance(email)  # no debe lanzar

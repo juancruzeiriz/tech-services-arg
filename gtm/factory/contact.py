@@ -23,7 +23,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import sys
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from urllib.parse import urljoin, urlparse
 
 import httpx
@@ -31,7 +31,7 @@ from bs4 import BeautifulSoup
 
 from gtm.catalog import city_of
 from gtm.factory import artifacts, config
-from gtm.factory.ledger import SuppressionList
+from gtm.factory.ledger import FollowupDue, FollowupStage, FunnelLedger, SuppressionList, hash_key
 from gtm.factory.logs import get_logger
 from gtm.factory.net import DEFAULT_CONCURRENCY, async_client, fetch_text_async, gather_limited
 from gtm.factory.types import (
@@ -219,7 +219,8 @@ def build_form_message(
             "También responde con un mensaje de texto automático cuando se te escapa "
             "una llamada.\n\n"
             "Es gratis para ver, tuyo lo quieras o no. Si lo querés apuntado a tu dominio "
-            f"son USD {price_usd} con reembolso completo a 14 días.\n\n{author_name}"
+            f"son USD {price_usd} con reembolso completo a 14 días. Te lo reservo 7 "
+            f"días.\n\n{author_name}"
         )
     else:
         message = (
@@ -229,7 +230,8 @@ def build_form_message(
             "It uses your real phone number, your Google reviews and your service area. "
             "It also texts back automatically when you miss a call.\n\n"
             "Free to look at, yours to keep either way. If you want it pointed at your "
-            f"domain it is ${price_usd} with a 14-day full refund.\n\n{author_name}"
+            f"domain it is ${price_usd} with a 14-day full refund. I'll hold it for you "
+            f"for 7 days.\n\n{author_name}"
         )
 
     if len(message) > FORM_MESSAGE_MAX_CHARS:
@@ -238,6 +240,40 @@ def build_form_message(
             f"{FORM_MESSAGE_MAX_CHARS}: muchos formularios truncan sin avisar"
         )
     return message
+
+
+def build_followup_message(
+    prospect: Prospect,
+    demo: Demo,
+    *,
+    language: Language = Language.EN,
+    link_url: str | None = None,
+) -> str:
+    """Recordatorio corto del Día 3 de la cadencia de seguimiento
+    (`gtm/pipeline.md`; a quién y cuándo lo decide
+    `FunnelLedger.due_followups`, este builder solo arma el texto).
+
+    Deliberadamente breve -- no repite el pitch entero de `build_form_message`,
+    solo re-ofrece el link. Sirve para el mismo texto que se pega en un
+    formulario o se lee por teléfono; no lleva footer de email.
+
+    `link_url`: ver el docstring de `outreach.build_body`.
+    """
+    if not demo.is_live:
+        raise ValueError(f"La demo de {prospect.name!r} no tiene URL pública")
+    link = link_url or demo.url
+
+    if language is Language.ES:
+        return (
+            f"Hola de nuevo — te escribí hace unos días sobre el sitio de muestra "
+            f"para {prospect.name}. Seguís pudiendo verlo acá:\n\n{link}\n\n"
+            "Cualquier cosa, avisame."
+        )
+    return (
+        f"Hi again — I reached out a few days ago about the sample site for "
+        f"{prospect.name}. You can still see it here:\n\n{link}\n\n"
+        "Let me know if you have any questions."
+    )
 
 
 def build_call_script(
@@ -261,7 +297,8 @@ def build_call_script(
             f"¿Te puedo mandar el link por mensaje para que lo mires más tarde? … Genial, "
             f"va a este número.\n"
             f"[Enviar SMS: {link}]\n"
-            f"Sin compromiso — si te gusta lo apunto a tu dominio, si no te lo quedás igual."
+            f"Sin compromiso — si te gusta lo apunto a tu dominio, si no te lo quedás igual. "
+            f"Te lo reservo 7 días."
         )
     return (
         f"Hi, is this {prospect.name}? — I am not a customer, this will take 20 seconds.\n"
@@ -270,7 +307,8 @@ def build_call_script(
         f"Can I text you the link so you can look at it later? … Great, it is going to "
         f"this number.\n"
         f"[Send SMS: {link}]\n"
-        f"No obligation — if you like it I can point it at your domain, if not keep it."
+        f"No obligation — if you like it I can point it at your domain, if not keep it. "
+        f"I'll hold it for you for 7 days."
     )
 
 
@@ -333,11 +371,17 @@ def render_queue(
     prospects: dict[str, Prospect],
     demos: dict[str, Demo],
     author_name: str,
+    *,
+    due_followups: Sequence[FollowupDue] = (),
 ) -> str:
     """Cola de trabajo en Markdown, ordenada por dolor.
 
     Es el entregable real de esta etapa: la lista que convierte "tengo un pipeline"
     en "tengo hora y media de trabajo concreto esta semana".
+
+    `due_followups` (típicamente `FunnelLedger().due_followups()`) agrega la
+    sección "Seguimiento": la cadencia Día 3/Día 7 de `gtm/pipeline.md`. Vacío
+    por defecto -- sin ledger no hay nada que recordar.
     """
     lines: list[str] = [
         "# Cola de contacto",
@@ -382,6 +426,37 @@ def render_queue(
             ]
             if demo and demo.is_live:
                 lines += ["```", build_form_message(prospect, demo, author_name), "```", ""]
+
+    due_by_key = {due.key: due for due in due_followups}
+    followups = [
+        (plan, due_by_key[hash_key("place_id", plan.place_id)])
+        for plan in actionable
+        if hash_key("place_id", plan.place_id) in due_by_key
+    ]
+    if followups:
+        lines += [f"## Seguimiento ({len(followups)})", ""]
+        for plan, due in followups:
+            prospect = prospects[plan.place_id]
+            demo = demos.get(plan.place_id)
+            days = round(due.days_since_contact)
+            if due.stage is FollowupStage.CLOSE:
+                lines += [
+                    f"### [ ] {prospect.name} — cerrar (sin respuesta hace {days} días)",
+                    "- Si seguís sin novedades, marcalo como no interesado por ahora "
+                    "(la demo queda online, el costo es casi cero):",
+                    "```",
+                    f"python -m gtm.factory.ledger suppress --place-id {plan.place_id} "
+                    "--reason not_interested",
+                    "```",
+                    "",
+                ]
+            else:
+                lines += [
+                    f"### [ ] {prospect.name} — recordatorio (día {days})",
+                    "",
+                ]
+                if demo and demo.is_live:
+                    lines += ["```", build_followup_message(prospect, demo), "```", ""]
 
     if skipped:
         lines += [f"## Descartados ({len(skipped)})", ""]
@@ -451,7 +526,8 @@ def main(argv: list[str] | None = None) -> int:
     contacts_path = config.DATA_DIR / "contacts.json"
     artifacts.write_contacts(contacts_path, plans)
 
-    queue = render_queue(plans, prospects, demos, author_name)
+    due_followups = FunnelLedger().due_followups()
+    queue = render_queue(plans, prospects, demos, author_name, due_followups=due_followups)
     queue_path = config.BUILD_DIR / "queue.md"
     artifacts.write_queue(queue_path, queue)
 

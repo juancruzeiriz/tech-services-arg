@@ -10,6 +10,7 @@ from gtm.factory import contact as contact_mod
 from gtm.factory.contact import (
     FORM_MESSAGE_MAX_CHARS,
     build_call_script,
+    build_followup_message,
     build_form_message,
     find_contact_form,
     render_queue,
@@ -235,6 +236,33 @@ class TestMensajes:
         assert "[Send SMS:" in script
 
 
+class TestLimiteDeLaOferta:
+    """"Esto lo tengo reservado para vos por los próximos 7 días" (resumen de
+    estrategia de venta): límite de tiempo en los tres builders bilingües."""
+
+    def test_form_message_en_ingles_menciona_los_7_dias(self):
+        message = build_form_message(_prospect(), _demo(), AUTHOR)
+        assert "7 days" in message
+
+    def test_form_message_en_espanol_menciona_los_7_dias(self):
+        message = build_form_message(_prospect(), _demo(), AUTHOR, language=Language.ES)
+        assert "7 días" in message
+
+    def test_form_message_sigue_bajo_el_limite_de_caracteres(self):
+        """La línea nueva no puede tirar por la borda FORM_MESSAGE_MAX_CHARS:
+        el mensaje en español ya era el más ajustado de los dos."""
+        message = build_form_message(_prospect(), _demo(), AUTHOR, language=Language.ES)
+        assert len(message) <= FORM_MESSAGE_MAX_CHARS
+
+    def test_guion_de_llamada_en_ingles_menciona_los_7_dias(self):
+        script = build_call_script(_prospect(), _demo())
+        assert "7 days" in script
+
+    def test_guion_de_llamada_en_espanol_menciona_los_7_dias(self):
+        script = build_call_script(_prospect(), _demo(), language=Language.ES)
+        assert "7 días" in script
+
+
 class TestMensajesEnEspanol:
     def test_mensaje_de_formulario_lleva_el_link_y_precio(self):
         message = build_form_message(_prospect(), _demo(), AUTHOR, language=Language.ES)
@@ -260,6 +288,47 @@ class TestMensajesEnEspanol:
         message = build_form_message(_prospect(), _demo(), AUTHOR, language=Language.ES)
         assert "sample" not in message.lower()
         assert " the " not in message.lower()
+
+
+class TestMensajeDeSeguimiento:
+    """`build_followup_message`: el recordatorio del Día 3 de la cadencia de
+    seguimiento (`gtm/pipeline.md`) -- corto, sin repetir todo el pitch."""
+
+    def test_lleva_el_link(self):
+        message = build_followup_message(_prospect(), _demo())
+        assert _demo().url in message
+
+    def test_menciona_el_negocio(self):
+        message = build_followup_message(_prospect(), _demo())
+        assert _prospect().name in message
+
+    def test_usa_el_link_de_redireccion_si_se_pasa(self):
+        message = build_followup_message(
+            _prospect(), _demo(), link_url="https://demos.example.com/v/tok123"
+        )
+        assert "https://demos.example.com/v/tok123" in message
+        assert _demo().url not in message
+
+    def test_demo_sin_url_es_rechazada(self):
+        mockup = Demo(place_id="p1", slug="x", html_path="/tmp/x/index.html")
+        with pytest.raises(ValueError, match="URL pública"):
+            build_followup_message(_prospect(), mockup)
+
+    def test_en_ingles_no_mezcla_idiomas(self):
+        message = build_followup_message(_prospect(), _demo())
+        assert "hace unos días" not in message
+        assert "avisame" not in message
+
+    def test_en_espanol_no_mezcla_idiomas(self):
+        message = build_followup_message(_prospect(), _demo(), language=Language.ES)
+        assert " the " not in message.lower()
+        assert "reached out" not in message.lower()
+
+    def test_es_mas_corto_que_el_mensaje_de_formulario_completo(self):
+        """Es un recordatorio, no el pitch entero de nuevo."""
+        followup = build_followup_message(_prospect(), _demo())
+        full = build_form_message(_prospect(), _demo(), AUTHOR)
+        assert len(followup) < len(full)
 
 
 class TestPluralDelRubro:
@@ -342,6 +411,75 @@ class TestColaDeTrabajo:
         queue = render_queue(plans, {"p1": prospect}, {}, AUTHOR)
 
         assert "(sin demo publicada)" in queue
+
+
+class TestSeguimientoEnLaCola:
+    """`render_queue` con `due_followups` (`FunnelLedger.due_followups`):
+    la sección Día 3/Día 7 de la cadencia de seguimiento."""
+
+    async def test_sin_due_followups_no_hay_seccion(self):
+        prospect = _prospect(place_id="tel", name="No Website Co", website=None)
+        plans = await resolve_all([prospect], {}, probe_site=False)
+        queue = render_queue(plans, {"tel": prospect}, {"tel": _demo("tel")}, AUTHOR)
+
+        assert "## Seguimiento" not in queue
+
+    async def test_nudge_incluye_el_mensaje_de_recordatorio(self):
+        from gtm.factory.ledger import FollowupDue, FollowupStage, hash_key
+
+        prospect = _prospect(place_id="tel", name="No Website Co", website=None)
+        plans = await resolve_all([prospect], {}, probe_site=False)
+        due = [
+            FollowupDue(
+                key=hash_key("place_id", "tel"), days_since_contact=3.2, stage=FollowupStage.NUDGE
+            )
+        ]
+
+        queue = render_queue(
+            plans, {"tel": prospect}, {"tel": _demo("tel")}, AUTHOR, due_followups=due
+        )
+
+        assert "## Seguimiento (1)" in queue
+        assert "No Website Co" in queue
+        assert build_followup_message(prospect, _demo("tel")) in queue
+
+    async def test_close_incluye_el_comando_de_supresion(self):
+        from gtm.factory.ledger import FollowupDue, FollowupStage, hash_key
+
+        prospect = _prospect(place_id="tel", name="No Website Co", website=None)
+        plans = await resolve_all([prospect], {}, probe_site=False)
+        due = [
+            FollowupDue(
+                key=hash_key("place_id", "tel"), days_since_contact=7.5, stage=FollowupStage.CLOSE
+            )
+        ]
+
+        queue = render_queue(
+            plans, {"tel": prospect}, {"tel": _demo("tel")}, AUTHOR, due_followups=due
+        )
+
+        assert "not_interested" in queue
+        assert "--place-id tel" in queue
+
+    async def test_prospecto_no_debido_no_aparece_en_seguimiento(self):
+        """Un plan actionable cuya clave no está en due_followups no debe
+        colarse en la sección -- solo van los que el ledger marcó como
+        pendientes."""
+        from gtm.factory.ledger import FollowupDue, FollowupStage, hash_key
+
+        prospect = _prospect(place_id="tel", name="No Website Co", website=None)
+        plans = await resolve_all([prospect], {}, probe_site=False)
+        due = [
+            FollowupDue(
+                key=hash_key("place_id", "otro"), days_since_contact=3.2, stage=FollowupStage.NUDGE
+            )
+        ]
+
+        queue = render_queue(
+            plans, {"tel": prospect}, {"tel": _demo("tel")}, AUTHOR, due_followups=due
+        )
+
+        assert "## Seguimiento" not in queue
 
 
 class TestConcurrencia:

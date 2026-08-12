@@ -183,6 +183,7 @@ class TestRenderEnEspanol:
         written = (tmp_path / "demos" / prospect.slug / "index.html").read_text(encoding="utf-8")
         assert '<html lang="es">' in written
         assert demo.slug == prospect.slug
+        assert demo.language is Language.ES
 
 
 class TestPhoneHref:
@@ -210,6 +211,7 @@ class TestGenerate:
 
         assert demo.slug == prospect.slug
         assert demo.place_id == prospect.place_id
+        assert demo.language is Language.EN
         written = (tmp_path / "demos" / prospect.slug / "index.html").read_text(encoding="utf-8")
         assert html.escape(prospect.name) in written
 

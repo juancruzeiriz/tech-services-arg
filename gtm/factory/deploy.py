@@ -90,6 +90,7 @@ def deploy(
                 html_path=demo.html_path,
                 url=url,
                 deployed_at=None if dry_run else datetime.now(UTC),
+                language=demo.language,
             )
         )
 

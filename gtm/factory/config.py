@@ -7,6 +7,14 @@ Variables de entorno (cargadas desde `.env.personal` en la raíz del repo):
     CRUX_API_KEY            Opcional en `score`, para datos de campo (Chrome UX
                              Report). Si falta, cae a PAGESPEED_API_KEY: es el
                              mismo proyecto de Google Cloud el que habilita las dos APIs.
+    GTM_SEARCH_API_KEY      Opcional en `score`. Habilita la sub-capa B de
+                             gtm.factory.verify (Google Programmable Search / Custom
+                             Search JSON API): confirma con una búsqueda general si un
+                             prospecto sin sitio en Maps de verdad no tiene dominio
+                             propio. Sin key, esa sub-capa se salta (degrada a
+                             UNVERIFIED); la sub-capa A (gratis) sigue corriendo igual.
+    GTM_SEARCH_CX           Opcional en `score`. ID del Programmable Search Engine
+                             (motor "Search the entire web") asociado a GTM_SEARCH_API_KEY.
     GTM_SMTP_HOST           Requerida por `gtm.send` para enviar de verdad.
     GTM_SMTP_PORT           Puerto SMTP sobre TLS implícito (default 465).
     GTM_SMTP_USER           Usuario de la casilla de envío.

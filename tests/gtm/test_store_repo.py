@@ -395,6 +395,31 @@ class TestPersistRun:
         assert buffer.read_all(outbox_path) == []
         assert len(pool.cursor.calls) >= 1
 
+    async def test_demos_usan_el_idioma_propio_no_el_de_la_corrida(self, tmp_path, monkeypatch):
+        """Regresión: `persist_run` mandaba `ctx.language` para TODAS las filas
+        de `demos`, aunque `demo.language` (detectado por prospecto, ver
+        gtm/factory/lang.py) sea distinto -- el mismo error de fondo que ya se
+        corrigió para el registro del embudo en queue.py."""
+        from gtm.factory import pipeline as pipeline_mod
+        from gtm.factory.types import Language
+
+        # Fuerza a que el idioma detectado por prospecto sea ES aunque la
+        # corrida se haya creado con EN.
+        monkeypatch.setattr(
+            pipeline_mod, "detect_language", lambda prospect, *, default: Language.ES
+        )
+
+        ctx, result = await self._simulated_result(tmp_path)
+        assert ctx.language is Language.EN, "la corrida se creó en inglés a propósito"
+
+        pool = _FakePool()
+        await repo.persist_run(pool, ctx, result)
+
+        demos_call = next(sql_rows for sql_rows in pool.cursor.calls if "demos" in sql_rows[0])
+        rows = demos_call[1]
+        assert rows, "la corrida simulada debería haber producido al menos una demo"
+        assert all(row["language"] == "es" for row in rows)
+
     async def test_run_row_ok_cuando_no_hay_etapas_fallidas(self, tmp_path):
         ctx, result = await self._simulated_result(tmp_path)
         row = repo.run_row(ctx, result)
