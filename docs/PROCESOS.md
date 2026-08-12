@@ -1194,6 +1194,28 @@ experimentos, y con el hash del commit como prueba de que fue antes de ver datos
   `decision_criteria.yaml`) no se sabe todavía — recalcular esta proyección después de las
   primeras 50 llamadas reales, no antes.
 
+- (2026-08-12, Día 18) **`decision_criteria.yaml` confirmado por escrito, sin cambios, después
+  de ver los números del Día 17.** Releído completo, incluido el comentario sobre el error de
+  potencia estadística de v1. `pytest tests/gtm/test_ledger_criteria.py` — **12/12 passed**: los
+  6 umbrales (`ganador_ventas_cobradas: 1`, `kill_contactados: 200`,
+  `kill_respuestas_minimas: 5`, `kill_respuestas_sin_llamada: 10`), la regla dura, la ausencia
+  de vía alternativa por llamadas agendadas, el `corte_temprano_por_costo` y la segmentación
+  obligatoria por canal/idioma siguen exactamente como se pre-registraron.
+
+  **La tentación real, nombrada:** los números del Día 17 pintan bien — 73,3% de calificación,
+  ~57 min de máquina, ~16,7 h humanas para 200 contactados, entra cómodo en las 8 semanas. La
+  tentación que generan números así de favorables **no** es bajar el umbral por miedo — es la
+  inversa: confiar en el optimismo de una muestra chica (n=30, un solo oficio, dos metros) y
+  aflojar el criterio de kill (por ejemplo, bajar `kill_contactados` de 200 a algo menor "total
+  ya se ve que funciona") o inflar de más el peso de la tasa de calificación en la decisión en
+  vez de esperar a `ventas_cobradas`, que es la única señal sin ambigüedad. **No se hace:** el
+  73,3% mide calificación de sitio, no interés de compra — la métrica que de verdad decide el
+  experimento (contactado→venta) tiene **cero mediciones reales** (`funnel.jsonl` en 0 bytes).
+  Un número bueno en una etapa temprana del embudo no autoriza tocar el criterio que mide el
+  final del embudo — es exactamente el mismo error de razonamiento que v1 cometió al revés
+  (deducir el umbral de una intuición en vez de la aritmética real). Confirmado, sin
+  modificaciones, 2026-08-12.
+
 ---
 
 ## Documentos relacionados

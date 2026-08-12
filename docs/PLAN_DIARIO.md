@@ -274,9 +274,14 @@ calibrado".
   `corte_temprano_por_costo` existen para resolver antes de comprometerse a los 200. Tabla
   completa en la ficha del Nodo 13.
 
-- [ ] **Día 18** (45 min) — **El criterio.** Releer `decision_criteria.yaml` entero, incluido el
-  comentario sobre por qué v1 estaba mal calibrado (el error de potencia estadística). Correr
-  `pytest tests/gtm/test_ledger_criteria.py`. Confirmar por escrito, con fecha, que no se toca.
+- [x] **Día 18** (2026-08-12) — **El criterio, confirmado.** Releído completo
+  `decision_criteria.yaml`. `pytest tests/gtm/test_ledger_criteria.py` — **12/12 passed**, los 6
+  umbrales intactos. La tentación real que generan los números favorables del Día 17 no es
+  bajar el umbral por miedo, es la inversa: aflojar el kill de 200 contactados porque el 73,3%
+  de calificación "ya se ve que funciona" — se nombra y se descarta por escrito, porque esa
+  métrica mide calificación de sitio, no interés de compra, y la que de verdad decide
+  (contactado→venta) sigue en cero mediciones reales. **Confirmado sin modificaciones,
+  2026-08-12.** Detalle en la ficha del Nodo 13.
 
 - [x] **Día 19** (2026-08-12, Nodo 8) — **El gate de CI nunca podía cazar el placeholder porque
   usaba el mismo.** `validate_compliance()` valida con `in`/`startswith`, así que
