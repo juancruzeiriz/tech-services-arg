@@ -103,6 +103,18 @@
   plural_en: "tree services"
   plural_es: "servicios de poda y tala"
   article_en: "a"
+  # avg_ticket_usd (2026-08-12, ya no "estimado" sin fuente): $1.800 es el piso de
+  # "full removals with stump grinding and debris hauling" ($1.800-$4.500+/trabajo),
+  # BizMetricsHQ, análisis de 165+ empresas de tree service (2025-2026) —
+  # bizmetricshq.com/industries/tree-service. Coincide con el paquete real que vende
+  # este catálogo (services_en de abajo: remoción + poda + stump grinding). Ojo: el
+  # mismo estudio da $1.150 de mediana MEZCLANDO los cuatro tipos de trabajo (poda
+  # sola $450-1.200, stump grinding solo $250-600, remoción completa $1.800-4.500+,
+  # desmonte $2.500-8.000+) — $1.800 representa el trabajo completo, no el promedio de
+  # cualquier llamado que entra. This Old House (actualizado 2026-03-05,
+  # thisoldhouse.com/gardening/tree-removal-cost) da $906 de promedio para remoción
+  # simple sin stump grinding, subiendo a $1.000-2.000 para árboles de 80+ pies solos
+  # — consistente con que $1.800 es un trabajo grande + limpieza, no un árbol chico.
   avg_ticket_usd: 1800
   urgency: medium          # el árbol caído en la tormenta sí es urgente
   rank: 4

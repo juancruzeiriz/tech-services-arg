@@ -149,9 +149,19 @@ calibrado".
 
 ## Fase B — El CÓMO (días 9-16): debuggear cada pata
 
-- [ ] **Día 9** (45 min, Nodo 1) — Los `avg_ticket_usd` marcados "estimado" en `trades.yaml` no
-  tienen fuente. Buscar 2 fuentes reales para el oficio elegido. Además: si `mini_tcpa_risk:
-  true` en el metro elegido, leer la ley de telemarketing de ese estado.
+- [x] **Día 9** (2026-08-12, Nodo 1) — `avg_ticket_usd: 1800` de `tree_service` ya no es
+  "estimado" sin fuente. Dos fuentes reales: BizMetricsHQ (análisis de 165+ empresas de tree
+  service, 2025-2026) da $1.800-$4.500+ para "full removals with stump grinding and debris
+  hauling" — el paquete exacto que vende el catálogo — pero $1.150 de mediana si se mezclan los
+  cuatro tipos de trabajo (poda sola, stump grinding solo, remoción completa, desmonte); This
+  Old House (act. 2026-03-05) da $906 de promedio para remoción simple sin stump grinding,
+  $1.000-2.000 para árboles de 80+ pies solos. $1.800 se sostiene como "trabajo completo", no
+  como promedio de cualquier llamado — nota agregada en `trades.yaml` con el detalle. Además:
+  Albuquerque **sí** tiene `mini_tcpa_risk` técnicamente elegible para chequear (NM tiene su
+  propia ley, NM Stat §57-12-22 a 30, con derecho de acción privada), aunque el catálogo la
+  marca `false` — leída la ley: está scopeada explícitamente a "residential subscriber", no a
+  líneas comerciales, así que `false` se sostiene con esta lectura (no es asesoramiento legal;
+  nota con la cita agregada en `metros.yaml`, confirmar antes de escalar volumen real).
 
 - [ ] **Día 10** (45 min, Nodo 2) — ¿`MIN_REVIEWS=50` y `MIN_RATING=4.0` dejan afuera a los
   mejores prospectos? Correr con los filtros bajados (ej. 20/3.5) y comparar los dos conjuntos.

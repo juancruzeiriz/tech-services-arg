@@ -78,6 +78,14 @@
   population: 560000
   hispanic_pct: 49.0
   language_default: es
+  # mini_tcpa_risk verificado (2026-08-12, metro elegido para la corrida real): NM sí
+  # tiene ley propia de telemarketing (NM Stat §57-12-22 a 30, "New Mexico
+  # Telemarketing Act", con derecho de acción privada — USD 100/violación o daño
+  # real, triple si es intencional). Pero está scopeada a "residential subscriber"
+  # explícitamente (la restricción de discado automático/mensaje pregrabado también),
+  # no a líneas comerciales — el negocio que se llama acá siempre atiende su propio
+  # número comercial publicado, no un número residencial. `false` se sostiene con
+  # esta lectura, no confirmar como asesoramiento legal antes de escalar volumen.
   mini_tcpa_risk: false
   rank: 6
 
