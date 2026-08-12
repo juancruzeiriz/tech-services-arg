@@ -255,9 +255,15 @@ calibrado".
   siempre renderiza en inglés — no hay camino de CLI a la cola en español todavía. Detalle en
   la ficha del Nodo 8.
 
-- [ ] **Día 16** (60 min, Nodos 10+11) — Roleplay completo: apertura de 20 s + llamada de 20
-  min, ensayando las 3 objeciones documentadas en `validation.md`. Cronometrar. Si la apertura
-  pasa de 25 segundos, sobra texto.
+- [x] **Día 16** (2026-08-12, Nodos 10+11) — Cronometrada la apertura: **ES 30 s, EN 36 s**, las
+  dos por encima del umbral de 25. Recortadas en los dos idiomas y en los dos lugares donde vive
+  el guion (`pipeline.md` + `contact.py::build_call_script`): fuera "para que lo mires más
+  tarde"/"so you can look at it later", y el cierre consolidado en una sola frase que no
+  promete "apuntar al dominio" antes de la llamada de venta real. Sin re-cronometrar el recorte
+  todavía. La llamada larga de 20 min y las 3 objeciones (documentadas en `pipeline.md`, no en
+  `validation.md` — referencia corregida acá) no se ensayaron: no tiene sentido simularlas solo,
+  se ensayan de verdad con el primer prospecto real que conteste. Detalle en las fichas de los
+  Nodos 10 y 11.
 
 ## Fase C — El PARA QUÉ (días 17-20)
 

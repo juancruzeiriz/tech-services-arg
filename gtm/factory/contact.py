@@ -294,21 +294,19 @@ def build_call_script(
             f"Hola, ¿hablo con {prospect.name}? — No soy cliente, esto dura 20 segundos.\n"
             f"Hago sitios web para {vertical_plural(prospect.vertical, language)} en {city} "
             f"y ya te armé uno de muestra. Está online ahora mismo.\n"
-            f"¿Te puedo mandar el link por mensaje para que lo mires más tarde? … Genial, "
-            f"va a este número.\n"
+            f"¿Te puedo mandar el link por mensaje? … Genial, va a este número.\n"
             f"[Enviar SMS: {link}]\n"
-            f"Sin compromiso — si te gusta lo apunto a tu dominio, si no te lo quedás igual. "
-            f"Te lo reservo 7 días."
+            f"Sin compromiso — si te gusta, te lo reservo por 7 días y charlamos precio. "
+            f"Si no, te lo quedás igual."
         )
     return (
         f"Hi, is this {prospect.name}? — I am not a customer, this will take 20 seconds.\n"
         f"I build websites for {vertical_plural(prospect.vertical, language)} in {city} and I "
         f"already built one for you as a sample. It is online right now.\n"
-        f"Can I text you the link so you can look at it later? … Great, it is going to "
-        f"this number.\n"
+        f"Can I text you the link? … Great, it is going to this number.\n"
         f"[Send SMS: {link}]\n"
-        f"No obligation — if you like it I can point it at your domain, if not keep it. "
-        f"I'll hold it for you for 7 days."
+        f"No obligation — if you like it, I'll hold it for you for 7 days and we can talk "
+        f"price. If not, it's still yours."
     )
 
 

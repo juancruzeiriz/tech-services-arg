@@ -108,22 +108,20 @@ acá, retocarlo ahí también para que no diverjan.
 > Hola, ¿hablo con {negocio}? — No soy cliente, esto dura 20 segundos.
 > Hago sitios web para {oficio} en {ciudad} y ya te armé uno de muestra. Está
 > online ahora mismo.
-> ¿Te puedo mandar el link por mensaje para que lo mires más tarde? … Genial,
-> va a este número.
+> ¿Te puedo mandar el link por mensaje? … Genial, va a este número.
 > [Enviar SMS: {link}]
-> Sin compromiso — si te gusta lo apunto a tu dominio, si no te lo quedás
-> igual. Te lo reservo 7 días.
+> Sin compromiso — si te gusta, te lo reservo por 7 días y charlamos precio.
+> Si no, te lo quedás igual.
 
 **EN**
 
 > Hi, is this {business}? — I am not a customer, this will take 20 seconds.
 > I build websites for {trade} in {city} and I already built one for you as a
 > sample. It is online right now.
-> Can I text you the link so you can look at it later? … Great, it is going
-> to this number.
+> Can I text you the link? … Great, it is going to this number.
 > [Send SMS: {link}]
-> No obligation — if you like it I can point it at your domain, if not keep
-> it. I'll hold it for you for 7 days.
+> No obligation — if you like it, I'll hold it for you for 7 days and we can
+> talk price. If not, it's still yours.
 
 ## Guion de la llamada (20 min)
 

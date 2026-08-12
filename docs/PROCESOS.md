@@ -1067,7 +1067,25 @@ no son 20 minutos. Bajar la barrera de entrada al mínimo posible.
 
 **Problemas conocidos** —
 
+- (2026-08-12, Día 16, **corregido**) Las dos aperturas pasaban el umbral de 25 s: **ES 30 s,
+  EN 36 s** (medido en voz alta, no estimado). Recortadas las dos, con el mismo criterio en los
+  dos idiomas y en los dos lugares donde vive el guion (`pipeline.md` y
+  `contact.py::build_call_script`, sincronizados a propósito): sacado "para que lo mires más
+  tarde" / "so you can look at it later" (no aporta nada al pedido de permiso), y consolidado el
+  cierre — antes prometía "lo apunto a tu dominio" y repetía "te lo reservo 7 días" en dos
+  frases separadas; ahora una sola frase ("si te gusta, te lo reservo por 7 días y charlamos
+  precio") que no promete de más antes de la llamada de venta real (Nodo 11) y no repite el
+  plazo. **Sin re-cronometrar todavía** — el recorte es una estimación de que entra bajo 25 s,
+  no una medición; falta confirmarlo en la próxima llamada real.
+
 **Bitácora** —
+
+- (2026-08-12, Día 16) Cronometrada la apertura en las dos ramas usando `Robert's Tree Service
+  LLC` (Albuquerque, NM) como ancla, antes del recorte de arriba: **ES 30 s, EN 36 s** — las dos
+  por encima del umbral. La llamada larga de 20 min (Nodo 11) y las 3 objeciones no se
+  ensayaron esta sesión — no tiene sentido simularlas solo en una habitación sin la otra parte
+  real; se van a ensayar de verdad con el primer prospecto que conteste, no antes. Mismo patrón
+  que el Nodo 4/5 con "sigue sin poder cerrarse sin un oído humano real".
 
 ---
 
@@ -1084,11 +1102,21 @@ y recién ahí precio/plazo/garantía.
 presupuesto. Si el número del paso 5 da menos de USD 950, el prospecto está mal elegido — hay
 que volver al discovery, no bajar el precio.
 
-**Palancas** — El guion, las respuestas a objeciones documentadas en `validation.md`.
+**Palancas** — El guion, las respuestas a las 3 objeciones documentadas en `pipeline.md`
+(no en `validation.md` — ahí solo está la primera, "consigo el 99% de mi trabajo por
+referidos"; corregida esta referencia el Día 16, estaba mal en `PLAN_DIARIO.md`).
 
 **Problemas conocidos** —
 
 **Bitácora** —
+
+- (2026-08-12, Día 16) **Sin ensayar todavía.** El roleplay planeado para este día necesitaba
+  una segunda persona haciendo de prospecto — ensayarlo en soledad no prueba nada real sobre
+  timing conversacional ni sobre si las respuestas a objeciones suenan naturales bajo presión.
+  Decisión: se ensaya con el primer prospecto real que conteste, no antes — mismo criterio que
+  Nodo 10. El umbral duro sigue anotado para esa primera llamada real: si el número del paso 5
+  (llamadas perdidas × valor del trabajo) da menos de USD 950/semana, el prospecto está mal
+  elegido, no se baja el precio.
 
 ---
 
