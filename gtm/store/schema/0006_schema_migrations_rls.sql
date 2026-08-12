@@ -1,0 +1,12 @@
+-- El linter de Supabase marca `public.schema_migrations` (creada por el
+-- bootstrap de gtm/store/migrate.py, no por un archivo de este directorio)
+-- porque vive en el schema que expone PostgREST y no tiene RLS habilitado --
+-- por default de Supabase, toda tabla nueva en `public` queda con grants para
+-- `anon`/`authenticated`, así que sin RLS cualquiera con la anon key podría
+-- leer qué migraciones corrieron.
+--
+-- No hace falta ninguna policy: nadie necesita leer esta tabla vía la API.
+-- migrate.py sigue funcionando igual -- se conecta con el rol dueño de la
+-- tabla (ver SUPABASE_DB_URL en .env.personal), y el dueño de una tabla
+-- siempre atraviesa RLS.
+alter table schema_migrations enable row level security;
