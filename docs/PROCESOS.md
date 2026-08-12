@@ -387,6 +387,14 @@ plata, le importa su reputación, y su web no está a la altura — no está pel
   encontrás, es el % sin sitio real — que la Capa 2 (Nodo 3) ya mueve en la dirección
   correcta sin agregar una etapa. Revisar si esto sigue siendo cierto después de
   correr la Capa 2 sobre unas cuantas corridas reales más.
+- (2026-08-12) `discover` real sobre `tree_service × Miami, FL` (`--min-reviews 20
+  --limit 40`, replicando las condiciones del barrido): **20 calificados, 4 sin
+  sitio propio en Maps (20%)** — consistente con el 23,8% del barrido (n=21,
+  metodología ligeramente distinta), la diferencia entra en el ruido de n≈20. De
+  esos 4 "sin sitio", la Capa 2 (Nodo 3) confirmó que 1 sí tiene dominio propio
+  (`ddtreeservice.com`, no vinculado en su perfil de Maps) — el % real de ausencia
+  digital verificada baja a 3/20 (15%) después de la Capa 2. Ver el detalle
+  completo en la ficha del Nodo 3.
 
 **Bitácora** —
 
@@ -484,6 +492,16 @@ arriba que determinan qué llega a puntuarse.
   dispararse con datos reales, y evaluar si vale la pena dar de alta `GTM_SEARCH_API_KEY` para
   la sub-capa B — nombres largos y descriptivos (como el de este caso) es exactamente donde la
   heurística de sub-capa A es más débil.
+- (2026-08-12) **El camino `own_domain` disparó con datos reales**, cerrando el pendiente de
+  arriba. `discover` sobre `tree_service × Miami, FL` (ver Nodo 2) trajo 4 prospectos `NONE`;
+  al puntuarlos, `D&D Tree Service.` — sin `websiteUri` en su perfil de Maps, así que hubiera
+  recibido dolor 100 y el email falso "no tenés sitio web" — resolvió a
+  `digital_trace=own_domain`, `verified_domain=https://ddtreeservice.com`. Sub-capa A derivó
+  `ddtreeservice.com` del nombre, lo probó, y confirmó que el HTML cita el mismo teléfono del
+  negocio. `score_prospect` lo mandó por el camino de medición real en vez de asignarle dolor
+  automático: terminó con score **60** (medido de verdad), no 100. Sigue sin correr la
+  sub-capa B (`GTM_SEARCH_API_KEY` sin configurar) — de los otros 3 `NONE`/`SOCIAL_ONLY` de
+  Miami, quedaron `unverified`, mismo comportamiento honesto que Albuquerque.
 
 **Bitácora** —
 
@@ -526,37 +544,55 @@ citable, el gancho es indistinguible del spam genérico que ya descartaron veint
 
 **Problemas conocidos** —
 
-- (2026-08-12) **Falso positivo probable en `dated_palette`, confirmado con evidencia real.**
-  `_check_palette` (`forensics.py`) cuenta cualquier código hex que aparezca en el HTML crudo,
-  sin distinguir si el color se usa de verdad en el diseño visible o si es solo CSS boilerplate
-  que nunca se renderiza. Disparado sobre `legacytreecompany.com` (signal 0.57, sobre el
-  umbral 0.4): de los 37 colores distintos encontrados, 7 —`0693e3`, `00d084`, `8ed1fc`,
-  `ff6900`, `fcb900`, `f78da7`, `abb8c3`— son, dígito por dígito, la paleta *default* del editor
-  de bloques de WordPress (Gutenberg: "vivid cyan blue", "vivid green cyan", "pale cyan blue",
-  "luminous vivid orange", "luminous vivid amber", "pale pink"). Esas clases CSS
-  (`.has-vivid-cyan-blue-color`, etc.) se cargan con cualquier sitio WordPress que use bloques,
-  las use el tema o no — no son evidencia de que el diseño real del sitio sea saturado ni viejo.
-  El resto de los colores encontrados (`81c100`, `116600`, `003399`) sí parecen la paleta real
-  del negocio (verdes de árbol, azules de marca). Sin poder distinguir "color en el CSS cargado"
-  de "color que aparece en pantalla" (haría falta render real, que es justo lo que `net.py`
-  evita para no depender de Chrome/Node), el heurístico va a seguir marcando falsos positivos en
-  cualquier sitio WordPress con Gutenberg — que es la mayoría del mercado de home services chico.
-  No arreglado: bajar el peso de esta señal o excluir la paleta de Gutenberg conocida son las
-  dos opciones más baratas, pendiente de decidir antes de usar `dated_palette` como línea de
-  venta citada en una llamada real (el hallazgo sigue sumando al score compuesto igual, pero no
-  debería citarse solo por esto).
-- (2026-08-12) `legacy_jquery` no se disparó ni una vez en los 8 sitios reales puntuados de
-  `tree_service × Albuquerque` — sin datos para juzgar si tiene falsos positivos o negativos en
-  este par. Pendiente revisar con una muestra más grande o un vertical con webs más viejas.
+- (2026-08-12, actualizado — ver commit de este día) **`dated_palette` es más ruidoso de lo que
+  parecía a primera vista, con dos bugs reales ya arreglados y un sesgo de fondo sin resolver.**
+  Medido sobre 11 sitios reales de `tree_service` (Albuquerque + Miami) con signal ≥3 colores:
+  el detector **dispara en el 73% (8/11)** — muy por encima de lo que sugiere "típico de sitios
+  de hace más de una década". Dos bugs de ese 73% ya están arreglados en `forensics.py`:
+  (1) `_normalise_hex` no bajaba a minúscula, así que `#FFFFFF`/`#ffffff` contaban como dos
+  colores distintos e inflaban `distinct_frac` (3 pares duplicados solo en
+  `legacytreecompany.com`); (2) el detector contaba las declaraciones
+  `--wp--preset--color--<nombre>: #hex;` que WordPress core inyecta con cualquier sitio que use
+  bloques (Gutenberg), la use el diseño visible o no — confirmado en vivo, 7 de los 37 colores
+  de `legacytreecompany.com` eran, exactos, la paleta default de Gutenberg. Ahora se descarta la
+  *declaración*, no el color (si el negocio usa ese hex fuera de un preset, sigue contando).
+  **Ninguno de los dos arreglos bajó la tasa de disparo por debajo del umbral** (0,569→0,505 en
+  el caso medido, sigue arriba de 0,4) — el sesgo real está en otro lado: excluyendo colores casi
+  neutros (gris/blanco/negro, saturación <0,10) del cálculo, la tasa de disparo baja a 27%
+  (3/11), mucho más plausible, pero **no se implementó**: cambiar qué cuenta en cada fracción de
+  `palette_age_signal` necesita el mismo tipo de calibración contra juicio humano que el Día 11
+  (todavía pendiente), no se puede decidir mirando n=11 sin ground-truth de qué sitios *se ven*
+  viejos de verdad. Mientras tanto: `FindingSpec.quotable=False` para `dated_palette` — sigue
+  sumando al score compuesto, pero `PainScore.sales_lines()` (usada por el gancho del email en
+  `outreach.py`) lo salta por default; `audit.py` (informe interno para la llamada) sigue
+  mostrándolo con `quotable_only=False`. Los 12 colores cromáticos que sobreviven en
+  `legacytreecompany.com` después de sacar presets y neutros son verdes (`81c100`, `1aa246`,
+  `116600`) — el componente "saturado = viejo" penaliza sistemáticamente la paleta natural de
+  marca de una empresa de árboles, el vertical elegido.
+- (2026-08-12) **`legacy_jquery` tenía un bug real de falso negativo, arreglado, y por poco
+  se introduce uno de falso positivo al arreglarlo.** WordPress sirve jQuery core como
+  `.../jquery.js?ver=1.12.4` (versión en el query string, no en el nombre de archivo);
+  `_JQUERY_RE` solo miraba el nombre de archivo (`jquery-X.Y.Z.min.js`), así que nunca veía esa
+  forma. Confirmado en vivo: `miamistumpbrothers.com` corre jQuery core **1.12.4** (con avisos
+  de seguridad conocidos) y el detector no lo veía — arreglado agregando un fallback que lee
+  `?ver=` cuando el archivo mismo es el bundle de jQuery core. Al verificar el fix contra
+  `legacytreecompany.com` apareció el problema simétrico: ese sitio carga
+  `jquery.mobile.min.js?ver=1.4.5` y `jquery.fullscreen.min.js?ver=0.6.0` — plugins con "jquery"
+  en el nombre pero **versionado propio, independiente del de jQuery core** (que en este sitio
+  es 3.7.1, moderno). Sin restringir el fallback al *basename* exacto del bundle de jQuery core
+  (`jquery.js`, `jquery.min.js`, `jquery.slim.js`), el hallazgo hubiera afirmado "el sitio corre
+  jQuery 1.4.5" cuando en realidad corre 3.7.1 — falso y verificable en dos clics de devtools,
+  la misma clase de error que motivó arreglar el idioma en el Día 7. Con la restricción de
+  basename: `miamistumpbrothers.com` dispara correctamente (1.12.4), `legacytreecompany.com`
+  no dispara nada (correcto, su jQuery core es moderno).
 
 **Bitácora** —
 
-- (2026-08-12) Sobre los 8 prospectos reales de `tree_service × Albuquerque` que sí pudo
-  puntuar PageSpeed (2 de 10 fallaron por error transitorio de la API, ver Nodo 3): promedio de
-  **1,9 hallazgos por prospecto** (rango 0-5). Frecuencia por código: `stale_since` 4/8,
-  `no_local_schema` 3/8, `tap_targets` 2/8, `no_https` 2/8, `no_social_presence` 2/8,
-  `dated_palette` 1/8 (ver el falso positivo de arriba), `no_tel_link` 1/8. Ninguno de los
-  hallazgos de mayor severidad (`CRITICAL`) apareció en esta muestra puntual.
+- (2026-08-12) Sobre los 8 prospectos de `tree_service × Albuquerque` puntuados por PageSpeed
+  (2 de 10 fallaron por error transitorio de la API, ver Nodo 3): promedio de **1,9 hallazgos
+  por prospecto** (rango 0-5). Frecuencia por código: `stale_since` 4/8, `no_local_schema` 3/8,
+  `tap_targets` 2/8, `no_https` 2/8, `no_social_presence` 2/8, `dated_palette` 1/8, `no_tel_link`
+  1/8. Ninguno de los hallazgos `CRITICAL` apareció en esta muestra puntual.
 
 ---
 
@@ -592,7 +628,43 @@ vertical no está en catálogo.
   a medida" para ser evidencia de que es una plantilla. Hipótesis falsable para el Día 13:
   si se le muestran 2 demos del mismo oficio a alguien ajeno al proyecto, reconoce el patrón
   en el bloque de servicios en menos de lo que tarda en leerlo — probarlo con una persona
-  real antes de asumir que `--ai-copy` (que ya existe pero no cubre esto) alcanza.
+  real antes de asumir que `--ai-copy` (que ya existe pero no cubre esto) alcanza. **Medido en
+  número (2026-08-12)**: sobre las 8 demos reales, el **79% del contenido visible es
+  byte-por-byte idéntico** entre cualquier par (sacando el `<style>` inline, que comparte el
+  100% del CSS a propósito — mismo diseño visual, eso no es lo que un prospecto vería como
+  "plantilla reconocible"). Los bloques comunes más largos: la franja de reseñas/stats
+  ("N reviews · Serving Albuquerque · Fast response...", 724 caracteres) y el `<h1>` con el
+  patrón "Ciudad's [oficio], one call away". Similitud pareja entre pares al azar
+  (0,68-0,98 según `SequenceMatcher.ratio()`, promedio 0,805) — no hay un par "fácil" de
+  distinguir por casualidad. Material listo para la prueba con una persona real (todavía
+  pendiente, necesita a alguien): `gtm/build/template_recognition_test.html` — comparación
+  lado a lado de dos demos en iframes. **No es una prueba ciega**: el banner obligatorio
+  "Preview site — built for..." (disclosure de cumplimiento, no se puede ocultar) ya dice el
+  nombre del negocio, así que lo que se evalúa es si el resto del texto se lee como copiado y
+  pegado *aun sabiendo* los dos nombres, no si alguien puede adivinar cuál es cuál.
+- (2026-08-12) **Lighthouse mobile real sobre las 8 demos** (local, `@lhci/cli` + Edge
+  headless vía `.claude/launch.json` config `demos`, sin necesitar `GTM_DEMO_BASE_URL` real):
+  las 8 dan **exactamente los mismos 4 números** — `performance=100`, `accessibility=90`,
+  `best-practices=96`, `seo=60` — consistente con que el HTML compartido (header/footer/CSS)
+  domina el resultado más que el contenido variable. Tres hallazgos, dos reales y uno
+  esperado:
+  - **`seo=60` es esperado, no un bug**: el único audit que falla es `is-crawlable` (0/100),
+    por el `noindex` — decisión de diseño documentada en el README ("la demo... sale con
+    `noindex`... no puede confundirse con el sitio oficial"). Sin ese audit el resto de SEO
+    da 100.
+  - **`color-contrast` real (accessibility 90/100), afecta las 8 demos por igual**: el texto
+    del footer (dirección del negocio y el disclosure "Preview built by...") tiene contraste
+    3,85:1 contra el fondo — WCAG AA exige 4,5:1. Vive en el bloque de footer compartido, así
+    que arreglarlo una vez arregla las 8 demos existentes y todas las futuras. **No arreglado
+    en esta sesión** (fuera del alcance acordado: medir y documentar, no tocar la plantilla).
+  - **`errors-in-console` real (best-practices 96/100), afecta las 8 por igual**: 404 de
+    `/favicon.ico` — la plantilla no declara ninguno, así que el navegador lo pide solo y
+    falla. Menor, pero afecta cómo se ve la pestaña si un prospecto deja la demo abierta para
+    mostrarle a alguien. Tampoco arreglado en esta sesión, mismo motivo.
+  - Dos audits informativos (`document-latency-insight`, `uses-text-compression`, ambos con
+    `scoreDisplayMode: metricSavings`) no afectan el score numérico de performance (100 igual)
+    y son artefacto del servidor local de desarrollo (`python -m http.server`, sin gzip/HTTP2)
+    — no representativos del deploy real en Cloudflare Pages, que sí comprime.
 
 **Bitácora** —
 
@@ -690,6 +762,12 @@ tienen sitio, así que no tienen formulario, pero sí teléfono, y son pocos —
   formulario es alta y ningún prospecto se "tira" — la preocupación del **Qué** de este nodo
   (cada `UNREACHABLE` es un prospecto puntuado y tirado) no se materializó en esta muestra de
   10, aunque n=10 es chico para generalizar a otros metros.
+- (2026-08-12) Repetido sobre `tree_service × Miami, FL` (20 prospectos, ver Nodo 2): 15/20
+  tienen sitio propio, de esos **9 resolvieron a `CONTACT_FORM` (60%) y 6 a teléfono (40%)**.
+  **Cero `UNREACHABLE`** de nuevo. Combinando los dos metros (24 `HAS_SITE` en total): 14
+  formulario / 10 teléfono (58,3%/41,7%), **cero `UNREACHABLE` en 34 prospectos reales entre
+  dos metros distintos** — la preocupación original del nodo (`UNREACHABLE` = prospecto
+  tirado) sigue sin materializarse con una muestra ya el triple de grande.
 
 ---
 

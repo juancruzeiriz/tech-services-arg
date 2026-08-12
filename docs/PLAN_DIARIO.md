@@ -172,30 +172,55 @@ calibrado".
   Si la correlación es mala, el problema son los pesos de dimensión o el corte de 45 — no el
   código.
 
-- [x] **Día 12** (2026-08-12, Nodo 4, parcial) — Las dos preguntas que se pueden responder sin
-  voz humana, hechas: 1,9 hallazgos por prospecto en promedio sobre los 8 reales de Albuquerque
-  que sí puntuó PageSpeed; y sí hay un falso positivo real en `dated_palette` —
-  `legacytreecompany.com` lo dispara porque 7 de sus 37 colores detectados son, exactos, la
-  paleta *default* del editor de bloques de WordPress (Gutenberg), CSS que se carga siempre que
-  el sitio usa bloques, la use el diseño visible o no. `legacy_jquery` no se disparó ni una vez
-  en esta muestra, sin datos para juzgarlo. Detalle completo en la ficha del Nodo 4. **Pendiente,
-  necesita a alguien escuchando**: si la línea de venta del hallazgo más grave suena natural en
-  voz alta delante de un plomero — eso no se puede evaluar sin un oído humano.
+- [x] **Día 12** (2026-08-12, Nodo 4, cerrado con Miami) — Ampliada la muestra con `discover`
+  real sobre `tree_service × Miami, FL` (20 calificados) para no calibrar nada sobre n=8.
+  `dated_palette` resultó más ruidoso de lo que parecía: sobre 11 sitios reales con señal
+  medible (Albuquerque+Miami), **dispara en el 73%** — muy por encima de "típico de una
+  década atrás". Arreglados dos bugs reales que inflaban esa tasa: `_normalise_hex` no bajaba
+  a minúscula (`#FFFFFF`/`#ffffff` contaban doble) y el detector contaba la paleta *default*
+  de Gutenberg (WordPress la inyecta sola, la use el diseño o no — confirmado en vivo, 7 de 37
+  colores de `legacytreecompany.com` eran exactos a esa paleta). Ninguno de los dos arreglos
+  bajó la tasa bajo el umbral — el sesgo real es que los colores que sobreviven son verdes de
+  marca (árboles), y el componente "saturado = viejo" los penaliza. Excluir neutros bajaría la
+  tasa a 27%, pero **no implementado**: cambiar la fórmula necesita la misma calibración
+  contra juicio humano que el Día 11 (pendiente), no decidirse mirando n=11. Mientras tanto:
+  `dated_palette` sigue sumando al score pero ya no se cita en el mensaje al prospecto
+  (`FindingSpec.quotable=False`, filtrado en `PainScore.sales_lines()`; el informe interno de
+  `audit.py` lo sigue mostrando). `legacy_jquery` sí tenía un bug real de falso negativo
+  (WordPress sirve la versión en `?ver=` del query string, no en el nombre de archivo — el
+  detector solo miraba el nombre) y, al arreglarlo, casi se introduce uno de falso positivo
+  simétrico (confundir jQuery Mobile con jQuery core) — el fix final restringe el fallback al
+  basename exacto del bundle de jQuery core. Confirmado en vivo: `miamistumpbrothers.com`
+  corre jQuery 1.12.4 real (ahora sí detectado), `legacytreecompany.com` no dispara nada
+  (correcto, su jQuery core es 3.7.1). Detalle completo, con los números exactos, en la ficha
+  del Nodo 4. Sigue sin poder cerrarse sin un oído humano: si la línea de venta del hallazgo
+  más grave suena natural en voz alta.
 
-- [ ] **Día 13** (45 min, Nodos 5+6) — ¿La demo se reconoce como plantilla? Mostrarle 2 demos a
-  alguien que no sabe nada del proyecto y preguntarle qué negocio es. Medir el Lighthouse de la
-  propia demo generada. *No se pudo avanzar sin ayuda: mostrarle la demo a alguien ajeno
-  necesita a esa persona, y medir el Lighthouse de la demo propia necesita que esté publicada
-  de verdad — `GTM_DEMO_BASE_URL` sigue siendo el placeholder (ver Nodo 6), así que hoy no hay
-  URL pública que PageSpeed pueda analizar.*
+- [x] **Día 13** (2026-08-12, Nodos 5+6, la parte medible) — La premisa de "no se puede sin
+  publicar" era falsa a medias: medir Lighthouse **no** necesita `GTM_DEMO_BASE_URL` real —
+  `@lhci/cli` ya estaba instalado (`site/node_modules`) y hay Edge headless en la máquina, así
+  que corrió local contra las demos servidas por `.claude/launch.json`. Las 8 demos dan
+  **exactamente los mismos 4 números**: performance=100, accessibility=90, best-practices=96,
+  seo=60. El seo=60 es esperado (el `noindex` de diseño, no un bug). Los otros dos sí son
+  bugs reales, y afectan a las 8 demos por igual porque viven en el footer compartido:
+  **contraste insuficiente** (3,85:1 contra el 4,5:1 que exige WCAG AA, en la dirección y el
+  disclosure del footer) y **404 de `/favicon.ico`** (no declarado). Ninguno arreglado en esta
+  sesión — medir y documentar era el alcance acordado, no tocar la plantilla. Además,
+  cuantificado con `SequenceMatcher`: **79% del contenido visible es idéntico** entre
+  cualquier par de demos (sacando el CSS compartido, que es a propósito). Armada
+  `gtm/build/template_recognition_test.html` para la prueba con una persona real — pero esa
+  prueba en sí **sigue sin poder hacerse sin vos**: además de necesitar a alguien ajeno al
+  proyecto, resultó que no puede ser una prueba ciega de verdad, porque el banner de
+  disclosure obligatorio ("Preview site — built for...") ya dice el nombre del negocio.
+  Detalle completo en la ficha del Nodo 5.
 
-- [x] **Día 14** (2026-08-12, Nodo 7) — `resolve_all` corrido de verdad (con probe real, no
-  `--no-probe`) sobre los 10 prospectos de Albuquerque: 9/10 tienen sitio propio, y de esos 9,
-  5 resolvieron a `CONTACT_FORM` (55,6%) y 4 cayeron a teléfono (44,4%) por no encontrarse
-  formulario. **Cero `UNREACHABLE`** — nadie se pierde del todo en esta muestra. Revisados a
-  mano los 2 casos de caída a teléfono más dudosos: ninguno es un falso negativo del detector
-  (uno no tiene ningún `<form>` en su home, el otro no respondió al momento de la corrida).
-  Detalle en la ficha del Nodo 7.
+- [x] **Día 14** (2026-08-12, Nodo 7, cerrado con Miami) — `resolve_all` corrido de verdad
+  sobre los 10 prospectos de Albuquerque (9/10 con sitio, 5 `CONTACT_FORM`/4 teléfono, cero
+  `UNREACHABLE`) y repetido sobre los 20 de Miami (15/20 con sitio, 9 `CONTACT_FORM`/6
+  teléfono, cero `UNREACHABLE` de nuevo). Combinados: 24 `HAS_SITE`, 58,3% formulario / 41,7%
+  teléfono, **cero `UNREACHABLE` en 34 prospectos reales entre dos metros distintos** — la
+  preocupación original del nodo no se materializó ni con el doble de muestra. Detalle en la
+  ficha del Nodo 7.
 
 - [ ] **Día 15** (45 min, Nodo 8) — Leer los 3 mensajes en los 2 idiomas, en voz alta. El
   español no es traducción del inglés: ¿suena a alguien de Argentina hablándole a un dueño de
