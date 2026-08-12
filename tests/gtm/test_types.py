@@ -201,6 +201,34 @@ class TestPainScoreSubScores:
     def test_sales_lines_vacio_sin_hallazgos(self):
         assert PainScore(place_id="x").sales_lines(Language.ES) == []
 
+    def test_sales_lines_por_default_salta_hallazgos_no_citables(self):
+        """dated_palette (quotable=False) no debe aparecer en el gancho del
+        email/mensaje por default -- es lo que usa outreach.py sin pasar
+        quotable_only explícito."""
+        s = PainScore(
+            place_id="x",
+            findings=(
+                Finding(code="no_tel_link", evidence="555-0142", weight=FINDINGS["no_tel_link"].weight),
+                Finding(code="dated_palette", evidence="9", weight=FINDINGS["dated_palette"].weight),
+            ),
+        )
+        lineas = s.sales_lines(Language.ES)
+        assert len(lineas) == 1
+        assert "555-0142" in lineas[0]
+
+    def test_sales_lines_quotable_only_false_muestra_todo(self):
+        """audit.py pasa quotable_only=False a propósito: es material interno
+        de apoyo para la llamada, no algo que se le manda al prospecto."""
+        s = PainScore(
+            place_id="x",
+            findings=(
+                Finding(code="no_tel_link", evidence="555-0142", weight=FINDINGS["no_tel_link"].weight),
+                Finding(code="dated_palette", evidence="9", weight=FINDINGS["dated_palette"].weight),
+            ),
+        )
+        lineas = s.sales_lines(Language.ES, quotable_only=False)
+        assert len(lineas) == 2
+
     def test_el_score_siempre_queda_en_rango_con_muchos_hallazgos(self):
         s = PainScore(
             place_id="x",

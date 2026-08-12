@@ -71,7 +71,11 @@ def _sub_scores_html(score: PainScore, language: Language) -> str:
 
 def _findings_html(score: PainScore, language: Language) -> str:
     # Ya vienen del más grave al menos grave -- ver PainScore.sales_lines.
-    lines = score.sales_lines(language)
+    # quotable_only=False a propósito: este informe es material interno de apoyo
+    # para la llamada, no algo que se le manda al prospecto -- acá sí conviene ver
+    # hallazgos como dated_palette, que el gancho del email (outreach.py) omite
+    # porque todavía no está validado lo suficiente como para citarlo en frío.
+    lines = score.sales_lines(language, quotable_only=False)
     if not lines:
         text = (
             "Sin hallazgos automatizados citables. Revisar el sitio a mano antes de la llamada."

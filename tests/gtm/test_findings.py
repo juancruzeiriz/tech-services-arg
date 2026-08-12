@@ -12,6 +12,22 @@ def test_todo_hallazgo_tiene_copy_en_los_dos_idiomas():
         assert spec.sales_line_es.strip(), f"{code} sin copy ES"
 
 
+def test_dated_palette_no_es_citable():
+    """No-citable, no eliminado: sigue sumando al score compuesto (ver
+    PainScore.score), solo se apaga en el copy de venta -- ver
+    FindingSpec.quotable y PainScore.sales_lines. Sobre 11 sitios reales de
+    tree_service (Albuquerque+Miami, 2026-08-12) dispara en el 73%, muy por
+    encima de lo que sugiere "típico de una década atrás"."""
+    assert FINDINGS["dated_palette"].quotable is False
+
+
+def test_los_demas_hallazgos_siguen_siendo_citables_por_default():
+    for code, spec in FINDINGS.items():
+        if code == "dated_palette":
+            continue
+        assert spec.quotable is True, f"{code} no debería tener quotable=False"
+
+
 def test_la_linea_de_venta_interpola_la_evidencia():
     finding = Finding(code="no_tel_link", evidence="teléfono en texto plano")
     linea = finding.sales_line(Language.ES)

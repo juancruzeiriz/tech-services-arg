@@ -406,9 +406,19 @@ class PainScore:
             for dimension, values in self._dimension_pain_values().items()
         }
 
-    def sales_lines(self, language: Language) -> list[str]:
-        """Las líneas de venta de los hallazgos, del más grave al menos grave."""
+    def sales_lines(self, language: Language, *, quotable_only: bool = True) -> list[str]:
+        """Las líneas de venta de los hallazgos, del más grave al menos grave.
+
+        `quotable_only=True` (default) es lo que usa `outreach.py` para el gancho del
+        email/mensaje: se salta cualquier `Finding` cuyo `spec.quotable` sea False —
+        evidencia real pero todavía no validada lo suficiente como para afirmarla en
+        frío (ver `FindingSpec.quotable`). El informe interno de `audit.py` pasa
+        `quotable_only=False` a propósito: es material de apoyo para la llamada, no
+        algo que se le manda al prospecto, así que ahí sí conviene ver todo.
+        """
         ordered = sorted(self.findings, key=lambda f: _SEVERITY_RANK[f.spec.severity.value])
+        if quotable_only:
+            ordered = [f for f in ordered if f.spec.quotable]
         return [f.sales_line(language) for f in ordered]
 
     def _dimension_pain_values(self) -> dict[str, list[float]]:

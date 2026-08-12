@@ -66,6 +66,15 @@ class FindingSpec:
     sales_line_en: str
     """Con `{evidence}` para interpolar — ver `Finding.sales_line`."""
     sales_line_es: str
+    quotable: bool = True
+    """False para un hallazgo que sigue sumando al score compuesto pero no debe
+    citarse en un mensaje al prospecto -- porque su evidencia todavía no está
+    validada contra sitios reales lo suficiente como para afirmarla en frío.
+    `dated_palette` es el primer caso (2026-08-12): sobre 11 sitios reales de
+    tree_service × Albuquerque/Miami dispara en el 73% -- muy por encima de lo
+    que sugiere "típico de sitios de hace más de una década" -- y quitar la
+    paleta que WordPress core inyecta sola (`--wp--preset--color--*`) no basta
+    para bajar esa tasa. Ver el detalle en la ficha del Nodo 4 de PROCESOS.md."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -208,6 +217,7 @@ FINDINGS: dict[str, FindingSpec] = {
         1.0,
         "The colour palette ({evidence}) is typical of sites built more than a decade ago.",
         "La paleta de colores ({evidence}) es típica de sitios de hace más de una década.",
+        quotable=False,
     ),
     "no_https": FindingSpec(
         Dimension.SEO,

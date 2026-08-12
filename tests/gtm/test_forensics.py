@@ -75,6 +75,58 @@ def test_jquery_3_no_dispara_el_hallazgo():
     assert "legacy_jquery" not in codes
 
 
+def test_detecta_jquery_viejo_con_version_en_query_string():
+    """WordPress sirve jQuery como `.../jquery.js?ver=1.12.4` -- versión en el
+    query string, no en el nombre de archivo. Confirmado en vivo el 2026-08-12
+    contra miamistumpbrothers.com (jQuery 1.12.4 real, sin detectar antes de
+    este fix porque `_JQUERY_RE` sola solo mira el nombre de archivo)."""
+    html = _VIEJO.replace(
+        "/js/jquery-1.7.2.min.js", "/wp-includes/js/jquery/jquery.js?ver=1.12.4"
+    )
+    hallazgos = {f.code: f for f in analyse_html(html, "http://x.com")}
+    assert "legacy_jquery" in hallazgos
+    assert "1.12.4" in hallazgos["legacy_jquery"].evidence
+
+
+def test_jquery_3_en_query_string_no_dispara_el_hallazgo():
+    html = _VIEJO.replace(
+        "/js/jquery-1.7.2.min.js", "/wp-includes/js/jquery/jquery.js?ver=3.7.1"
+    )
+    codes = {f.code for f in analyse_html(html, "http://x.com")}
+    assert "legacy_jquery" not in codes
+
+
+def test_un_ver_query_string_sin_jquery_en_el_src_no_dispara_nada():
+    """`?ver=1.2.3` es común en CUALQUIER asset de WordPress (CSS, otros JS),
+    no solo jQuery. Sin la gate de "jquery" en el src, cualquier script
+    versionado dispararía un falso `legacy_jquery`."""
+    html = _VIEJO.replace(
+        "/js/jquery-1.7.2.min.js", "/wp-content/themes/x/style.js?ver=1.2.3"
+    )
+    codes = {f.code for f in analyse_html(html, "http://x.com")}
+    assert "legacy_jquery" not in codes
+
+
+def test_un_plugin_con_jquery_en_el_nombre_no_se_confunde_con_jquery_core():
+    """Falso positivo real (2026-08-12, legacytreecompany.com): el sitio corre
+    jQuery core 3.7.1 (moderno) pero también carga
+    `jquery.mobile.min.js?ver=1.4.5` (jQuery Mobile, una librería DISTINTA con
+    su propio versionado, empaquetada por un plugin) y
+    `jquery.fullscreen.min.js?ver=0.6.0` (otro plugin). Sin restringir el
+    fallback de query-string al basename exacto del bundle de jQuery core,
+    "1.4.5" o "0.6.0" se atribuían como si fueran la versión de jQuery core
+    del sitio -- afirmación falsa y verificable por cualquiera que abra las
+    devtools."""
+    html = _VIEJO.replace(
+        "/js/jquery-1.7.2.min.js",
+        "/wp-includes/js/jquery/jquery.min.js?ver=3.7.1\"></script>"
+        '<script src="/plugins/photo-gallery/js/jquery.mobile.min.js?ver=1.4.5"></script>'
+        '<script src="/plugins/photo-gallery/js/jquery.fullscreen.min.js?ver=0.6.0',
+    )
+    codes = {f.code for f in analyse_html(html, "http://x.com")}
+    assert "legacy_jquery" not in codes
+
+
 def test_detecta_falta_de_viewport():
     assert "no_viewport" in {f.code for f in analyse_html(_VIEJO, "http://x.com")}
 
@@ -152,6 +204,52 @@ def test_la_paleta_vieja_se_detecta_por_saturacion_y_cantidad():
 def test_palette_age_signal_queda_en_0_1():
     assert 0.0 <= palette_age_signal([]) <= 1.0
     assert 0.0 <= palette_age_signal(["#FF0000"] * 50) <= 1.0
+
+
+def test_mismo_color_en_mayuscula_y_minuscula_no_duplica():
+    """Bug real (2026-08-12, legacytreecompany.com): `_normalise_hex` expandía
+    `#abc` pero no bajaba a minúscula, así que "#FFFFFF" y "#ffffff" contaban
+    como dos colores distintos e inflaban `distinct_frac` -- 3 pares
+    duplicados por caso solo en ese sitio."""
+    mixto = ["#FFFFFF", "#ffffff", "#000000", "#000000"]
+    todo_lower = ["#ffffff", "#ffffff", "#000000", "#000000"]
+    assert palette_age_signal(mixto) == palette_age_signal(todo_lower)
+
+
+def test_paleta_default_de_wordpress_gutenberg_no_cuenta():
+    """WordPress core inyecta la paleta default del editor de bloques como
+    `--wp--preset--color--<nombre>: #hex;` en cualquier sitio que use bloques
+    -- la use el diseño visible o no. Confirmado en vivo el 2026-08-12 contra
+    legacytreecompany.com: 7 de sus 37 colores "detectados" eran, exactos,
+    esa paleta. Se borra la declaración, no el color: si el negocio usa el
+    mismo hex en otra parte del HTML (fuera de un preset), sigue contando.
+    """
+    wp_presets = (
+        ":root{"
+        "--wp--preset--color--vivid-cyan-blue: #0693e3;"
+        "--wp--preset--color--vivid-green-cyan: #00d084;"
+        "--wp--preset--color--luminous-vivid-orange: #ff6900;"
+        "}"
+    )
+    solo_presets = f"<html><style>{wp_presets}</style><body>x</body></html>"
+    codes = {f.code for f in analyse_html(solo_presets, "https://x.com")}
+    assert "dated_palette" not in codes
+
+    # pero si el MISMO hex aparece fuera de una declaración de preset (el
+    # negocio lo usa de verdad, no es boilerplate de WordPress), sigue contando
+    usado_de_verdad = (
+        f"<html><style>{wp_presets} .cta{{background:#ff6900}}</style>"
+        "<body style='color:#0693e3'>"
+        "<div style='color:#00d084'>x</div>"
+        "<div style='color:#111111'>x</div>"
+        "<div style='color:#222222'>x</div>"
+        "</body></html>"
+    )
+    hallazgos = {f.code: f for f in analyse_html(usado_de_verdad, "https://x.com")}
+    if "dated_palette" in hallazgos:
+        # el conteo de colores distintos no incluye ninguno que SOLO viniera
+        # de una declaración de preset ya eliminada
+        assert int(hallazgos["dated_palette"].evidence) <= 5
 
 
 def test_el_analisis_nunca_lanza_con_html_roto():

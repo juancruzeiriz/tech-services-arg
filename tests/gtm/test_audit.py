@@ -47,7 +47,11 @@ class TestRender:
     def test_incluye_las_sales_lines_del_mas_grave_al_menos_grave(self, prospect):
         score = _score()
         markup = render(prospect, score, AUTHOR)
-        lines = score.sales_lines(Language.EN)
+        # quotable_only=False: el informe interno (_findings_html en audit.py) usa
+        # ese mismo argumento a propósito -- es material de apoyo para la llamada,
+        # no algo que se le manda al prospecto, así que también muestra hallazgos
+        # como dated_palette que el gancho del email omite (ver PainScore.sales_lines).
+        lines = score.sales_lines(Language.EN, quotable_only=False)
         assert len(lines) == 2
         assert markup.index(html.escape(lines[0])) < markup.index(html.escape(lines[1]))
 

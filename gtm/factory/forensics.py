@@ -24,8 +24,31 @@ from gtm.factory.findings import Finding
 
 _HEX_COLOR_RE = re.compile(r"#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})\b")
 _JQUERY_RE = re.compile(r"jquery[.-](\d+)\.(\d+)(?:\.(\d+))?", re.IGNORECASE)
+# WordPress sirve jQuery core como `.../jquery.js?ver=1.12.4` -- versión en el
+# query string, no en el nombre de archivo -- así que `_JQUERY_RE` sola nunca la
+# ve (confirmado en vivo el 2026-08-12: miamistumpbrothers.com corre jQuery
+# 1.12.4, una versión con avisos de seguridad conocidos, y `_check_jquery` no lo
+# detectaba). Restringido al *basename* exacto del bundle de jQuery core
+# (`jquery.js`, `jquery.min.js`, `jquery.slim.js`...) porque "jquery" también
+# aparece en el nombre de plugins con su propio versionado independiente --
+# `jquery.mobile.min.js`, `jquery-migrate.min.js`, `jquery.fullscreen.min.js` --
+# y sin esta restricción `?ver=1.4.5` de jQuery Mobile (una librería distinta)
+# se atribuía como si fuera la versión de jQuery core, que en el mismo sitio
+# real (legacytreecompany.com) es 3.7.1, moderna. Confirmado el falso positivo
+# en vivo el 2026-08-12 antes de agregar esta restricción.
+_JQUERY_CORE_BASENAME_RE = re.compile(r"^jquery(\.min|\.slim|\.slim\.min)?\.js$", re.IGNORECASE)
+_JQUERY_QUERY_VER_RE = re.compile(r"[?&]ver=(\d+)\.(\d+)(?:\.(\d+))?", re.IGNORECASE)
 _COPYRIGHT_RE = re.compile(r"(?:©|copyright)\s*(?:\d{4}\s*[-–]\s*)?(\d{4})", re.IGNORECASE)
 _PHONE_RE = re.compile(r"\b(?:\(?\d{3}\)?[-.\s]?)?\d{3}[-.\s]\d{4}\b")
+# `--wp--preset--color--<nombre>: #hex;` -- las declaraciones de la paleta default
+# del editor de bloques (Gutenberg) que WordPress core inyecta en el CSS de
+# cualquier sitio con bloques, la use el diseño visible o no. Se borra la
+# *declaración*, no el color: si el negocio usa ese mismo hex a propósito en otra
+# parte del HTML, sigue contando -- ver `_check_palette`.
+_WP_PRESET_COLOR_RE = re.compile(
+    r"--wp--preset--[a-z-]*color[a-z-]*--[a-z0-9-]+\s*:\s*#[0-9a-fA-F]{3,6}\s*;?",
+    re.IGNORECASE,
+)
 
 _PRESENTATIONAL_TABLE_ATTRS = ("width", "bgcolor", "align", "cellpadding", "cellspacing")
 
@@ -129,8 +152,21 @@ def _check_copyright(soup: BeautifulSoup, findings: list[Finding]) -> None:
 def _check_jquery(soup: BeautifulSoup, findings: list[Finding]) -> None:
     for tag in soup.find_all("script"):
         src = str(tag.get("src", ""))
+        if "jquery" not in src.lower():
+            continue
+        # Primero el patrón de nombre de archivo (`jquery-1.7.2.min.js`).
         match = _JQUERY_RE.search(src)
-        if not match:
+        if match is None:
+            # Si no matchea, WordPress suele servir jQuery *core* con la versión
+            # en el query string (`jquery.js?ver=1.12.4`) -- pero eso solo es
+            # confiable si el archivo mismo es el bundle de jQuery core, no un
+            # plugin con "jquery" en el nombre y su propio versionado (jQuery
+            # Mobile, jquery-migrate...) -- ver el comentario de
+            # `_JQUERY_CORE_BASENAME_RE`.
+            basename = src.split("?", 1)[0].rsplit("/", 1)[-1]
+            if _JQUERY_CORE_BASENAME_RE.match(basename):
+                match = _JQUERY_QUERY_VER_RE.search(src)
+        if match is None:
             continue
         major = int(match.group(1))
         if major < 3:
@@ -184,7 +220,12 @@ def _check_social_links(soup: BeautifulSoup, findings: list[Finding]) -> None:
 
 
 def _check_palette(html: str, findings: list[Finding]) -> None:
-    colors = _HEX_COLOR_RE.findall(html)
+    # Se borran las declaraciones de preset de WordPress antes de contar: son CSS
+    # que el core inyecta solo con que el sitio use bloques, la use el diseño
+    # visible o no -- no evidencia de que el negocio haya elegido esos colores.
+    # Ver el comentario de `_WP_PRESET_COLOR_RE`.
+    without_wp_presets = _WP_PRESET_COLOR_RE.sub("", html)
+    colors = _HEX_COLOR_RE.findall(without_wp_presets)
     normalised = [_normalise_hex(c) for c in colors]
     if len(normalised) < 3:
         return
@@ -199,7 +240,11 @@ def _check_palette(html: str, findings: list[Finding]) -> None:
 
 
 def _normalise_hex(value: str) -> str:
-    value = value.removeprefix("#")
+    # .lower() es necesario, no cosmético: sin él, "#FFFFFF" y "#ffffff" cuentan
+    # como dos colores distintos e inflan `distinct_frac` en `palette_age_signal`
+    # -- confirmado en vivo el 2026-08-12, 3 pares duplicados por mayúsculas en
+    # legacytreecompany.com.
+    value = value.removeprefix("#").lower()
     if len(value) == 3:
         return "".join(ch * 2 for ch in value)
     return value
