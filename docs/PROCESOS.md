@@ -1131,7 +1131,68 @@ experimentos, y con el hash del commit como prueba de que fue antes de ver datos
 
 **Problemas conocidos** —
 
+- (2026-08-12, Día 17) El timing por etapa existe (`StageResult.duration_ms`,
+  `pipeline.py:167-174`) pero solo se imprime (`:530`) — no se persiste en `meta.json` ni en la
+  tabla `runs`. `gtm/funnel.jsonl` sigue en 0 bytes: cero eventos reales, así que
+  `cost_per_contact` (`ledger.py:242-249`) no tiene todavía con qué dividir. La tabla de abajo
+  se armó capturando stdout de una corrida real, no leyendo un registro persistente — sigue
+  pendiente sumar la persistencia si esto se va a repetir seguido.
+
 **Bitácora** —
+
+- (2026-08-12, Día 17) **Economía unitaria, con lo medido en los Días 10-16.**
+
+  **Tiempo de máquina [medido]** — corrida real (`--vertical tree_service --metro
+  "Albuquerque, NM" --limit 10`, con API keys reales de Places/PageSpeed, no simulado):
+
+  | Etapa | Total | Ítems | Por prospecto |
+  |---|---|---|---|
+  | discover | 3.797 s | 10 descubiertos | 0,38 s |
+  | score | 121,671 s | 10 intentados (8 puntuados, 2 fallaron por error de PageSpeed) | 12,2 s |
+  | generate | 0,079 s | 6 calificados | 13 ms |
+  | deploy / contact | 0 ms | — | no representativo (`--dry-run --no-probe`, sin red real) |
+
+  `score` es el 97% del tiempo de máquina — el cuello de botella es la API de PageSpeed, no el
+  código propio.
+
+  **Tasa de calificación [medido, n=30, 2 metros]** — combinando los descubrimientos reales de
+  Albuquerque (10→7 calificados) y Miami (20→15 calificados): **73,3% descubierto→calificado**.
+  Muy por encima de lo que hacía temer el Día 4 (2,6% en `hvac × Houston`) — la diferencia es de
+  oficio y de que acá ya corren los fixes del Día 5 y el filtro relajado del Día 10. Sigue siendo
+  n=30 en un solo oficio: no se generaliza a otro vertical sin volver a medir.
+
+  **Proyección de máquina para 200 contactables** — a 73,3%, hacen falta ~273 descubiertos:
+  discover ~1,7 min + score ~55,5 min + generate ~3 s ≈ **~57 minutos de máquina en total**.
+  Trivial contra el horizonte de 8 semanas.
+
+  **Tiempo humano [supuesto, metodología abajo]** — no hay minutos cargados en
+  `repo.total_minutes_logged` (la UI de `/time-log` no se usó todavía), así que esto es una
+  estimación, no una medición:
+  - revisar la cola antes de contactar: ~1 min/prospecto
+  - intento de contacto: teléfono ~2 min promedio (incluye no atiende/buzón — pocas llamadas
+    reales de 20 min), formulario ~3 min (abrir el sitio, escribir/pegar el mensaje a mano)
+  - seguimiento Día 0/3/7: ~1,5 min/prospecto promedio (no todos reciben los 3 toques)
+  - ponderado por el split real del Día 14 (41,7% teléfono / 58,3% formulario):
+    0,417×2 + 0,583×3 + 1 + 1,5 ≈ **5 min/prospecto**
+
+  **Total para 200 contactados:** 200 × 5 min ≈ **16,7 horas humanas** (+ ~1 hora de máquina,
+  que no compite por el mismo tiempo). A 5 hs/semana: **~3,3 semanas**. A 10 hs/semana: **~1,7
+  semanas**. Las dos entran cómodas en `horizonte_semanas: 8` — sobra margen para las llamadas
+  de calibración, el seguimiento real y la conversación de venta de quien responda.
+
+  **Costo USD [medido para Places, resto no medido]** — Places: USD 0,010-0,016/calificado
+  (Día 10) × 200 ≈ **USD 2-3**. PageSpeed y hosting de demo: sin costo medido (tier gratuito
+  asumido, no confirmado contra la consola de billing). El costo dominante de este proyecto es
+  tiempo, no dinero.
+
+  **USD/hora, sensibilidad al resultado:** con 16,7 horas humanas para llegar a 200
+  contactados, una venta (USD 950, el umbral de "ganador") da **~USD 57/hora** si se gana justo
+  al llegar a 200; dos ventas, ~USD 114/hora; cero ventas (kill), USD 0/hora y el costo real del
+  experimento es esas 16,7 horas más los ~USD 2-3 de Places — no una pérdida catastrófica de
+  dinero, sí de tiempo. Esto es exactamente lo que `corte_temprano_por_costo.llamadas_de_calibracion:
+  50` está para probar temprano: la tasa contactado→venta real (necesaria: ~1,3%, ver
+  `decision_criteria.yaml`) no se sabe todavía — recalcular esta proyección después de las
+  primeras 50 llamadas reales, no antes.
 
 ---
 

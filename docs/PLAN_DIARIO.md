@@ -261,10 +261,18 @@ calibrado".
 
 ## Fase C — El PARA QUÉ (días 17-20)
 
-- [ ] **Día 17** (60 min) — **Números unitarios.** Con los tiempos medidos en las fases A y B:
-  minutos por prospecto en cada etapa, USD/hora proyectado, y cuántas horas cuesta llegar a los
-  200 contactados de `decision_criteria.yaml` al ritmo de 5-10 hs/semana. *Salida: tabla de
-  economía unitaria agregada a `PROCESOS.md`.*
+- [x] **Día 17** (2026-08-12) — **Números unitarios.** Corrida real del pipeline (Places +
+  PageSpeed reales, no simulado): `score` es el 97% del tiempo de máquina, 12,2 s/prospecto —
+  el resto es trivial. Tasa descubierto→calificado real (n=30, 2 metros): **73,3%**, muy por
+  encima del temor del Día 4. Proyección de máquina para 200 contactables: **~57 minutos en
+  total**. El costo real es tiempo humano, no dinero ni máquina: estimado (no medido, sin
+  minutos cargados todavía en `/time-log`) en **~5 min/prospecto** ponderado por el split de
+  canal del Día 14, o sea **~16,7 horas** para 200 contactados — entra cómodo en 8 semanas a 5 o
+  a 10 hs/semana (3,3 y 1,7 semanas respectivamente). Places cuesta ~USD 2-3 para el lote
+  completo. USD/hora depende enteramente de la tasa contactado→venta, que sigue sin medirse
+  (`funnel.jsonl` en 0 bytes) — exactamente lo que las primeras 50 llamadas de calibración de
+  `corte_temprano_por_costo` existen para resolver antes de comprometerse a los 200. Tabla
+  completa en la ficha del Nodo 13.
 
 - [ ] **Día 18** (45 min) — **El criterio.** Releer `decision_criteria.yaml` entero, incluido el
   comentario sobre por qué v1 estaba mal calibrado (el error de potencia estadística). Correr
