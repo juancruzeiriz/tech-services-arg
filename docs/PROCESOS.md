@@ -707,6 +707,22 @@ vertical no está en catálogo.
     `scoreDisplayMode: metricSavings`) no afectan el score numérico de performance (100 igual)
     y son artefacto del servidor local de desarrollo (`python -m http.server`, sin gzip/HTTP2)
     — no representativos del deploy real en Cloudflare Pages, que sí comprime.
+- (2026-08-12, **corregido**) **Los dos arrastres del Día 13, cerrados.** La causa raíz del
+  contraste no era el color en sí: `footer{color:#64748b}` (modo claro) nunca tenía un
+  override en el bloque `@media(prefers-color-scheme:dark)` — a diferencia de `.hero p`/`.card
+  p`/`.trust`, que sí lo tienen. Contra el fondo oscuro (`#0f151b`) ese gris de modo claro da
+  3,86:1 (recalculado con la fórmula de contraste relativo de WCAG, coincide con el 3,85 medido
+  por Lighthouse — confirma el diagnóstico). Fix: agregado `footer{color:#94a3b8}` al bloque
+  dark, mismo tono que ya usan los otros elementos del footer — sube a 7,16:1, bien arriba del
+  4,5:1 de AA. Favicon: agregado `<link rel="icon" href="data:,">` — un data URI vacío evita el
+  request implícito a `/favicon.ico` sin agregar un archivo ni una dependencia externa,
+  coherente con "cero requests externos" del resto de la plantilla. Verificado: las 7 demos
+  actuales de Albuquerque regeneradas con la plantilla nueva; confirmado por inspección directa
+  del HTML servido que las dos líneas están presentes. No se pudo re-correr Lighthouse headless
+  en esta sesión (el binario de Edge no arrancó desde este entorno) — la verificación queda en
+  el cálculo de contraste exacto más la inspección del HTML servido, no en un nuevo reporte de
+  Lighthouse; recomendado re-correr `@lhci/cli` contra las demos regeneradas cuando el entorno
+  lo permita para confirmar `best-practices`/`accessibility` en 100.
 
 **Bitácora** —
 

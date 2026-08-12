@@ -221,7 +221,10 @@ calibrado".
   prueba en sí **sigue sin poder hacerse sin vos**: además de necesitar a alguien ajeno al
   proyecto, resultó que no puede ser una prueba ciega de verdad, porque el banner de
   disclosure obligatorio ("Preview site — built for...") ya dice el nombre del negocio.
-  Detalle completo en la ficha del Nodo 5.
+  Detalle completo en la ficha del Nodo 5. **Actualizado (2026-08-12):** los dos bugs medidos
+  acá (contraste 3,85:1 y favicon 404) están arreglados en `gtm/template/site.html` — la causa
+  del contraste era que el modo oscuro nunca sobreescribía el color del footer, quedaba con el
+  gris de modo claro contra el fondo oscuro. Detalle en la ficha del Nodo 5.
 
 - [x] **Día 14** (2026-08-12, Nodo 7, cerrado con Miami) — `resolve_all` corrido de verdad
   sobre los 10 prospectos de Albuquerque (9/10 con sitio, 5 `CONTACT_FORM`/4 teléfono, cero

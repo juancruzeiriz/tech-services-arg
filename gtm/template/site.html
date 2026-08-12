@@ -6,6 +6,10 @@
 <!-- noindex: esta demo NO debe competir en buscadores con el sitio real del negocio
      ni ser confundida con él. Se saca solo cuando el cliente compra y pasa a su dominio. -->
 <meta name="robots" content="noindex,nofollow">
+<!-- Sin esto el navegador pide /favicon.ico solo (404, medido con Lighthouse en el
+     Día 13) -- un data URI vacío le dice "no hay ícono" sin agregar un request ni
+     un archivo, coherente con "cero requests externos" de arriba. -->
+<link rel="icon" href="data:,">
 <title>$business_name — $city $vertical_label</title>
 <meta name="description" content="$meta_description">
 <style>
@@ -51,6 +55,11 @@ footer{padding:30px 0;color:#64748b;font-size:14px;text-align:center}
   .trust b,.card h3{color:#e8eef4}
   section{border-color:#1c252f}
   .quote{color:#cbd5e1}
+  /* footer no tenía override acá -- se quedaba con el gris de modo claro
+     (#64748b) contra el fondo oscuro, 3.85:1, bajo el 4.5:1 que exige WCAG
+     AA (medido con Lighthouse en las 8 demos reales del Día 13). Mismo tono
+     que .hero p/.card p/.trust arriba, que sí pasa contra este fondo. */
+  footer{color:#94a3b8}
 }
 </style>
 </head>
