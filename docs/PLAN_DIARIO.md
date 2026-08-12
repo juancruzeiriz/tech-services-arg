@@ -246,9 +246,14 @@ calibrado".
   preocupación original del nodo no se materializó ni con el doble de muestra. Detalle en la
   ficha del Nodo 7.
 
-- [ ] **Día 15** (45 min, Nodo 8) — Leer los 3 mensajes en los 2 idiomas, en voz alta. El
-  español no es traducción del inglés: ¿suena a alguien de Argentina hablándole a un dueño de
-  negocio en Houston, o a traducción automática?
+- [x] **Día 15** (2026-08-12, Nodo 8) — Leídos en voz alta los 10 bloques (subject, email,
+  formulario, guion de llamada, seguimiento × EN/ES, no solo "3 mensajes") sobre un prospecto
+  real. Los mensajes se sostienen tal cual: nada se traba al leerlo, el español no lee como
+  traducción automática. Cierra de paso la deuda del Día 12 (línea de venta del hallazgo más
+  grave, en voz alta: suena natural). El hallazgo real del día fue estructural, no de
+  redacción: `render_queue` (`contact.py`) no propaga `language`, así que `contact --queue`
+  siempre renderiza en inglés — no hay camino de CLI a la cola en español todavía. Detalle en
+  la ficha del Nodo 8.
 
 - [ ] **Día 16** (60 min, Nodos 10+11) — Roleplay completo: apertura de 20 s + llamada de 20
   min, ensayando las 3 objeciones documentadas en `validation.md`. Cronometrar. Si la apertura

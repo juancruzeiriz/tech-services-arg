@@ -927,6 +927,15 @@ primer teléfono que atiendan destruye la venta y la reputación.
   Verificado de punta a punta regenerando `score` → `outreach` sobre los 8 prospectos reales
   de Albuquerque: el email de Legacy Tree Company pasó de la frase mixta de arriba a
   *"(Lighthouse target-size)"*.
+- (2026-08-12, Día 15) **`render_queue` no propaga `language`.** `contact.py::render_queue`
+  llama a `build_call_script`/`build_form_message` sin pasar `language=`, así que
+  `python -m gtm.factory.contact --queue` siempre renderiza los mensajes en **inglés**, sin
+  importar el idioma detectado del prospecto (`gtm/factory/lang.py`, desde el Día 8). No hay
+  camino de CLI a la cola en español — hoy la única forma de leer/enviar los mensajes en
+  español es llamar a los builders directo con `language=Language.ES`. No arreglado esta
+  sesión (necesitaría un flag `--language` nuevo, fuera del alcance de "leer y corregir
+  redacción"); queda como mejora concreta para antes de mandar el primer email real a un
+  prospecto de habla hispana.
 
 **Bitácora** —
 
@@ -991,6 +1000,14 @@ primer teléfono que atiendan destruye la venta y la reputación.
   `python -m gtm.factory.ledger sync-unsubscribes` de punta a punta contra una fila real
   insertada por script, confirmado que aparece en la lista de supresión local y que
   `synced_at` evita reprocesarla. Fila y entradas de prueba borradas después de verificar.
+- (2026-08-12, Día 15) Leídos en voz alta los 10 bloques (subject, email, formulario, guion de
+  llamada, seguimiento Día 3 × EN/ES) generados para un prospecto real
+  (`gtm/build/data/dia15_read_aloud.md`, Robert's Tree Service LLC). Resultado: **los mensajes
+  se sostienen tal cual** — ninguna frase se traba al leerla, el español no lee como traducción
+  automática, y la primera oración de cada bloque deja claro qué se ofrece. Cierra también la
+  deuda pendiente del Día 12 (¿la línea de venta del hallazgo más grave suena natural en voz
+  alta?): sí, sin cambios. Sin ediciones de copy esta sesión — el hallazgo real del día es
+  estructural, ver *Problemas conocidos* (`render_queue` no propaga idioma).
 - **Sigue sin resolver, y queda para Juan:** la dirección postal
   (`GTM_PHYSICAL_ADDRESS=1Victorica y La Pampa, Caba, Argentina` — falta un espacio o un
   número de puerta/piso, no lo sé), la alta de la casilla de envío en Zoho Mail
