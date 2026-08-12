@@ -163,9 +163,18 @@ calibrado".
   líneas comerciales, así que `false` se sostiene con esta lectura (no es asesoramiento legal;
   nota con la cita agregada en `metros.yaml`, confirmar antes de escalar volumen real).
 
-- [ ] **Día 10** (45 min, Nodo 2) — ¿`MIN_REVIEWS=50` y `MIN_RATING=4.0` dejan afuera a los
-  mejores prospectos? Correr con los filtros bajados (ej. 20/3.5) y comparar los dos conjuntos.
-  Medir también el costo de Places por prospecto útil.
+- [x] **Día 10** (2026-08-12, Nodo 2) — Sí dejan afuera prospectos buenos, medido a igualdad de
+  condiciones (mismo `--limit 40`, mismos `pages_fetched=5`): estricto (50/4.0) da 11 calificados
+  en `tree_service × Albuquerque, NM`, laxo (20/3.5) da 17. De los 6 nuevos, 3 no tienen sitio
+  propio (50%) y 4 califican para demo con pain_score alto (100, 100, 100, 95). El costo de Places
+  **no depende de qué tan laxo sea el filtro** — depende solo de `pages_fetched` (1:1 con requests,
+  ya logueado, no hizo falta contador nuevo), así que aflojar el filtro sale más barato por
+  calificado (USD 0,010 vs USD 0,016 estimado, tier Pro/Enterprise ~USD 32-35/1.000 requests,
+  [Woosmap 2026](https://www.woosmap.com/blog/google-places-api-pricing)), no más caro.
+  Contraprueba en Laredo, TX con cero filtro: el metro entero tiene 2 negocios de `tree_service` en
+  Places, ambos con sitio — ahí el problema es inventario, no filtro. Decisión: usar 20/3.5 para
+  Albuquerque en adelante, como flag explícito por corrida, sin tocar todavía las constantes de
+  `discover.py`. Detalle completo en la ficha del Nodo 2.
 
 - [ ] **Día 11** (60 min, Nodo 3 — el día más denso) — Calibrar el score contra tu propio juicio
   en 10 sitios reales: puntuar vos primero de 0-100 a ojo, después mirar el score del pipeline.

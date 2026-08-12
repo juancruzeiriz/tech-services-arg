@@ -395,8 +395,50 @@ plata, le importa su reputación, y su web no está a la altura — no está pel
   (`ddtreeservice.com`, no vinculado en su perfil de Maps) — el % real de ausencia
   digital verificada baja a 3/20 (15%) después de la Capa 2. Ver el detalle
   completo en la ficha del Nodo 3.
+- (2026-08-12) **`MIN_REVIEWS=50`/`MIN_RATING=4.0` sí dejan afuera prospectos
+  buenos, medido a igualdad de condiciones.** Corridas comparables (mismo
+  `tree_service × Albuquerque, NM`, mismo `--limit 40`, mismos `pages_fetched=5`):
+  estricto (50/4.0) da **11 calificados**; laxo (20/3.5) da **17**. De los 6 que
+  el filtro estándar descarta, **3 no tienen sitio propio (50%)** — el doble del
+  15-20% ya medido para este par en Miami — y **4 de 6 (67%) califican igual para
+  demo** (`score >= 45`) tras puntuarlos: Pro Tree Service, Hector's Tree Care y
+  Gary's tree service dan pain_score 100 cada uno; VJ Stars Tree Services también
+  califica. Solo Duprees Trees (41) y Blossom Trees (39) quedan justo debajo del
+  corte. El filtro estándar no está protegiendo contra ruido — está descartando
+  la mitad del inventario "sin sitio" del metro.
+- (2026-08-12) **El costo no depende de qué tan laxo sea el filtro — depende
+  solo de `pages_fetched`, que ya se loguea.** Las dos corridas de arriba
+  hicieron exactamente 5 requests cada una (`pages_fetched` = número de
+  llamadas a `places:searchText`, 1:1 — no hace falta un contador nuevo). El
+  filtrado por reseñas/rating pasa en memoria, después de traer la página; no
+  cambia cuántas páginas se piden. Con el field mask actual (`discover.py:35-46`
+  — incluye `rating`, no incluye reseñas/atmosphere) el tier es **Text Search
+  Pro o Enterprise, ~USD 32-35 por 1.000 requests** ([Woosmap, "Google Places
+  API Pricing 2026"](https://www.woosmap.com/blog/google-places-api-pricing);
+  el mask no pide campos de "atmosphere" que suban a Enterprise USD 40 —
+  confirmar el tier exacto contra la consola de Cloud Billing antes de escalar
+  volumen). A ~USD 0,175 por corrida de 5 páginas: **USD 0,016/calificado con
+  el filtro estricto, USD 0,010/calificado con el laxo** — más barato, no más
+  caro, aflojar el filtro. La contraprueba en `Laredo, TX` confirma que el
+  problema no es de filtro sino de inventario: con **cero** filtro
+  (`min-reviews=0 --min-rating=0`) el metro entero da solo 2 negocios de
+  `tree_service` en Google Places, ambos ya con sitio propio — no hay
+  prospectos "sin sitio" que perder ahí, laxo o estricto.
+- **Decisión:** bajar el filtro estándar de `discover.py` a `MIN_REVIEWS=20`,
+  `MIN_RATING=3.5` para las corridas de `tree_service × Albuquerque, NM` en
+  adelante — el costo es el mismo y la muestra de prospectos con dolor real
+  crece 55% (11→17). No implementado todavía como default del código: se deja
+  como flag explícito por corrida (`--min-reviews 20 --min-rating 3.5`) hasta
+  confirmar que se sostiene en un segundo metro antes de tocar las constantes
+  módulo (`discover.py:48-52`).
 
 **Bitácora** —
+
+- (2026-08-12, Día 10) Diff estricto/laxo corrido en `tree_service ×
+  Albuquerque, NM` y contraprueba de cero-filtro en `Laredo, TX`. Archivos en
+  `gtm/build/data/`: `prospects-abq-strict-l40.json`,
+  `prospects-abq-loose.json`, `scores-abq-loose.json`,
+  `prospects-laredo-loose.json`, `prospects-laredo-raw.json`.
 
 - (2026-08-11) `simulate.py` usa `_PRESENCE_WEIGHTS` global, igual para cualquier
   oficio y metro — confirmado corriendo el mismo `seed=42` en 5 pares distintos:
