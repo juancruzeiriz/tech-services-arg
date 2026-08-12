@@ -331,26 +331,33 @@ reales. A las primeras `llamadas_de_calibracion: 50` del `corte_temprano_por_cos
 recalcula el corte por costo — ya definido en el yaml, no hay que decidir nada nuevo ahí. Los
 21-22 de abajo son la primera tanda hacia esas 50, no el total.
 
-### Bloqueador antes de la primera llamada — no es opcional
+### Bloqueador antes de la primera llamada — actualizado, 3 de 4 resueltos
 
 El guion de apertura (Día 16, ya calibrado) dice literalmente *"ya te armé uno de muestra, está
-online ahora mismo"* y ofrece mandar el link por SMS ahí mismo. Hoy eso es **falso**:
-`GTM_DEMO_BASE_URL` y `GTM_UNSUBSCRIBE_URL` siguen en `.env.personal` como placeholders
-(`https://demo.example.com`, `https://example.com/unsubscribe`). Antes de la primera llamada
-real hace falta, en este orden:
+online ahora mismo"* y ofrece mandar el link por SMS ahí mismo. Hasta el cierre del Día 20 eso
+era falso; después de esa sesión:
 
-1. Dominio real para las demos (Cloudflare Pages, `cloudflare/README.md` ya tiene el proyecto
-   creado — falta el dominio final) → `GTM_DEMO_BASE_URL`.
-2. Ese mismo dominio sirviendo `/api/unsubscribe` (Día 19 ya escribió la función y la migración,
-   falta desplegarla) → `GTM_UNSUBSCRIBE_URL`.
-3. Corrida real de `generate` + `deploy` (sin `--dry-run`) sobre los 21-22 de la tabla, para que
-   el link que se promete en la llamada exista de verdad antes de ofrecerlo.
-4. La dirección postal corregida y el alta de Zoho Mail (`GTM_SMTP_*`) — necesarios para el canal
-   de email/formulario, no para la llamada en sí, pero sin esto no se puede mandar el seguimiento
-   Día 3 a nadie que conteste.
+1. ✅ **Dominio real para las demos** — proyecto nuevo `tech-services-demos` creado en Cloudflare
+   Pages (separado del portfolio, como pide el diseño), variables `SUPABASE_URL`/
+   `SUPABASE_ANON_KEY` cargadas. `GTM_DEMO_BASE_URL` actualizado en `.env.personal`.
+2. ✅ **`generate` + `deploy` real** (sin `--dry-run`) corrido sobre los 22 de la tabla —
+   `https://tech-services-demos.pages.dev/<slug>/` **verificado en vivo con `curl`, HTTP 200**,
+   no solo "debería andar".
+3. ⏳ **`/api/unsubscribe` con dominio real** — el código (Día 19) vive en el proyecto del
+   portfolio, que tiene auto-deploy con cada push a `main`. Los 9 commits de este cierre están
+   en local, todavía no en `origin/main` — falta el push para que se despliegue. `GTM_UNSUBSCRIBE_URL`
+   sigue sin actualizar hasta confirmar la URL final.
+4. ⏳ **Dirección postal** — ya corregida en `.env.personal` (decía "1Victorica", ahora
+   "Victorica y La Pampa, Caba, Argentina"). **Zoho Mail** — en curso (SMTP/IMAP access), sin
+   completar todavía. Ninguno de los dos bloquea la llamada telefónica, solo el seguimiento por
+   email/formulario.
 
-Ninguno de los 4 requiere decidir nada nuevo — son datos y una cuenta, no diseño. Es la lista
-completa de lo que separa el pipeline de la primera llamada real.
+**Hallazgo nuevo, menor, no bloqueante:** el link corto con tracking (`/v/{token}` →
+`demo_views`) se arma en el pipeline orquestado por la UI (`gtm/ui/routes/runs.py`), no en las
+etapas de CLI sueltas que se corrieron para publicar estas 22 — así que hoy no hay tokens
+cargados en `demo_links`. No afecta la llamada: el guion manda la URL directa de la demo
+(`build_call_script(..., link_url=None)` cae a `demo.url`, no al link con tracking). Si se
+manda por email más adelante con `outreach.py` vía la UI, el tracking se arma solo.
 
 ### A quién — 22 prospectos reales, ordenados por dolor (Nodo 2, Día 20)
 
