@@ -102,6 +102,26 @@ class Worker:
             await outbox.mark_failed(self.pool, message, error="sin dirección de destino")
             return
 
+        # Chequeo de supresión justo antes de enviar, no antes de encolar: el
+        # mensaje puede llevar minutos u horas en el outbox, y una baja real
+        # (por place_id -- opted_out/bounced/customer -- o por email, vía
+        # `ledger sync-unsubscribes` desde `unsubscribes`, ver
+        # 0007_unsubscribes.sql) puede haber llegado en el medio. Sin este
+        # chequeo acá, `sync_unsubscribes` alimenta una lista que nada lee
+        # antes de mandar -- el mecanismo de baja sería decorativo.
+        suppression = SuppressionList()
+        blocked_reason = suppression.reason_for_key(
+            "place_id", message.place_id
+        ) or suppression.reason_for_key("email", message.to_address)
+        if blocked_reason is not None:
+            await outbox.mark_failed(
+                self.pool,
+                message,
+                error=f"suprimido ({blocked_reason.value}), no se envía",
+                kind=FailureKind.COMPLIANCE,
+            )
+            return
+
         try:
             smtp.revalidate_before_send(message.body, sender)
         except ComplianceError as exc:

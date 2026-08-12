@@ -16,6 +16,7 @@ Uso:
     python -m gtm.factory.ledger suppress --place-id ChIJ... --reason opted_out
     python -m gtm.factory.ledger record --place-id ChIJ... --event replied
     python -m gtm.factory.ledger report --spend 150
+    python -m gtm.factory.ledger sync-unsubscribes
 """
 
 from __future__ import annotations
@@ -186,6 +187,21 @@ class SuppressionList:
     def contains(self, prospect: Prospect) -> bool:
         return self.reason_for(prospect) is not None
 
+    def reason_for_key(self, kind: str, value: str) -> SuppressionReason | None:
+        """Como `reason_for`, para un `(kind, value)` suelto en vez de un
+        `Prospect` entero -- lo que necesita `gtm/send/worker.py` para chequear
+        un `to_address` de email antes de enviar, ya que un mensaje en el outbox
+        no trae el `Prospect` completo."""
+        try:
+            key = hash_key(kind, value)
+        except LedgerError:
+            return None
+        reason = self._keys.get(key)
+        return SuppressionReason(reason) if reason else None
+
+    def contains_key(self, kind: str, value: str) -> bool:
+        return self.reason_for_key(kind, value) is not None
+
     def filter_out(self, prospects: list[Prospect]) -> tuple[list[Prospect], list[Prospect]]:
         """Separa en (contactables, suprimidos)."""
         allowed: list[Prospect] = []
@@ -202,6 +218,56 @@ class SuppressionList:
 
     def __len__(self) -> int:
         return len(self._keys)
+
+
+def fetch_unsynced_unsubscribes(executor: Any) -> list[dict[str, Any]]:
+    """Filas de `unsubscribes` (Postgres) que `sync_unsubscribes` todavía no
+    volcó a la lista de supresión local. `executor` sigue el mismo `Protocol`
+    que `gtm.store.migrate.Executor` (no `psycopg.Connection` directo), para
+    poder probar `sync_unsubscribes` con un doble en memoria, igual que el
+    runner de migraciones."""
+    rows = executor.fetch_all(
+        "select id, email from unsubscribes where synced_at is null order by at"
+    )
+    return [{"id": str(row[0]), "email": str(row[1])} for row in rows]
+
+
+def mark_unsubscribes_synced(executor: Any, ids: list[str]) -> None:
+    if not ids:
+        return
+    executor.execute(
+        "update unsubscribes set synced_at = now() where id = any(%s)",
+        (ids,),
+    )
+    executor.commit()
+
+
+def sync_unsubscribes(executor: Any, suppression: SuppressionList | None = None) -> int:
+    """Vuelca cada baja pendiente de Postgres a la lista de supresión local
+    (`gtm/suppression.jsonl`), que es la que de verdad filtra a quién no se
+    vuelve a contactar -- Postgres es el buzón de entrada del formulario web
+    (`site/functions/api/unsubscribe.js`), no la fuente de decisión.
+
+    Suprime por `email` (no por `place_id`): el link de baja es una URL fija
+    para todos los envíos, `outreach.py` no genera un token por email
+    enviado, así que no hay forma de saber solo con el clic a qué prospecto
+    corresponde -- ver el comentario en `0007_unsubscribes.sql`.
+
+    Devuelve cuántas filas se sincronizaron. Idempotente: correrlo de nuevo
+    sin filas nuevas no hace nada (`synced_at` ya está seteado).
+    """
+    # `suppression or SuppressionList()` sería un bug real acá: `SuppressionList`
+    # define `__len__`, así que una lista vacía (el caso normal, recién creada
+    # en un test con tmp_path) es *falsy* y el `or` la reemplazaría en
+    # silencio por una instancia nueva sin `path` -- que escribe en el
+    # `gtm/suppression.jsonl` real del repo, no en la que pasó el caller.
+    if suppression is None:
+        suppression = SuppressionList()
+    pending = fetch_unsynced_unsubscribes(executor)
+    for row in pending:
+        suppression.add("email", row["email"], SuppressionReason.OPTED_OUT, "vía unsubscribe.js")
+    mark_unsubscribes_synced(executor, [row["id"] for row in pending])
+    return len(pending)
 
 
 @dataclass(frozen=True, slots=True)
@@ -540,6 +606,25 @@ def _cmd_report(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_sync_unsubscribes(args: argparse.Namespace) -> int:
+    from gtm.store.dsn import get_dsn
+    from gtm.store.migrate import PsycopgExecutor
+
+    dsn = get_dsn()
+    if dsn is None:
+        print("Falta SUPABASE_DB_URL en .env.personal", file=sys.stderr)
+        return 1
+
+    import psycopg
+
+    with psycopg.connect(dsn) as conn:
+        executor = PsycopgExecutor(conn)
+        count = sync_unsubscribes(executor)
+
+    print(f"{count} baja(s) sincronizada(s) a la lista de supresión local.")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Registros persistentes del pipeline")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -586,6 +671,12 @@ def main(argv: list[str] | None = None) -> int:
     report.add_argument("--channel", default=None, choices=[c.value for c in ContactChannel])
     report.add_argument("--language", default=None, choices=[lang.value for lang in Language])
     report.set_defaults(func=_cmd_report)
+
+    sync_unsub = sub.add_parser(
+        "sync-unsubscribes",
+        help="vuelca las bajas nuevas de Postgres (unsubscribes) a la lista de supresión local",
+    )
+    sync_unsub.set_defaults(func=_cmd_sync_unsubscribes)
 
     args = parser.parse_args(argv)
     result: int = args.func(args)

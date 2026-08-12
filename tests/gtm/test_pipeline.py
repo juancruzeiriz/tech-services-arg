@@ -21,7 +21,7 @@ def _sender() -> SenderIdentity:
         from_name="Juan Cruz Eiriz",
         from_email="juan@example.com",
         physical_address="Av. Siempre Viva 742, Cordoba, Argentina",
-        unsubscribe_url="https://example.com/unsubscribe",
+        unsubscribe_url="https://tests.gtm.example/unsubscribe",
     )
 
 

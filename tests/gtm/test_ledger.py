@@ -15,6 +15,7 @@ from gtm.factory.ledger import (
     format_report,
     hash_key,
     prospect_keys,
+    sync_unsubscribes,
 )
 from gtm.factory.types import ContactChannel, FunnelEvent, Language, Prospect, SuppressionReason
 
@@ -146,6 +147,74 @@ class TestSuppressionList:
     def test_prospecto_sin_telefono_ni_sitio_solo_usa_place_id(self):
         keys = prospect_keys(_prospect(phone=None, website=None))
         assert len(keys) == 1
+
+    def test_reason_for_key_bloquea_por_email(self, suppression):
+        suppression.add("email", "owner@example.com", SuppressionReason.OPTED_OUT)
+        assert suppression.reason_for_key("email", "owner@example.com") is SuppressionReason.OPTED_OUT
+        assert suppression.contains_key("email", "owner@example.com")
+
+    def test_reason_for_key_es_case_insensitive(self, suppression):
+        suppression.add("email", "Owner@Example.com", SuppressionReason.OPTED_OUT)
+        assert suppression.contains_key("email", "owner@example.com")
+
+    def test_reason_for_key_no_bloquea_a_un_desconocido(self, suppression):
+        suppression.add("email", "owner@example.com", SuppressionReason.OPTED_OUT)
+        assert not suppression.contains_key("email", "otro@example.com")
+
+    def test_reason_for_key_valor_vacio_no_rompe(self, suppression):
+        # hash_key levanta LedgerError para un valor vacío -- reason_for_key lo
+        # atrapa y devuelve None en vez de propagar, porque un to_address vacío
+        # (mensaje sin destinatario) no debe tumbar el chequeo de supresión.
+        assert suppression.reason_for_key("email", "") is None
+
+
+class TestSyncUnsubscribes:
+    """`sync_unsubscribes` corre contra un `FakeExecutor` en memoria -- mismo
+    principio que `tests/gtm/test_store_migrate.py::FakeExecutor`: la lógica
+    (qué filas trae, que marque `synced_at`, que sea idempotente) no depende
+    de Postgres real para probarse."""
+
+    class _FakeExecutor:
+        def __init__(self, rows: list[tuple[str, str]]) -> None:
+            self._rows = {row_id: (row_id, email) for row_id, email in rows}
+            self._synced: set[str] = set()
+            self.commits = 0
+
+        def execute(self, sql: str, params: tuple[object, ...] = ()) -> None:
+            if sql.strip().startswith("update"):
+                (ids,) = params
+                self._synced.update(ids)
+
+        def fetch_all(self, sql: str, params: tuple[object, ...] = ()) -> list[tuple[object, ...]]:
+            return [row for row_id, row in self._rows.items() if row_id not in self._synced]
+
+        def commit(self) -> None:
+            self.commits += 1
+
+        def rollback(self) -> None:
+            pass
+
+    def test_vuelca_bajas_pendientes_a_la_supresion_local(self, suppression):
+        executor = self._FakeExecutor([("1", "owner@example.com"), ("2", "other@example.com")])
+
+        count = sync_unsubscribes(executor, suppression)
+
+        assert count == 2
+        assert suppression.contains_key("email", "owner@example.com")
+        assert suppression.contains_key("email", "other@example.com")
+
+    def test_marca_synced_at_para_no_repetir(self, suppression):
+        executor = self._FakeExecutor([("1", "owner@example.com")])
+
+        first = sync_unsubscribes(executor, suppression)
+        second = sync_unsubscribes(executor, suppression)
+
+        assert first == 1
+        assert second == 0  # la fila ya está marcada, no se vuelve a leer
+
+    def test_sin_filas_pendientes_no_hace_nada(self, suppression):
+        executor = self._FakeExecutor([])
+        assert sync_unsubscribes(executor, suppression) == 0
 
 
 class TestFunnelLedger:

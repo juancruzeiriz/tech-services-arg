@@ -53,11 +53,20 @@ def prospect() -> Prospect:
 
 @pytest.fixture
 def sender() -> SenderIdentity:
+    # `unsubscribe_url` NO usa el placeholder real de `.env.personal`
+    # (`https://example.com/unsubscribe`) a propósito -- ver el hallazgo del
+    # Día 19 en la ficha del Nodo 8 de docs/PROCESOS.md. Si esta fixture y la
+    # config real comparten el mismo placeholder, el gate de CAN-SPAM
+    # (`pytest -k canspam`) da verde tanto si la URL real funciona como si
+    # sigue siendo un placeholder muerto -- valida al validador, no al
+    # despliegue. Un dominio de test que no es el placeholder real hace que
+    # un test futuro que sí compare contra el placeholder conocido tenga
+    # sentido (ver test_config.py::test_unsubscribe_url_no_es_el_placeholder).
     return SenderIdentity(
         from_name="Juan Cruz Eiriz",
         from_email="juan@example.com",
         physical_address="Av. Siempre Viva 742, Cordoba, Argentina",
-        unsubscribe_url="https://example.com/unsubscribe",
+        unsubscribe_url="https://tests.gtm.example/unsubscribe",
     )
 
 

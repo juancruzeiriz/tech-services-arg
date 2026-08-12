@@ -14,6 +14,7 @@ from dataclasses import asdict, dataclass, field
 from datetime import UTC, date, datetime
 from enum import StrEnum
 from typing import TYPE_CHECKING, Any
+from urllib.parse import urlsplit
 
 if TYPE_CHECKING:
     # Import solo para tipos: gtm.factory.findings importa Language de este
@@ -696,6 +697,23 @@ class SenderIdentity:
             raise ComplianceError(
                 f"unsubscribe_url debe ser http(s) o mailto: {self.unsubscribe_url!r}"
             )
+        # `in`/`startswith` no puede detectar un placeholder que nunca va a
+        # resolver -- ver el hallazgo del Día 19 (docs/PROCESOS.md, Nodo 8):
+        # `https://example.com/unsubscribe` pasaba las cuatro validaciones de
+        # acá arriba, y `tests/gtm/conftest.py` usaba EL MISMO placeholder
+        # como fixture, así que `pytest -k canspam` daba verde sin que la baja
+        # real funcionara nunca. `example.com`/`.org`/`.net` son dominios de
+        # documentación reservados por RFC 2606 -- nunca van a resolver un
+        # mecanismo de baja real, así que rechazarlos acá es un chequeo sin
+        # falsos positivos posibles (nadie usa esos dominios en producción).
+        reserved = ("example.com", "example.org", "example.net", "example.edu")
+        if self.unsubscribe_url.startswith(("http://", "https://")):
+            host = urlsplit(self.unsubscribe_url).hostname or ""
+            if host in reserved:
+                raise ComplianceError(
+                    f"unsubscribe_url usa un dominio de documentación reservado "
+                    f"(RFC 2606) que nunca va a resolver: {self.unsubscribe_url!r}"
+                )
 
 
 @dataclass(frozen=True, slots=True)

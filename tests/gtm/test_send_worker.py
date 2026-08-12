@@ -180,6 +180,53 @@ class TestSendOne:
 
         assert marked == [("failed", "c1")]
 
+    async def test_suprimido_por_place_id_no_se_envia(self, monkeypatch, _isolate_ledger):
+        from gtm.factory.ledger import SuppressionList
+        from gtm.factory.types import SuppressionReason
+
+        SuppressionList().add("place_id", "p1", SuppressionReason.OPTED_OUT)
+        sent = []
+        marked = []
+        monkeypatch.setattr(worker_mod.smtp, "send_async", _record(sent, "sent"))
+        monkeypatch.setattr(worker_mod.outbox, "mark_failed", _record_kwargs(marked))
+
+        w = worker_mod.Worker(pool=object())
+        await w._send_one(_message(place_id="p1"), _SETTINGS, _SENDER)
+
+        assert sent == []
+        assert marked[0]["kind"] is FailureKind.COMPLIANCE
+        assert "opted_out" in marked[0]["error"]
+
+    async def test_suprimido_por_email_no_se_envia(self, monkeypatch, _isolate_ledger):
+        # El caso que sync_unsubscribes alimenta: la baja llegó por
+        # site/functions/api/unsubscribe.js, identificada por email, no por
+        # place_id -- ver el comentario en 0007_unsubscribes.sql.
+        from gtm.factory.ledger import SuppressionList
+        from gtm.factory.types import SuppressionReason
+
+        SuppressionList().add("email", "prospecto@negocio.example", SuppressionReason.OPTED_OUT)
+        sent = []
+        marked = []
+        monkeypatch.setattr(worker_mod.smtp, "send_async", _record(sent, "sent"))
+        monkeypatch.setattr(worker_mod.outbox, "mark_failed", _record_kwargs(marked))
+
+        w = worker_mod.Worker(pool=object())
+        await w._send_one(_message(to_address="prospecto@negocio.example"), _SETTINGS, _SENDER)
+
+        assert sent == []
+        assert marked[0]["kind"] is FailureKind.COMPLIANCE
+
+    async def test_no_suprimido_sigue_el_flujo_normal(self, monkeypatch, _isolate_ledger):
+        monkeypatch.setattr(worker_mod.smtp, "revalidate_before_send", lambda *_a, **_k: None)
+        monkeypatch.setattr(worker_mod.smtp, "send_async", _async_return(SendResult(success=True, provider_message_id="<x@y>")))
+        marked = []
+        monkeypatch.setattr(worker_mod.outbox, "mark_sent", _record_kwargs(marked))
+
+        w = worker_mod.Worker(pool=object())
+        await w._send_one(_message(), _SETTINGS, _SENDER)
+
+        assert marked[0]["provider_message_id"] == "<x@y>"
+
     async def test_compliance_fallido_marca_failure_kind_compliance(self, monkeypatch):
         marked = []
 
