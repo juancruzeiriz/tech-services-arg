@@ -550,7 +550,15 @@ def main(argv: list[str] | None = None) -> int:
     config.ensure_dirs()
     input_path = args.input or str(config.DATA_DIR / "prospects.json")
     author_name = args.author_name or config.require_env("GTM_FROM_NAME")
-    author_url = args.author_url or config.require_env("GTM_UNSUBSCRIBE_URL")
+    # GTM_AUTHOR_URL, no GTM_UNSUBSCRIBE_URL: el "Quién hizo esto" del banner es la
+    # única vía que tiene el prospecto para averiguar quién le armó el sitio, y hasta
+    # 2026-08-13 lo mandaba al formulario de baja. Se mantiene el fallback para no
+    # romper entornos que todavía no definieron la variable nueva.
+    author_url = (
+        args.author_url
+        or config.optional_env("GTM_AUTHOR_URL")
+        or config.require_env("GTM_UNSUBSCRIBE_URL")
+    )
 
     prospects = artifacts.read_prospects(input_path)
     if args.prospect:

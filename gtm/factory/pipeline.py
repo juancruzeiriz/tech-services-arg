@@ -517,7 +517,13 @@ def main(argv: list[str] | None = None) -> int:
         dry_run=args.dry_run,
         probe_site=not args.no_probe,
         author_name=args.author_name or config.optional_env("GTM_FROM_NAME"),
-        author_url=args.author_url or config.optional_env("GTM_UNSUBSCRIBE_URL"),
+        # Ver el comentario en generate.py::main -- el "Quién hizo esto" va a tu
+        # presencia real, no al formulario de baja.
+        author_url=(
+            args.author_url
+            or config.optional_env("GTM_AUTHOR_URL")
+            or config.optional_env("GTM_UNSUBSCRIBE_URL")
+        ),
         base_url=args.base_url or config.optional_env("GTM_DEMO_BASE_URL"),
         sender=sender,
     )

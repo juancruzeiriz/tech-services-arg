@@ -34,7 +34,10 @@ async def home(request: Request, registry: RegistryDep, preset: str = "") -> HTM
             "mode_default": "simulate",
             "base_url_default": config.optional_env("GTM_DEMO_BASE_URL"),
             "author_name_default": config.optional_env("GTM_FROM_NAME"),
-            "author_url_default": config.optional_env("GTM_UNSUBSCRIBE_URL"),
+            "author_url_default": (
+                config.optional_env("GTM_AUTHOR_URL")
+                or config.optional_env("GTM_UNSUBSCRIBE_URL")
+            ),
             "preset_names": presets_mod.list_presets(),
             "preset": loaded_preset or {},
             "preset_loaded_name": preset if loaded_preset else "",
