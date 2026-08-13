@@ -20,7 +20,7 @@ trabajo que ese archivo existe para frenar. Preparar no es construir.
 | # | Servicio | Estado | Depende de |
 |---|---|---|---|
 | 1 | Envío de mails a suscriptores | **Hueco activo** — el botón junta emails sin destino | Nada |
-| 2 | Proveedor de missed-call-text-back | **Investigado (2026-08-13)** — Enzak, USD 99/mes, mantiene el número real del cliente. Falta la alta real y probar | Nada |
+| 2 | Proveedor de missed-call-text-back | **Investigado (2026-08-13)** — Enzak, precio en conflicto de fuentes (USD 20 o 99/mes), mantiene el número real del cliente. Faltan 3 datos y la alta real | Nada |
 | 3 | Bot de WhatsApp | Analizado — ver [`WHATSAPP_BOT.md`](WHATSAPP_BOT.md) | Sitio del cliente (prerequisito de Meta) |
 | 4 | Sistema de reservas | No empezado | Primera venta |
 | 5 | Calculadora de precio para el cliente | No empezado | Primera venta |
@@ -91,20 +91,45 @@ para resolverlo con el reloj corriendo.
 
 | Proveedor | Precio | ¿Usa el número real del cliente? |
 |---|---|---|
-| [Enzak](https://enzak.com/) | USD 99/mes + USD 99 alta (primer mes USD 19) | **Sí** — se integra al sistema telefónico existente, sin número nuevo |
+| [Enzak](https://enzak.com/) | **En conflicto** — ver nota abajo | **Sí** — se integra al sistema telefónico existente, sin número nuevo |
 | [OpenPhone/Quo](https://www.openphone.com/features/missed-call-service) | USD 15-23/usuario/mes | No directo — dan número nuevo, o exigen portar el número (cambia de operador) |
 | Rango de mercado general | USD 40-120/mes típico | Varía |
 
-**Hallazgo que corrige el presupuesto de arriba:** el requisito no negociable es que el
-bot conteste desde el **mismo número** que ya tiene el negocio (está en su cartel, en
-Google Maps, en la demo) — portar el número a otro operador para ahorrar es peor que el
-problema que resuelve. Con ese filtro, el presupuesto real es **~USD 99/mes (Enzak)**, no
-25-50. Sigue siendo absorbible: el recurrente que se le cobra al cliente
-(`pipeline.md`, USD 150-200/mes) tiene margen de sobra. Corregido el número en
-`pipeline.md:32`.
+**Precio de Enzak: dato en conflicto de fuentes, no resuelto todavía.**
+[enzak.com](https://enzak.com/) (fuente primaria, consultada 2026-08-13) publica
+**USD 20/mes** (primer mes USD 4, 1.000 mensajes/mes, analytics incluido, usuarios extra
+USD 10/mes). Una búsqueda posterior tomó como firme un número de
+[el blog de Quo/OpenPhone](https://www.quo.com/blog/missed-call-text-back-software/) —
+un **competidor directo** de Enzak, no la fuente primaria — que decía USD 99/mes + USD 99
+de alta, y ese fue el número que quedó escrito acá y en `pipeline.md:32`. No hay forma de
+saber cuál es correcto sin llamar a Enzak (precio real vs. precio que le conviene citar a
+un competidor). **No usar ninguno de los dos como dato firme hasta la llamada de alta
+(paso 3, abajo).**
 
-**Salida:** un proveedor elegido y probado, con el paso a paso escrito. Falta el paso 3
-(alta real, requiere decidir pagar la suscripción) antes de poder cerrar este ítem.
+**Tres preguntas que decide la llamada de alta gratuita**, ninguna respondida por lo
+investigado hasta ahora:
+
+1. **¿Cuánto tarda el alta?** Sin este dato, "live in 48 hours" del one-pager
+   (`offers/website-call-capture.md`) es una apuesta, no una promesa verificada.
+2. **¿Desde qué número sale el SMS automático?** — la que más importa. Enzak confirma que
+   el negocio **recibe** las llamadas en su número de siempre (asigna un número virtual
+   "detrás de escena" para el forward), pero no dice desde qué número sale el *texto* de
+   vuelta. Si sale desde el número virtual, el que llamó recibe un mensaje de un número que
+   no reconoce — el mismo problema de confianza que este producto viene a resolver.
+3. **¿Qué pasa si el cliente se va?** (¿se queda con el flujo armado o hay que revertir el
+   forward?).
+
+**Dato bueno confirmado, no en conflicto:** Enzak **registra el A2P 10DLC por vos** — el
+cliente no necesita registrar su propia marca ni pagar el vetting. Eso saca de encima el
+bloqueante regulatorio que documenta [`CHANNELS.md`](CHANNELS.md#4-sms--no-se-implementa)
+(los carriers de USA bloquean el 100% del tráfico A2P no registrado desde febrero de 2025)
+— nota: ese bloqueante es para SMS en frío de prospección, que este proyecto ya descartó;
+acá aplica al SMS *saliente al cliente final* del bot, que es un caso distinto y donde este
+dato sí es una ventaja real de Enzak.
+
+**Salida:** un proveedor candidato, sin precio confirmado ni las 3 preguntas de arriba
+resueltas. Falta el paso 3 (alta real, requiere decidir pagar la suscripción) antes de
+poder cerrar este ítem — y el paso 3 es también la única forma de resolver el precio real.
 
 ---
 

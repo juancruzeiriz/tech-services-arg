@@ -26,18 +26,22 @@ de esta ciudad". La especialización sustituye a la fama.
 | Entregable | Sitio estático rápido + captura de llamadas perdidas con SMS automático |
 | Plazo | 48 horas |
 | Precio | **USD 950** una vez |
-| Garantía | Devolución total a 14 días, sin preguntas |
+| Garantía | Devolución total a 14 días, sin preguntas, **contados desde la entrega funcionando** — no desde el pago |
 | Recurrente (opcional) | **USD 150-200/mes**: hosting, bot y cambios menores |
 | Ads (opcional, arriba del recurrente) | **A definir por caso** — gestión de Google/Meta Ads, solo si el cliente lo pide. El gasto de pauta lo paga el cliente directo a la plataforma, nunca pasa por nosotros; se cobra únicamente la gestión |
 
 **El bot no se construye.** Se configura un proveedor existente (AI receptionist /
-missed-call-text-back, **~USD 99/mes** — [Enzak](https://enzak.com/), investigado
-2026-08-13: mantiene el número real del cliente, sin portarlo. Corregido desde el
-USD 25-50/mes original, que no era compatible con ese requisito; ver
-`docs/SERVICIOS_FUTUROS.md` ítem 2) con la info real del negocio. El mercado ya está
-poblado por startups financiadas; construir el propio significa heredar guardias 24/7,
-que es exactamente lo que no entra en 5-10 hs semanales. El margen está en la
-instalación, no en el software.
+missed-call-text-back — [Enzak](https://enzak.com/), investigado 2026-08-13, candidato
+principal: mantiene el número real del cliente, sin portarlo. **Precio en conflicto de
+fuentes, sin confirmar: USD 20/mes según la propia web de Enzak vs USD 99/mes según un
+blog de un competidor** — no usar ninguno de los dos como firme hasta la llamada de alta
+gratuita. Detalle completo, con las 3 preguntas que faltan antes de contratar, en
+[`docs/SERVICIOS_FUTUROS.md`](../docs/SERVICIOS_FUTUROS.md#2-proveedor-de-missed-call-text-back--hueco-activo))
+con la info real del negocio. En cualquier punto del rango (USD 20-100/mes) entra cómodo
+en el recurrente de USD 150-200/mes que ya se cobra. El mercado ya está poblado por
+startups financiadas; construir el propio significa heredar guardias 24/7, que es
+exactamente lo que no entra en 5-10 hs semanales. El margen está en la instalación, no en
+el software.
 
 **Estructura anti-soporte**, por diseño y por contrato:
 
@@ -99,6 +103,23 @@ por CLI, lo marca sin ser una supresión permanente (a diferencia de
 `FunnelLedger.due_followups` calcula estos dos vencimientos a partir del
 evento `contacted` que ya se registra — no agrega un escalón nuevo al embudo
 pre-registrado (`decision_criteria.yaml`).
+
+## Qué no se menciona en la primera llamada
+
+Regla explícita para la apertura y la llamada de venta de 20 minutos, no una restricción
+de producto:
+
+- **Nada de SEO ni posicionamiento orgánico gratuito.** El one-pager ya lo dice
+  (`offers/website-call-capture.md`: "Not SEO. I am not promising you rank #1 for
+  anything") — la llamada no promete de más lo que el papel ya niega.
+- **Si sale el tema de publicidad paga**, aclarar que es Google/Meta Ads gestionados
+  como servicio aparte (fila "Ads" del paquete arriba), con la inversión de pauta a cargo
+  directo del cliente — nunca posicionamiento orgánico gratuito.
+- **Nada del bot de WhatsApp.** Queda para después de las primeras ventas
+  (`docs/SERVICIOS_FUTUROS.md` ítem 3, `docs/WHATSAPP_BOT.md`) — mencionarlo ahora vende
+  algo que no está armado ni probado una vez. Verificado que hoy ningún mensaje generado
+  por el código (`contact.py`, `outreach.py`, `template/site.html`) lo menciona; esta es
+  una regla para que no se cuele hablando de más, no una corrección de algo roto.
 
 ## Guion de apertura — llamada en frío (20 segundos)
 
@@ -174,6 +195,7 @@ Reddit (r/Contractor, r/electricians) — no son hipotéticas, van a aparecer.
 | "Consigo el 99% de mi trabajo por referidos" | "Totalmente, y esto no reemplaza eso — es específicamente para las llamadas que se te escapan mientras estás trabajando. Los referidos te siguen llegando igual." |
 | "Ya tengo sitio web" | Preguntar si carga rápido en el celular; ofrecer mandarles el link de pagespeed.web.dev para que lo vean con su propio número, no el tuyo. |
 | "No confío en alguien que llama de la nada" | Es la razón de que la demo ya esté online *antes* de la llamada — no piden que les crean nada, lo pueden abrir ellos mismos. |
+| "¿Y para que me encuentren en Google?" | Separar tres cosas: no vendo posicionamiento orgánico ni prometo rankear (el sitio ya lo dice); esto captura las llamadas que ya te están llegando hoy, no trae llamadas nuevas; si más adelante querés tráfico nuevo, la gestión de Google/Meta Ads es un servicio aparte, con su propio costo, y vos pagás la pauta directo a la plataforma. |
 
 ## Resolver la falta de marca
 
@@ -182,7 +204,7 @@ Ordenado por costo. Los cinco primeros son gratis.
 | # | Mecanismo | Costo |
 |---|---|---|
 | 1 | Artefacto entregado antes de vender: la demo viva | 0 |
-| 2 | Reversión de riesgo: garantía total 14 días, 50% adelanto | 0 |
+| 2 | Reversión de riesgo: garantía total 14 días, cobro 100% adelantado | 0 |
 | 3 | Marca prestada: primeras 2-3 ventas por Upwork/escrow — presta confianza y resuelve el cobro internacional | ~10% |
 | 4 | Prueba social: 3 pilotos a precio reducido por testimonio + caso publicado, **con vencimiento explícito** | ~USD 1.500 |
 | 5 | Presencia verificable: sitio propio, LinkedIn real, repo público — te van a googlear | 0 |
@@ -200,8 +222,11 @@ a quien nunca paga), trabajar gratis a cielo abierto, bajar precio sin contrapar
 - **Sin on-call ni garantía de disponibilidad**: el uptime es del proveedor tercero
 - Cambios: hasta N por mes dentro del recurrente, SLA 48 hs hábiles
 - El cliente es dueño del contenido y del dominio; el hosting es transferible
-- Garantía: devolución total a 14 días
-- Pago: 50% adelanto / 50% contra entrega, o escrow completo en las primeras ventas
+- Garantía: devolución total a 14 días, contados desde la entrega funcionando
+- **Pago: 100% adelantado.** Se cobra antes de tocar nada, la garantía de 14 días es la
+  reversión de riesgo — no un 50/50. En las primeras ventas, mientras no hay marca ni
+  historial que genere confianza, cobrar por escrow (Upwork) en vez de directo resuelve lo
+  mismo sin bajar el porcentaje adelantado (ver "Resolver la falta de marca", punto 3)
 
 ## Riesgos
 
@@ -226,7 +251,8 @@ inviable. Esto vale para el contacto en frío, que es de lo que trata este docum
 a los suyos, donde el cliente final escribe primero y el opt-in se resuelve solo. Ese
 caso es distinto y está analizado en [`docs/WHATSAPP_BOT.md`](../docs/WHATSAPP_BOT.md).
 
-**Cobro desde USA.** Escrow al principio; después Stripe/Wise con 50% adelanto. Facturar
+**Cobro desde USA.** Escrow al principio; después Stripe/Wise con el 100% adelantado
+(ver "Contrato" arriba). Facturar
 con Factura E: exportación de servicios, sin IVA ni derechos de exportación, y no computa
 contra el límite del monotributo. ARCA cruza comprobantes contra la liquidación bancaria
 de divisas, así que se factura todo. **Validar con contador — esto no es asesoramiento

@@ -815,6 +815,22 @@ vertical no está en catálogo.
   `demo_views` vía `cloudflare/functions/v/[token].js` (Nodo 2), sin ningún request desde
   la página misma. Clics en el botón de llamar/WhatsApp **no se pueden medir** sin romper
   la regla — no hay atajo gratis, es la contrapartida exacta de la promesa de velocidad.
+  **Corrección (2026-08-13, misma sesión): "no se pueden medir visitas" era más fuerte
+  que la evidencia.** Cloudflare recolecta Web Analytics en el borde del CDN o con un
+  beacon de JS opcional — el proyecto `tech-services-demos` de Cloudflare Pages que sirve
+  las demos puede exponer visitas por página desde el panel de Cloudflare **sin tocar una
+  línea del HTML servido ni del `render()`**, así que sí hay una vía gratuita para
+  reportar visitas. Lo que sigue siendo cierto sin matices es que **el clic en el botón de
+  llamar no se puede medir** sin JS, y ese dato ni siquiera es el que le importa al
+  cliente — el que importa (llamadas y textos disparados) lo da el panel del proveedor de
+  SMS (Nodo 12), no analytics de sitio. Riesgo aparte, verificado hoy: Cloudflare empezó a
+  habilitar Web Analytics **por defecto** en dominios del plan gratuito, lo que inyectaría
+  `beacon.min.js` en el HTML servido (rompiendo la regla de cero requests) sin que
+  `test_no_hace_requests_externas` se entere, porque el test mira el HTML que genera
+  `render()`, no el que sirve el CDN en producción. Línea base confirmada con `curl` contra
+  una demo real desplegada (`tech-services-demos.pages.dev/hector-s-tree-care-23ab9b/`):
+  HTTP 200, cero `<script>`, cero `src="http`. Chequeo de una línea agregado como paso 3 de
+  la entrega (Nodo 12) para no depender de acordarse.
 
 **Bitácora** —
 
@@ -1185,12 +1201,44 @@ significa heredar guardias 24/7, incompatible con 5-10 hs semanales.
 
 **Problemas conocidos** —
 
+- (2026-08-13) Ningún proveedor de SMS está contratado todavía, y el precio real sigue sin
+  confirmar (`docs/SERVICIOS_FUTUROS.md` ítem 2 — conflicto de fuentes, USD 20 vs 99/mes).
+  Si el primer pago llega antes de resolver esto, el paso 2 de abajo tiene el reloj de 48
+  horas corriendo sin proveedor elegido.
+
 **Bitácora** —
 
-- (2026-08-12, Día 20) **Vacío a propósito: ningún prospecto llegó a este paso todavía.**
+- (2026-08-12, Día 20) Vacío a propósito: ningún prospecto llegó a este paso todavía.
   Ningún proveedor de missed-call-text-back está elegido ni contratado — es decisión posterior a
   la primera venta cobrada (nivel 5 de `decision_criteria.yaml`), no algo para resolver antes de
-  tener un cliente real. Se llena con el primer caso real.
+  tener un cliente real.
+
+- (2026-08-13) **Procedimiento escrito, sin ejecutar todavía** (ningún cliente real llegó
+  a este paso; esto es el paso a paso preparado, no un caso corrido):
+
+  1. **Cobrar el 100% antes de tocar nada.** No 50/50 — el contrato dice 100% adelantado,
+     la garantía de 14 días es la reversión de riesgo (`pipeline.md`, sección Contrato).
+  2. **Dentro de 48 horas:** apuntar el dominio propio del cliente al sitio ya generado, y
+     dar de alta el proveedor de SMS con la info real del negocio. Probar de punta a punta
+     llamando al número del negocio y cortando — confirmar que el texto llega y **de qué
+     número sale** (la pregunta abierta más importante de `SERVICIOS_FUTUROS.md` ítem 2:
+     si sale de un número que el que llamó no reconoce, no resuelve el problema de
+     confianza que vende el producto).
+  3. **Chequeo de una línea antes de dar por entregado** (contra el riesgo del beacon
+     auto-inyectado de Cloudflare, Nodo 5):
+     ```bash
+     curl -s https://<dominio-del-cliente>/ | grep -c "<script"
+     ```
+     Tiene que dar `0`. Si no da `0`, algo (analytics, un plugin, un widget) rompió la
+     regla de cero requests antes de que el cliente vea el sitio.
+  4. **Los 14 días de garantía arrancan acá** — sobre el producto entregado y funcionando
+     (dominio apuntado, SMS probado), no sobre una versión a medias con el reloj ya
+     corriendo desde el cobro.
+  5. **Registro semanal para el cliente** (resuelve el punto de "cómo sacar el registro de
+     mensajes disparados"): una captura del panel del proveedor de SMS (cuántos mensajes,
+     a quién) + las visitas del panel de Cloudflare Pages del dominio del cliente. Es una
+     captura de pantalla y dos renglones de texto por semana, no un informe — no hace
+     falta construir nada para esto.
 
 ---
 

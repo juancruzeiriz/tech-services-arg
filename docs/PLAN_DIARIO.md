@@ -352,6 +352,12 @@ era falso; después de esa sesión:
    completar todavía. Ninguno de los dos bloquea la llamada telefónica, solo el seguimiento por
    email/formulario.
 
+**No es un quinto bloqueador, aclarado 2026-08-13:** el proveedor de missed-call-text-back
+(`docs/SERVICIOS_FUTUROS.md` ítem 2, precio todavía en conflicto de fuentes) no bloquea la
+llamada — el guion de apertura solo pide permiso para mandar el link de la demo, nunca
+menciona el SMS automático. Bloquea la **entrega** (48 hs después del cobro, procedimiento
+en `PROCESOS.md` Nodo 12), que es un paso posterior a que alguien diga que sí.
+
 **Hallazgo nuevo, menor, no bloqueante:** el link corto con tracking (`/v/{token}` →
 `demo_views`) se arma en el pipeline orquestado por la UI (`gtm/ui/routes/runs.py`), no en las
 etapas de CLI sueltas que se corrieron para publicar estas 22 — así que hoy no hay tokens

@@ -29,20 +29,27 @@ nothing to log into.
 When you cannot pick up, the caller gets a text within seconds asking what they need
 and when. You answer when you are off the ladder. The job stays yours.
 
+## The math
+
+A full tree removal with stump grinding and cleanup runs $1,800+ around here. Even a
+basic job — no stump, no cleanup — averages around $900-1,150. Either way: **one extra
+job a month pays for the whole site.** Everything after that is straight profit from
+calls that used to go to voicemail.
+
 ## Price
 
-**$950 one time.** Live in 48 hours, pointed at your domain.
+**$950, paid upfront.** Live in 48 hours, pointed at your domain.
 
-**Full refund within 14 days.** No questions, no forms. If it does not do what I said,
-you do not pay for it.
+**Full refund within 14 days of delivery.** No questions, no forms. If it does not do
+what I said, you get your money back.
 
 Optional: **$150/month** covers hosting, the text-back service and small changes when
 your hours or services change. Cancel any time. You own the domain and the content —
 if you leave, it goes with you.
 
-If you want Google or Meta ads managed on top of that, it is available — a separate
-add-on to the monthly plan, not included by default. You pay the ad platform directly;
-I only charge for managing it.
+Optional, separate from everything above: **running Google or Facebook ads.** Priced per
+case, only if you ask for it — not part of the base $950 or the $150/month plan. You pay
+the ad platform directly; I only charge for managing it.
 
 ## What this is not
 
