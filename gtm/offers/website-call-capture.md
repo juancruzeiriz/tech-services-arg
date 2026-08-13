@@ -40,12 +40,17 @@ Optional: **$150/month** covers hosting, the text-back service and small changes
 your hours or services change. Cancel any time. You own the domain and the content —
 if you leave, it goes with you.
 
+If you want Google or Meta ads managed on top of that, it is available — a separate
+add-on to the monthly plan, not included by default. You pay the ad platform directly;
+I only charge for managing it.
+
 ## What this is not
 
 Straight, so nobody wastes a call:
 
 - Not SEO. I am not promising you rank #1 for anything.
-- Not ads. I do not run or manage ad spend.
+- Not ads by default. I do not run or manage ad spend unless you ask for it as an
+  add-on (see Price above) — it is not part of the base $950 or the $150/month plan.
 - Not 24/7 support. The text-back service runs on infrastructure with its own uptime
   guarantee; I am not an emergency line.
 - Not a monthly contract you cannot leave.

@@ -28,6 +28,7 @@ de esta ciudad". La especialización sustituye a la fama.
 | Precio | **USD 950** una vez |
 | Garantía | Devolución total a 14 días, sin preguntas |
 | Recurrente (opcional) | **USD 150-200/mes**: hosting, bot y cambios menores |
+| Ads (opcional, arriba del recurrente) | **A definir por caso** — gestión de Google/Meta Ads, solo si el cliente lo pide. El gasto de pauta lo paga el cliente directo a la plataforma, nunca pasa por nosotros; se cobra únicamente la gestión |
 
 **El bot no se construye.** Se configura un proveedor existente (AI receptionist /
 missed-call-text-back, **~USD 99/mes** — [Enzak](https://enzak.com/), investigado
