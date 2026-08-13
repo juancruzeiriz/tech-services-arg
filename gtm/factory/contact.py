@@ -215,12 +215,20 @@ def build_form_message(
             f"Hola — hago sitios web para {vertical_plural(prospect.vertical, language)} y "
             f"armé uno de muestra para {prospect.name}. Ya está online acá:\n\n"
             f"{link}\n\n"
-            "Usa tu número de teléfono real, tus reseñas de Google y tu zona de servicio. "
-            "También responde con un mensaje de texto automático cuando se te escapa "
+            "Usa tu teléfono real, tus reseñas de Google y tu zona de servicio. "
+            "Y responde con un mensaje de texto automático cuando se te escapa "
             "una llamada.\n\n"
-            "Es gratis para ver, tuyo lo quieras o no. Si lo querés apuntado a tu dominio "
-            f"son USD {price_usd} con reembolso completo a 14 días. Te lo reservo 7 "
-            f"días.\n\n{author_name}"
+            "Es gratis para ver, tuyo lo quieras o no. Apuntado a tu dominio "
+            f"son USD {price_usd}, con reembolso completo a 14 días. Te lo reservo 7 "
+            "días.\n\n"
+            # Ancla de credibilidad, al FINAL y en una línea: el prospecto no te
+            # conoce, así que el primer párrafo tiene que ser sobre él (pipeline.md:
+            # hecho observado -> link -> precio). Acá abajo ya decidió si le
+            # interesa, y explica el precio en vez de solo afirmarlo. No repite la
+            # cifra, que ya está dos renglones arriba -- el margen contra
+            # FORM_MESSAGE_MAX_CHARS es ajustado en español.
+            "Trabajo solo, no soy una agencia: por eso no cuesta USD 5.000."
+            f"\n\n{author_name}"
         )
     else:
         message = (
@@ -231,7 +239,11 @@ def build_form_message(
             "It also texts back automatically when you miss a call.\n\n"
             "Free to look at, yours to keep either way. If you want it pointed at your "
             f"domain it is ${price_usd} with a 14-day full refund. I'll hold it for you "
-            f"for 7 days.\n\n{author_name}"
+            "for 7 days.\n\n"
+            # Ver el comentario de la rama ES: la credibilidad va al final, en una
+            # línea, y explica el precio en vez de solo afirmarlo.
+            "I work on my own, not an agency — that's why it isn't $5,000."
+            f"\n\n{author_name}"
         )
 
     if len(message) > FORM_MESSAGE_MAX_CHARS:
