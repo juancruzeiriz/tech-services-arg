@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import html
 import json
+import re
 
 import pytest
 
@@ -47,10 +48,37 @@ class TestRender:
         assert 'name="robots" content="noindex,nofollow"' in markup
 
     def test_no_hace_requests_externas(self, prospect):
-        """Cero recursos externos: la velocidad es el argumento de venta."""
+        """Cero recursos de TERCEROS: la velocidad es el argumento de venta.
+
+        Desde que las fotos y las fuentes viven en `/assets/` del mismo dominio
+        (`deploy.py::_copy_assets`), la regla ya no es "ninguna imagen" sino
+        "ningún host ajeno": sin CDN, sin Google Fonts, sin DNS extra. Un asset
+        del propio dominio va multiplexado sobre la misma conexión y se cachea
+        una vez para las 22 demos.
+        """
         markup = render(prospect, AUTHOR, AUTHOR_URL)
-        for pattern in ("<script", "src=\"http", "@import", "<link rel=\"stylesheet\""):
-            assert pattern not in markup, f"recurso externo detectado: {pattern}"
+        for pattern in ("<script", "src=\"http", "src=\"//", "@import", "<link rel=\"stylesheet\""):
+            assert pattern not in markup, f"recurso de tercero detectado: {pattern}"
+
+    def test_ninguna_url_absoluta_salvo_la_divulgacion(self, prospect):
+        """Ningún host ajeno en toda la página.
+
+        Complementa al test de arriba, que solo mira prefijos conocidos: acá se
+        barren TODAS las URLs absolutas del markup. La única permitida es la de
+        la divulgación obligatoria ("quién hizo esto"), que es un link que el
+        prospecto puede clickear -- no un recurso que el navegador descargue al
+        cargar la página.
+        """
+        urls = re.findall(r'https?://[^"\'\s>]+', render(prospect, AUTHOR, AUTHOR_URL))
+        assert set(urls) <= {AUTHOR_URL}, f"URLs de terceros: {set(urls) - {AUTHOR_URL}}"
+
+    def test_los_assets_son_del_mismo_dominio(self, prospect):
+        """La contracara del test anterior: las fotos y fuentes SÍ tienen que
+        estar, y como ruta absoluta de raíz -- las demos viven en `/<slug>/`, así
+        que una ruta relativa apuntaría a `/<slug>/assets/...` y daría 404."""
+        markup = render(prospect, AUTHOR, AUTHOR_URL)
+        assert 'url("/assets/fonts/' in markup, "faltan las fuentes self-hosted"
+        assert "/assets/" in markup
 
     def test_escapa_html_del_nombre(self):
         hostile = Prospect(
@@ -184,6 +212,68 @@ class TestRenderEnEspanol:
         assert '<html lang="es">' in written
         assert demo.slug == prospect.slug
         assert demo.language is Language.ES
+
+
+class TestFotosPorOficio:
+    """Las fotos son de stock con licencia comercial (ver
+    `gtm/assets/photos/tree_service/CREDITS.md`), no del negocio: los Términos de
+    Places prohíben cachear las fotos de Google. Solo los oficios con fotos curadas
+    las muestran; el resto cae al arte de ícono SVG sin romperse."""
+
+    def _tree_prospect(self):
+        return Prospect(
+            place_id="ChIJtree1",
+            name="Morales Tree Care",
+            vertical="tree_service",
+            metro="Albuquerque, NM",
+            phone="(505) 555-0100",
+            rating=4.9,
+            review_count=31,
+        )
+
+    def test_oficio_con_fotos_usa_foto_en_el_hero(self):
+        markup = render(self._tree_prospect(), AUTHOR, AUTHOR_URL)
+        assert 'class="hero-photo"' in markup
+        assert "/assets/photos/tree_service/hero-" in markup
+
+    def test_la_foto_del_hero_no_es_lazy(self):
+        """Es el LCP de la página: diferirla es exactamente lo contrario de lo
+        que se busca. La galería sí va lazy (test de abajo)."""
+        markup = render(self._tree_prospect(), AUTHOR, AUTHOR_URL)
+        hero = markup.split('class="hero-photo"')[1].split(">")[0]
+        assert 'fetchpriority="high"' in hero
+        assert "loading=" not in hero
+
+    def test_la_galeria_va_lazy(self):
+        markup = render(self._tree_prospect(), AUTHOR, AUTHOR_URL)
+        assert 'class="shot"' in markup
+        assert "/assets/photos/tree_service/work-" in markup
+        shots = markup.split('class="shots"')[1]
+        assert shots.count('loading="lazy"') >= 1
+
+    def test_oficio_sin_fotos_cae_al_icono_y_omite_la_galeria(self):
+        sin_fotos = Prospect(
+            place_id="p1",
+            name="Generic Co",
+            vertical="alpaca-shearer",
+            metro="Mesa, AZ",
+            phone="(480) 555-0100",
+        )
+        markup = render(sin_fotos, AUTHOR, AUTHOR_URL)
+        assert 'class="hero-art"' in markup, "debería caer al arte de ícono"
+        assert 'class="hero-photo"' not in markup
+        assert 'class="shots"' not in markup, "sin fotos no se emite la sección"
+
+    def test_dos_prospectos_del_mismo_oficio_no_abren_con_la_misma_foto(self):
+        """El hallazgo del Día 13 (79% de contenido idéntico) aplicado a las
+        fotos: si las 22 demos de Albuquerque abrieran con la misma imagen,
+        volvería a notarse la plantilla en una comparación lado a lado."""
+        from gtm.factory.generate import _photo_set, _pick
+
+        heroes, _ = _photo_set("tree_service")
+        assert len(heroes) > 1, "hacen falta al menos 2 heroes para que varíe"
+        elegidas = {_pick(heroes, f"place-{i}") for i in range(20)}
+        assert len(elegidas) > 1
 
 
 class TestPhoneHref:

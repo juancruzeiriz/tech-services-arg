@@ -45,6 +45,13 @@ ROOT = Path(__file__).resolve().parents[2]
 GTM_DIR = ROOT / "gtm"
 TEMPLATE_DIR = GTM_DIR / "template"
 
+# Assets compartidos por todas las demos (fotos por oficio, fuentes). A diferencia
+# de BUILD_DIR, esto SÍ va en git: son insumos del producto, no datos de prospectos.
+# `deploy.py` los copia una sola vez a <public>/assets/, así las 22 demos referencian
+# los mismos archivos y el navegador los descarga una vez, no una por demo.
+ASSETS_DIR = GTM_DIR / "assets"
+PHOTOS_DIR = ASSETS_DIR / "photos"
+
 # Artefactos generados. Fuera de git: son datos de prospectos, no código.
 BUILD_DIR = GTM_DIR / "build"
 DEMOS_DIR = BUILD_DIR / "demos"

@@ -18,6 +18,13 @@
       "runtimeExecutable": "D:/workspace/tech-services-arg/venv/Scripts/python.exe",
       "runtimeArgs": ["-m", "http.server", "8899", "--directory", "D:/workspace/tech-services-arg/gtm/build/demos"],
       "port": 8899
+    },
+    {
+      "_comment": "gtm/public es lo que de verdad se publica: demos + /assets (fotos y fuentes) juntos. Servir build/demos en su lugar da 404 en cada /assets/... porque deploy.py es quien los copia. Correr `python -m gtm.factory.deploy` antes.",
+      "name": "public",
+      "runtimeExecutable": "D:/workspace/tech-services-arg/venv/Scripts/python.exe",
+      "runtimeArgs": ["-m", "http.server", "8900", "--directory", "D:/workspace/tech-services-arg/gtm/public"],
+      "port": 8900
     }
   ]
 }

@@ -15,6 +15,8 @@ Uso:
 from __future__ import annotations
 
 import argparse
+import base64
+import hashlib
 import html
 import json
 import re
@@ -23,7 +25,7 @@ from pathlib import Path
 from string import Template
 
 from gtm.catalog import city_of, get_trade
-from gtm.factory import artifacts, config
+from gtm.factory import artifacts, config, icons
 from gtm.factory.copy_ai import SLOTS as _AI_COPY_SLOTS
 from gtm.factory.copy_ai import generate_variant_copy
 from gtm.factory.ledger import SuppressionList
@@ -57,6 +59,172 @@ _DEFAULT_SERVICES_ES: tuple[tuple[str, str], ...] = (
 )
 
 
+# Identidad visual del vertical fuera de catálogo (texto libre desde la UI): el
+# naranja que usaba la plantilla antes de tener paleta por oficio -- mismo criterio
+# que _DEFAULT_SERVICES_EN/ES, nunca lo mejor que se puede decir de un rubro, pero
+# nunca una demo rota.
+_DEFAULT_THEME_PRIMARY = "#c2410c"
+_DEFAULT_THEME_PRIMARY_DARK = "#8f2f09"
+_DEFAULT_THEME_BG_TINT = "#fff7ed"
+
+# Rotación + opacidad del arte del hero. El place_id (estable, ya usado por
+# Prospect.slug) elige una de estas -- así dos demos del mismo oficio en la misma
+# ciudad no comparten literalmente el mismo píxel. Ataca el 79% de contenido
+# visible idéntico entre demos medido el Día 13 (docs/PLAN_DIARIO.md).
+_HERO_ART_VARIANTS: tuple[dict[str, float], ...] = (
+    {"rotate": 0, "opacity": 0.14},
+    {"rotate": 8, "opacity": 0.16},
+    {"rotate": -8, "opacity": 0.12},
+    {"rotate": 14, "opacity": 0.18},
+    {"rotate": -14, "opacity": 0.13},
+)
+
+# Ruta pública de los assets compartidos (`deploy._copy_assets` los deja acá).
+# Absoluta de raíz a propósito: las demos viven en `/<slug>/`, así que una ruta
+# relativa se rompería al cambiar de nivel.
+_ASSETS_URL = "/assets"
+
+
+def _photo_set(vertical: str) -> tuple[list[str], list[str]]:
+    """(heroes, galería) del oficio, por nombre de archivo. Vacías si el oficio
+    todavía no tiene fotos curadas -- hoy solo `tree_service`, que es el único con
+    prospectos reales. Sin fotos la demo no se rompe: cae al arte de ícono SVG.
+
+    Se lee del disco en vez de hardcodear la lista para que sumar un oficio sea
+    copiar archivos a `gtm/assets/photos/<oficio>/`, sin tocar código.
+    """
+    trade_dir = config.PHOTOS_DIR / vertical
+    if not trade_dir.is_dir():
+        return [], []
+    names = sorted(p.name for p in trade_dir.glob("*.webp"))
+    # `-sm` es la variante chica del MISMO hero, no un hero más: se excluye de la
+    # lista para que `_pick` no la elija como si fuera otra foto (y para que la
+    # cuenta de variantes reales no quede inflada al doble).
+    heroes = [n for n in names if n.startswith("hero-") and not n.endswith("-sm.webp")]
+    gallery = [n for n in names if n.startswith("work-")]
+    return heroes, gallery
+
+
+def _pick(options: list[str], place_id: str, salt: str = "") -> str:
+    """Elige de forma estable (mismo prospecto -> misma foto siempre) pero
+    distinta entre prospectos. Sin esto, las 22 demos de Albuquerque abrirían con
+    la misma imagen y volveríamos al problema de "se nota la plantilla"."""
+    digest = hashlib.sha256(f"{place_id}{salt}".encode()).hexdigest()
+    return options[int(digest, 16) % len(options)]
+
+
+def _theme(vertical: str) -> tuple[str, str, str, str]:
+    """(primary, primary_dark, bg_tint, icon_key) del oficio, o el default
+    naranja neutro si el vertical no está en el catálogo."""
+    trade = get_trade(vertical)
+    if trade is None:
+        return (
+            _DEFAULT_THEME_PRIMARY,
+            _DEFAULT_THEME_PRIMARY_DARK,
+            _DEFAULT_THEME_BG_TINT,
+            icons.DEFAULT_ICON,
+        )
+    return trade.theme_primary, trade.theme_primary_dark, trade.theme_bg_tint, trade.icon
+
+
+def _initials(name: str) -> str:
+    """Hasta 2 iniciales del nombre real del negocio, para el favicon y el logo.
+
+    Filtra a caracteres alfanuméricos antes de tomar la primera letra de cada
+    palabra: un nombre hostil (ver `test_escapa_html_del_nombre`) no sobrevive acá
+    como markup, solo como las letras que de verdad tiene.
+    """
+    words = re.findall(r"[A-Za-z0-9]+", name)
+    letters = "".join(word[0] for word in words[:2]).upper()
+    return letters or "?"
+
+
+def _favicon_data_uri(name: str, color: str) -> str:
+    """SVG del monograma del negocio, en base64 -- `<link rel="icon" href="data:...">`.
+    Sin request, sin archivo, y con identidad real (las iniciales del negocio) en vez
+    del ícono vacío que había antes."""
+    initials = html.escape(_initials(name))
+    svg = (
+        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">'
+        f'<rect width="64" height="64" rx="14" fill="{color}"/>'
+        '<text x="32" y="43" font-family="system-ui,sans-serif" font-size="30" '
+        f'font-weight="700" fill="#fff" text-anchor="middle">{initials}</text></svg>'
+    )
+    encoded = base64.b64encode(svg.encode("utf-8")).decode("ascii")
+    return f"data:image/svg+xml;base64,{encoded}"
+
+
+def _logo_svg(color: str, icon_key: str) -> str:
+    """Isotipo del header: el ícono del oficio, blanco, sobre un círculo del color
+    de marca. No hay logo real del negocio que se pueda usar legalmente -- esto se
+    lee como una decisión de diseño, no como un espacio vacío."""
+    mark = icons.icon_markup(icon_key, size=20, stroke_width=3)
+    return f'<span class="logo-badge" style="background:{color}" aria-hidden="true">{mark}</span>'
+
+
+def _hero_media(prospect: Prospect, color: str, icon_key: str, alt: str) -> str:
+    """Fondo del hero: la foto del oficio si existe, si no el arte de ícono.
+
+    Es el LCP de la página. Por eso:
+      - `fetchpriority="high"` y SIN `loading="lazy"` (la galería sí es lazy);
+      - `srcset` con una variante chica: el celular del prospecto —que es donde se
+        abre esto— baja ~90KB en vez de ~240KB. Medido: sin esto Lighthouse daba
+        LCP 4,1s y performance 87.
+    """
+    heroes, _ = _photo_set(prospect.vertical)
+    if heroes:
+        name = _pick(heroes, prospect.place_id)
+        base = f"{_ASSETS_URL}/photos/{prospect.vertical}"
+        small = name.replace(".webp", "-sm.webp")
+        has_small = (config.PHOTOS_DIR / prospect.vertical / small).exists()
+        srcset = f' srcset="{base}/{small} 820w, {base}/{name} 1200w" sizes="100vw"' if has_small else ""
+        return (
+            f'<img class="hero-photo" src="{base}/{name}"{srcset} alt="{alt}" '
+            'width="1200" height="760" fetchpriority="high" decoding="async">'
+        )
+
+    # Fallback sin fotos curadas para el oficio: el arte de ícono de siempre.
+    digest = hashlib.sha256(prospect.place_id.encode("utf-8")).hexdigest()
+    variant = _HERO_ART_VARIANTS[int(digest, 16) % len(_HERO_ART_VARIANTS)]
+    mark = icons.icon_markup(icon_key, size=240, stroke_width=1.4)
+    return (
+        f'<div class="hero-art" style="color:{color};opacity:{variant["opacity"]};'
+        f'transform:rotate({variant["rotate"]}deg)" aria-hidden="true">{mark}</div>'
+    )
+
+
+def _gallery_section(prospect: Prospect, heading: str, alt: str) -> str:
+    """Sección "nuestro trabajo" completa, o cadena vacía si el oficio todavía no
+    tiene fotos curadas.
+
+    Se decide acá y no en CSS (`:has(:empty)`) a propósito: así un oficio sin fotos
+    directamente no emite la sección, sin depender del soporte de `:has()` ni dejar
+    un encabezado colgando sobre una grilla vacía.
+    """
+    _, gallery = _photo_set(prospect.vertical)
+    if not gallery:
+        return ""
+
+    # Rotada por prospecto: el mismo set de fotos, pero cada demo las muestra en
+    # un orden distinto -- otra vuelta de tuerca al "se nota que es plantilla".
+    digest = hashlib.sha256(prospect.place_id.encode("utf-8")).hexdigest()
+    offset = int(digest, 16) % len(gallery)
+    ordered = gallery[offset:] + gallery[:offset]
+
+    shots = "\n".join(
+        f'<figure class="shot" data-reveal style="--i:{i}">'
+        f'<img src="{_ASSETS_URL}/photos/{prospect.vertical}/{name}" alt="{alt}" '
+        'width="700" height="500" loading="lazy" decoding="async"></figure>'
+        for i, name in enumerate(ordered)
+    )
+    return (
+        '<section class="gallery">\n  <div class="wrap">\n'
+        f'    <div class="section-head"><h2 data-reveal>{heading}</h2></div>\n'
+        f'    <div class="shots">{shots}</div>\n'
+        "  </div>\n</section>"
+    )
+
+
 def _phone_href(phone: str) -> str:
     """Normaliza a formato tel: (solo dígitos y un + inicial opcional)."""
     cleaned = re.sub(r"[^\d+]", "", phone)
@@ -76,22 +244,40 @@ def _services_html(vertical: str, language: Language) -> str:
         )
     else:
         services = _DEFAULT_SERVICES_ES if language is Language.ES else _DEFAULT_SERVICES_EN
+    # data-reveal + --i: stagger de la animación de entrada (ver el bloque
+    # @supports(animation-timeline: view()) en site.html). Puramente CSS -- sin
+    # esa feature el navegador nunca aplica opacity:0, así que degrada a estático,
+    # no a roto.
     return "\n".join(
-        f'<div class="card"><h3>{html.escape(title)}</h3>'
+        f'<div class="card" data-reveal style="--i:{i}"><h3>{html.escape(title)}</h3>'
         f"<p>{html.escape(body)}</p></div>"
-        for title, body in services
+        for i, (title, body) in enumerate(services)
     )
 
 
 def _reviews_html(prospect: Prospect, language: Language) -> str:
     """Renderiza reseñas reales. Se truncan para que no dominen la página."""
     if not prospect.top_reviews:
-        rating = prospect.rating
+        # Sin texto de reseñas — `discover.py` no lo pide a propósito: las Service
+        # Specific Terms de Google prohíben cachear y republicar ese texto fuera de
+        # un mapa de Google. Lo que SÍ se puede mostrar (rating y cantidad) se
+        # presenta como un bloque diseñado, con las estrellas dibujadas: antes era
+        # una línea itálica suelta en una sección enorme y se leía como un hueco.
+        rating = prospect.rating if prospect.rating is not None else 5.0
+        full = int(rating)
+        stars = "★" * full + "☆" * (5 - full)
         if language is Language.ES:
-            return f'<p class="quote">{rating}★ según {prospect.review_count} clientes en Google.</p>'
+            unit = "reseña" if prospect.review_count == 1 else "reseñas"
+            caption = f"{prospect.review_count} {unit} verificadas en Google"
+        else:
+            unit = "review" if prospect.review_count == 1 else "reviews"
+            caption = f"{prospect.review_count} verified {unit} on Google"
         return (
-            f'<p class="quote">Rated {rating}★ by {prospect.review_count} '
-            "customers on Google.</p>"
+            '<div class="rating-block">'
+            f'<span class="rating-num">{rating}</span>'
+            f'<span class="rating-stars" aria-hidden="true">{stars}</span>'
+            f'<span class="rating-caption">{html.escape(caption)}</span>'
+            "</div>"
         )
 
     blocks: list[str] = []
@@ -174,6 +360,7 @@ def render(
     phone = html.escape(prospect.phone)
     rating = prospect.rating if prospect.rating is not None else 5.0
     review_count = prospect.review_count
+    theme_primary, theme_primary_dark, theme_bg_tint, icon_key = _theme(prospect.vertical)
 
     if language is Language.ES:
         meta_description = f"{business_name}: {html.escape(label)} en {city}. Llamá al {phone}."
@@ -184,11 +371,16 @@ def render(
         )
         flag_link_text = "Quién hizo esto"
         call_label = "Llamar"
-        trust_rating = f"<b>{rating}★</b> según {review_count} reseñas"
+        trust_rating = f"<b>{rating}★</b><span>{review_count} reseñas</span>"
         trust_serving_label = "Atendemos"
         trust_fast_label = "Respuesta rápida"
         services_heading = "Qué hacemos"
         reviews_heading = "Lo que dicen los clientes"
+        gallery_heading = "Nuestro trabajo"
+        # alt de las fotos: describe el oficio, no afirma que sean trabajos de ESTE
+        # negocio -- son fotos de stock (ver gtm/assets/photos/.../CREDITS.md) y el
+        # banner de divulgación ya dice que la demo no la publicó el negocio.
+        photo_alt = html.escape(f"Trabajo de {label}")
         cta_body = (
             "Llamá y hablá con una persona real. Si no atendemos, te llega un mensaje "
             "de texto en segundos — no mañana."
@@ -206,11 +398,13 @@ def render(
         )
         flag_link_text = "Who made this"
         call_label = "Call"
-        trust_rating = f"<b>{rating}★</b> from {review_count} reviews"
+        trust_rating = f"<b>{rating}★</b><span>{review_count} reviews</span>"
         trust_serving_label = "Serving"
         trust_fast_label = "Fast response"
         services_heading = "What we do"
         reviews_heading = "What customers say"
+        gallery_heading = "The work"
+        photo_alt = html.escape(f"{label.capitalize()} work")
         cta_body = (
             "Call and talk to a real person. If we miss you, you get a text back in "
             "seconds — not tomorrow."
@@ -222,6 +416,13 @@ def render(
 
     values = {
         "lang": language.value,
+        "theme_primary": theme_primary,
+        "theme_primary_dark": theme_primary_dark,
+        "theme_bg_tint": theme_bg_tint,
+        "favicon_data_uri": _favicon_data_uri(prospect.name, theme_primary),
+        "logo_svg": _logo_svg(theme_primary, icon_key),
+        "hero_media": _hero_media(prospect, theme_primary, icon_key, photo_alt),
+        "gallery_section": _gallery_section(prospect, gallery_heading, photo_alt),
         "business_name": business_name,
         "phone": phone,
         "phone_href": html.escape(_phone_href(prospect.phone)),

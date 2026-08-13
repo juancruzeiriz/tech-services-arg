@@ -6,60 +6,160 @@
 <!-- noindex: esta demo NO debe competir en buscadores con el sitio real del negocio
      ni ser confundida con él. Se saca solo cuando el cliente compra y pasa a su dominio. -->
 <meta name="robots" content="noindex,nofollow">
-<!-- Sin esto el navegador pide /favicon.ico solo (404, medido con Lighthouse en el
-     Día 13) -- un data URI vacío le dice "no hay ícono" sin agregar un request ni
-     un archivo, coherente con "cero requests externos" de arriba. -->
-<link rel="icon" href="data:,">
+<!-- Favicon real: monograma del negocio (iniciales) en el color del oficio, como
+     data URI base64 -- sin request, sin archivo. Ver generate.py::_favicon_data_uri. -->
+<link rel="icon" href="$favicon_data_uri">
 <title>$business_name — $city $vertical_label</title>
 <meta name="description" content="$meta_description">
 <style>
-/* Todo el CSS va inline: cero requests externos = carga inmediata. El contraste con
-   el sitio actual del prospecto es literalmente el argumento de venta. */
-*,*::before,*::after{box-sizing:border-box}
-body{margin:0;font:16px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;color:#16202a;background:#fff}
-img{max-width:100%;height:auto}
-.wrap{max-width:1040px;margin:0 auto;padding:0 20px}
-.demo-flag{background:#1f2937;color:#f9fafb;font-size:13px;padding:10px 20px;text-align:center}
-.demo-flag strong{color:#fff}
-header{background:#fff;border-bottom:1px solid #e5e7eb;position:sticky;top:0;z-index:10}
-.bar{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:14px 0;flex-wrap:wrap}
-.brand{font-size:19px;font-weight:700;letter-spacing:-.01em}
-.call{display:inline-block;background:#c2410c;color:#fff;text-decoration:none;font-weight:700;padding:12px 20px;border-radius:8px;white-space:nowrap}
-.call:hover{background:#9a3412}
-.hero{background:linear-gradient(180deg,#f8fafc,#fff);padding:56px 0 44px;text-align:center}
-.hero h1{font-size:clamp(28px,5vw,44px);line-height:1.15;margin:0 0 14px;letter-spacing:-.02em}
-.hero p{font-size:18px;color:#475569;max-width:60ch;margin:0 auto 26px}
-.trust{display:flex;gap:22px;justify-content:center;flex-wrap:wrap;color:#475569;font-size:15px;margin-top:26px}
-.trust b{color:#16202a}
-h2{font-size:26px;letter-spacing:-.01em;margin:0 0 22px}
-section{padding:48px 0;border-top:1px solid #f1f5f9}
-.grid{display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(230px,1fr))}
-.card{border:1px solid #e5e7eb;border-radius:10px;padding:20px;background:#fff}
-.card h3{margin:0 0 8px;font-size:17px}
-.card p{margin:0;color:#475569;font-size:15px}
-.quote{border-left:3px solid #c2410c;padding:4px 0 4px 16px;margin:0 0 20px;color:#334155;font-style:italic}
-.cta{background:#16202a;color:#fff;text-align:center;padding:52px 0}
-.cta h2{color:#fff}
-.cta p{color:#cbd5e1;max-width:52ch;margin:0 auto 24px}
-footer{padding:30px 0;color:#64748b;font-size:14px;text-align:center}
-@media(max-width:520px){
-  .bar{justify-content:center}
-  .brand{width:100%;text-align:center}
-  .bar .call{width:100%;text-align:center}
+/* CSS inline y assets del MISMO dominio (fotos + fuentes en /assets/, copiados por
+   deploy.py::_copy_assets). Cero dominios de terceros: sin CDN, sin Google Fonts, sin
+   DNS extra. Las fotos se descargan una vez y quedan cacheadas para las 22 demos --
+   por eso van como archivos y no embebidas en cada HTML. */
+
+/* Instrument Sans/Serif: SIL OFL, self-host permitido (ver assets/fonts/LICENSE.md).
+   swap para que el texto sea legible desde el primer frame aunque la fuente no
+   haya llegado -- sin esto habría un flash de invisible que arruina el LCP. */
+@font-face{font-family:"Instrument Sans";src:url("/assets/fonts/InstrumentSans-latin.woff2") format("woff2");font-weight:400 700;font-display:swap}
+@font-face{font-family:"Instrument Serif";src:url("/assets/fonts/InstrumentSerif-Italic-latin.woff2") format("woff2");font-weight:400;font-style:italic;font-display:swap}
+
+:root{
+  --accent: $theme_primary;
+  --accent-dark: $theme_primary_dark;
+  --tint: $theme_bg_tint;
+  --ink: #10161d;
+  --muted: #55636f;
+  --line: #e4e8ec;
+  --ease: cubic-bezier(0.16, 1, 0.3, 1);
+  --sans: "Instrument Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --serif: "Instrument Serif", Georgia, serif;
 }
-@media(prefers-color-scheme:dark){
-  body{background:#0f151b;color:#e8eef4}
-  header,.card{background:#151d25;border-color:#243040}
-  .hero{background:linear-gradient(180deg,#131b23,#0f151b)}
-  .hero p,.card p,.trust{color:#94a3b8}
-  .trust b,.card h3{color:#e8eef4}
-  section{border-color:#1c252f}
-  .quote{color:#cbd5e1}
-  /* footer no tenía override acá -- se quedaba con el gris de modo claro
-     (#64748b) contra el fondo oscuro, 3.85:1, bajo el 4.5:1 que exige WCAG
-     AA (medido con Lighthouse en las 8 demos reales del Día 13). Mismo tono
-     que .hero p/.card p/.trust arriba, que sí pasa contra este fondo. */
-  footer{color:#94a3b8}
+*,*::before,*::after{box-sizing:border-box}
+body{margin:0;font:400 17px/1.6 var(--sans);color:var(--ink);background:#fff;-webkit-font-smoothing:antialiased}
+img{max-width:100%;display:block}
+h1,h2,h3{letter-spacing:-.025em;line-height:1.08;margin:0}
+.wrap{max-width:1080px;margin:0 auto;padding:0 22px}
+
+/* Divulgación obligatoria. Discreta pero legible (contraste verificado) -- no se
+   atenúa ni se esconde: es lo que impide que la demo se confunda con el sitio real. */
+.demo-flag{background:#111827;color:#e5e7eb;font-size:12.5px;padding:8px 16px;text-align:center;line-height:1.5}
+.demo-flag strong{color:#fff}
+.demo-flag a{color:#93c5fd}
+
+/* Sin backdrop-filter a propósito: desenfocar lo que pasa por detrás de una barra
+   sticky obliga al compositor a re-renderizar esa capa en cada scroll. Medido con
+   Lighthouse: era parte de un "render delay" de 2,9 s sobre el LCP. Un fondo sólido
+   se ve igual de bien y no cuesta nada. */
+header{position:sticky;top:0;z-index:20;background:#fff;border-bottom:1px solid var(--line)}
+.bar{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:12px 0}
+.brand-group{display:flex;align-items:center;gap:10px;min-width:0}
+.logo-badge{display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;width:36px;height:36px;border-radius:10px;color:#fff}
+.brand{font-size:18px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.call{display:inline-flex;align-items:center;justify-content:center;gap:8px;background:var(--accent);color:#fff;text-decoration:none;font-weight:700;padding:13px 22px;border-radius:10px;white-space:nowrap;transition:background-color .18s ease,transform .18s var(--ease),box-shadow .18s ease}
+.call:hover{background:var(--accent-dark);transform:translateY(-2px);box-shadow:0 12px 24px -12px rgba(0,0,0,.45)}
+.call:focus-visible{outline:3px solid var(--accent-dark);outline-offset:3px}
+
+/* HERO a sangre. La foto es el LCP: va con fetchpriority=high y sin lazy.
+   El degradado encima garantiza contraste del texto sin depender de qué tan
+   clara sea la foto -- por eso es casi opaco abajo, donde vive el titular. */
+.hero{position:relative;min-height:clamp(460px,82vh,700px);display:flex;align-items:flex-end;overflow:hidden;background:var(--ink)}
+.hero-photo{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:0}
+.hero-art{position:absolute;top:-20px;right:-20px;z-index:0}
+.hero::after{content:"";position:absolute;inset:0;z-index:1;background:linear-gradient(180deg,rgba(8,12,16,.34) 0%,rgba(8,12,16,.52) 45%,rgba(8,12,16,.88) 100%)}
+.hero .wrap{position:relative;z-index:2;padding-top:64px;padding-bottom:44px;color:#fff}
+.eyebrow{font-size:12.5px;letter-spacing:.16em;text-transform:uppercase;color:rgba(255,255,255,.82);margin:0 0 14px;font-weight:600}
+.hero h1{font-size:clamp(2.4rem,8.4vw,4.4rem);max-width:16ch;color:#fff;text-wrap:balance}
+/* El contraste sans/serif-itálica es el movimiento tipográfico más fuerte de la
+   página y no cuesta ninguna imagen -- mismo criterio que el hero del portfolio. */
+.hero h1 em{font-family:var(--serif);font-style:italic;font-weight:400;color:#fff}
+.hero p{font-size:clamp(1rem,3.4vw,1.2rem);color:rgba(255,255,255,.9);max-width:46ch;margin:18px 0 28px}
+.hero .call{font-size:1.05rem;padding:16px 28px}
+
+/* Banda de confianza: tipografía grande, no una línea de texto chica. */
+.trust-band{border-top:1px solid var(--line);border-bottom:1px solid var(--line);background:var(--tint);padding:26px 0}
+/* 3 columnas siempre, también en 375px: con minmax(150px) entraban 2 y la tercera
+   caía sola abajo, desbalanceada. Son tres datos cortos, entran. */
+.trust{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.trust-item{text-align:center}
+.trust-item b{display:block;font-size:clamp(1.3rem,4.6vw,1.85rem);letter-spacing:-.02em;color:var(--ink);line-height:1.15}
+.trust-item span{font-size:13px;color:var(--muted);letter-spacing:.04em;text-transform:uppercase}
+
+section{padding:clamp(52px,9vw,84px) 0}
+.section-head{max-width:34ch;margin-bottom:34px}
+h2{font-size:clamp(1.75rem,5.6vw,2.6rem)}
+h2 em{font-family:var(--serif);font-style:italic;font-weight:400;color:var(--accent)}
+/* Breakpoints explícitos en vez de auto-fit: el catálogo da SIEMPRE 4 servicios, y
+   auto-fit a ancho de tablet resolvía en 3 columnas -- la cuarta tarjeta quedaba
+   sola en una fila. 1 / 2 / 4 columnas siempre cierra parejo. */
+.grid{display:grid;gap:16px;grid-template-columns:1fr}
+@media(min-width:560px){.grid{grid-template-columns:repeat(2,1fr)}}
+@media(min-width:1000px){.grid{grid-template-columns:repeat(4,1fr)}}
+.card{border:1px solid var(--line);border-radius:14px;padding:24px;background:#fff;transition:transform .22s var(--ease),border-color .22s ease,box-shadow .22s ease}
+.card:hover{transform:translateY(-4px);border-color:var(--accent);box-shadow:0 16px 34px -20px rgba(16,24,40,.5)}
+.card h3{font-size:1.06rem;margin-bottom:9px}
+.card p{margin:0;color:var(--muted);font-size:.95rem}
+
+/* Galería. La sección entera se oculta si el oficio no tiene fotos curadas --
+   :has(:empty) evita el hueco sin necesitar una rama en el renderer. */
+.gallery{background:var(--tint)}
+/* Mismos breakpoints que .grid y por la misma razón: son 4 fotos, y auto-fit
+   resolvía en 3 columnas a ancho de tablet dejando la cuarta sola. */
+.shots{display:grid;gap:14px;grid-template-columns:1fr}
+@media(min-width:560px){.shots{grid-template-columns:repeat(2,1fr)}}
+@media(min-width:1000px){.shots{grid-template-columns:repeat(4,1fr)}}
+.shot{margin:0;border-radius:14px;overflow:hidden;background:#dfe4e8;aspect-ratio:4/3}
+.shot img{width:100%;height:100%;object-fit:cover;transition:transform .5s var(--ease)}
+.shot:hover img{transform:scale(1.05)}
+
+.quote{border-left:3px solid var(--accent);padding:6px 0 6px 18px;margin:0 0 18px;color:#33404c;font-family:var(--serif);font-style:italic;font-size:1.22rem;line-height:1.45}
+
+/* Bloque de rating: lo que se puede mostrar cuando NO hay texto de reseñas (los
+   términos de Google no permiten republicarlo). Ver generate.py::_reviews_html. */
+.rating-block{display:flex;flex-direction:column;align-items:flex-start;gap:4px;border-left:4px solid var(--accent);padding:4px 0 4px 22px}
+.rating-num{font-size:clamp(3rem,11vw,4.6rem);font-weight:700;letter-spacing:-.04em;line-height:1}
+.rating-stars{font-size:1.5rem;color:var(--accent);letter-spacing:.14em}
+.rating-caption{font-size:.95rem;color:var(--muted)}
+
+.cta{background:var(--ink);color:#fff;text-align:center;border-top:5px solid var(--accent)}
+.cta h2{color:#fff}
+.cta p{color:#b9c4ce;max-width:46ch;margin:16px auto 30px}
+.cta .call{font-size:1.1rem;padding:17px 32px}
+
+footer{padding:34px 0 100px;color:var(--muted);font-size:13.5px;text-align:center}
+footer p{margin:5px 0}
+
+/* Barra fija de llamar en mobile: el prospecto abre esto en el celular durante una
+   llamada de 20 segundos -- el teléfono no puede quedar nunca fuera de pantalla.
+   El padding-bottom del footer le deja el lugar para no tapar el texto legal. */
+.callbar{position:fixed;left:0;right:0;bottom:0;z-index:30;padding:10px 14px calc(10px + env(safe-area-inset-bottom));background:#fff;border-top:1px solid var(--line);box-shadow:0 -6px 20px -12px rgba(16,24,40,.4)}
+.callbar .call{width:100%}
+@media(min-width:721px){.callbar{display:none}footer{padding-bottom:44px}}
+
+@media(max-width:520px){
+  .bar .brand{font-size:16px}
+  .bar .call{padding:10px 14px;font-size:.9rem}
+  .hero-art{width:170px;height:170px}
+  .hero-art svg{width:170px;height:170px}
+}
+
+/* Motion. Reveal POR TIEMPO, no por scroll-timeline: ya se probó con
+   `animation-timeline:view()` y Lighthouse encontró contraste 1.64 -- texto casi
+   invisible en elementos que ya estaban en viewport al cargar. Con animación por
+   tiempo siempre termina en opacity:1, en cualquier navegador. El fundido base va
+   siempre; el desplazamiento solo si el usuario no pidió reduced-motion (WCAG 2.3.3
+   habla de movimiento, no de un fade). */
+[data-reveal]{opacity:0;animation:fade .55s ease both;animation-delay:calc(var(--i,0) * 70ms + .06s)}
+@keyframes fade{to{opacity:1}}
+@media(prefers-reduced-motion:no-preference){
+  [data-reveal]{transform:translateY(1.15rem);animation-name:rise;animation-duration:.7s;animation-timing-function:var(--ease)}
+  @keyframes rise{to{opacity:1;transform:none}}
+  /* Ken Burns lento sobre la foto del hero. Corre UNA vez y se queda (`forwards`),
+     no `infinite`: una animación infinita sobre una imagen a pantalla completa
+     mantiene al compositor trabajando para siempre, y en un celular de gama baja
+     —que es donde el prospecto abre esto— eso se paga en batería y en fluidez del
+     scroll. El efecto de entrada es el que se ve; el bucle no lo mira nadie. */
+  .hero-photo{animation:drift 14s var(--ease) forwards}
+  @keyframes drift{from{transform:scale(1.06)}to{transform:scale(1)}}
 }
 </style>
 </head>
@@ -67,50 +167,58 @@ footer{padding:30px 0;color:#64748b;font-size:14px;text-align:center}
 
 <div class="demo-flag">
   <strong>$flag_label</strong> — $flag_text
-  <a href="$author_url" style="color:#93c5fd">$flag_link_text</a>
+  <a href="$author_url">$flag_link_text</a>
 </div>
 
 <header>
   <div class="wrap bar">
-    <span class="brand">$business_name</span>
+    <span class="brand-group">
+      $logo_svg
+      <span class="brand">$business_name</span>
+    </span>
     <a class="call" href="tel:$phone_href">$call_label $phone</a>
   </div>
 </header>
 
 <div class="hero">
+  $hero_media
   <div class="wrap">
-    <h1>$headline</h1>
-    <p>$subheadline</p>
-    <a class="call" href="tel:$phone_href">$call_label $phone</a>
-    <div class="trust">
-      <span>$trust_rating</span>
-      <span><b>$trust_serving_label</b> $city</span>
-      <span><b>$trust_fast_label</b></span>
-    </div>
+    <p class="eyebrow" data-reveal>$vertical_label · $city</p>
+    <h1 data-reveal style="--i:1">$headline</h1>
+    <p data-reveal style="--i:2">$subheadline</p>
+    <a class="call" href="tel:$phone_href" data-reveal style="--i:3">$call_label $phone</a>
+  </div>
+</div>
+
+<div class="trust-band">
+  <div class="wrap trust">
+    <div class="trust-item">$trust_rating</div>
+    <div class="trust-item"><b>$city</b><span>$trust_serving_label</span></div>
+    <div class="trust-item"><b>24/7</b><span>$trust_fast_label</span></div>
   </div>
 </div>
 
 <section>
   <div class="wrap">
-    <h2>$services_heading</h2>
+    <div class="section-head"><h2 data-reveal>$services_heading</h2></div>
     <div class="grid">$services_html</div>
   </div>
 </section>
-
+$gallery_section
 <section>
   <div class="wrap">
-    <h2>$reviews_heading</h2>
-    $reviews_html
+    <div class="section-head"><h2 data-reveal>$reviews_heading</h2></div>
+    <div data-reveal style="--i:1">$reviews_html</div>
   </div>
 </section>
 
-<div class="cta">
+<section class="cta">
   <div class="wrap">
-    <h2>$cta_heading</h2>
-    <p>$cta_body</p>
-    <a class="call" href="tel:$phone_href">$call_label $phone</a>
+    <h2 data-reveal>$cta_heading</h2>
+    <p data-reveal style="--i:1">$cta_body</p>
+    <a class="call" href="tel:$phone_href" data-reveal style="--i:2">$call_label $phone</a>
   </div>
-</div>
+</section>
 
 <footer>
   <div class="wrap">
@@ -118,6 +226,10 @@ footer{padding:30px 0;color:#64748b;font-size:14px;text-align:center}
     <p>$footer_note</p>
   </div>
 </footer>
+
+<div class="callbar">
+  <a class="call" href="tel:$phone_href">$call_label $phone</a>
+</div>
 
 </body>
 </html>

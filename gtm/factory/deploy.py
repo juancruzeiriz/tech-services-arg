@@ -48,6 +48,32 @@ def demo_url(slug: str, base_url: str) -> str:
     return f"{base_url.rstrip('/')}/{slug}/"
 
 
+def _copy_assets(target_root: Path) -> None:
+    """Copia `gtm/assets/` (fotos por oficio, fuentes) a `<public>/assets/`.
+
+    Se copia UNA vez por corrida, no una por demo: las demos referencian estos
+    archivos por ruta absoluta de raíz (`/assets/...`), así que el navegador los
+    descarga una sola vez y los cachea para las 22. Esa es toda la razón de que
+    las fotos no vayan embebidas en cada HTML.
+
+    `dirs_exist_ok=True` mantiene la idempotencia que promete el docstring del
+    módulo: re-correr `deploy` sobreescribe, no duplica ni explota.
+    """
+    if not config.ASSETS_DIR.exists():
+        _logger.warning(
+            "sin directorio de assets: las demos con foto van a quedar rotas",
+            extra={"event": "assets_missing", "path": str(config.ASSETS_DIR)},
+        )
+        return
+
+    destination = target_root / "assets"
+    shutil.copytree(config.ASSETS_DIR, destination, dirs_exist_ok=True)
+    _logger.info(
+        "assets copiados",
+        extra={"event": "assets_copied", "target": str(destination)},
+    )
+
+
 def deploy(
     demos: list[Demo],
     base_url: str,
@@ -96,6 +122,7 @@ def deploy(
 
     if not dry_run:
         target_root.mkdir(parents=True, exist_ok=True)
+        _copy_assets(target_root)
         items = "".join(
             f'<li><a href="./{d.slug}/">{d.slug}</a></li>' for d in published
         )

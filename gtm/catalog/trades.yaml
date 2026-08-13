@@ -13,6 +13,12 @@
 # sintético para practicar el pipeline sin gastar cuota real, no datos de negocios
 # reales. Neutros de región a propósito (no atados a Tucson) porque ahora el
 # catálogo cubre 20 metros distintos.
+#
+# theme_primary/theme_primary_dark/theme_bg_tint/icon (2026-08-13): identidad visual
+# por oficio para que dos demos de rubros distintos no se lean como el mismo template
+# (docs/PLAN_DIARIO.md, hallazgo del Día 13: 79% del contenido visible es idéntico
+# entre cualquier par de demos). `icon` es una clave de gtm/factory/icons.py -- nunca
+# markup acá, el catálogo no conoce HTML.
 
 - key: roofer
   places_query: "roofing contractor"
@@ -24,6 +30,10 @@
   avg_ticket_usd: 9500   # dentro del rango 6.243-32.516 de homeyou.com, no la media
   urgency: medium         # la gotera es urgente; el reemplazo completo es una compra meditada
   rank: 1
+  theme_primary: "#b45309"
+  theme_primary_dark: "#7c3a0a"
+  theme_bg_tint: "#fdf6ec"
+  icon: roof
   services_en:
     - {title: "Leak repair", body: "Find the actual source, not just the wet spot."}
     - {title: "Roof replacement", body: "Full tear-off and install with written warranty."}
@@ -51,6 +61,10 @@
   avg_ticket_usd: 2434
   urgency: high           # falla de AC en verano no espera
   rank: 2
+  theme_primary: "#0369a1"
+  theme_primary_dark: "#024a72"
+  theme_bg_tint: "#eff8ff"
+  icon: fan
   services_en:
     - {title: "AC repair", body: "Diagnosis and repair when the cooling stops."}
     - {title: "Heating service", body: "Furnace and heat pump repair before it gets cold."}
@@ -79,6 +93,10 @@
   avg_ticket_usd: 1708
   urgency: high           # un caño roto no espera
   rank: 3
+  theme_primary: "#0e7490"
+  theme_primary_dark: "#0a5566"
+  theme_bg_tint: "#ecfeff"
+  icon: drop
   services_en:
     - {title: "Emergency repairs", body: "Burst pipes, major leaks and backups, same day."}
     - {title: "Drain cleaning", body: "Slow or blocked drains cleared without guesswork."}
@@ -118,6 +136,10 @@
   avg_ticket_usd: 1800
   urgency: medium          # el árbol caído en la tormenta sí es urgente
   rank: 4
+  theme_primary: "#166534"
+  theme_primary_dark: "#0d3f20"
+  theme_bg_tint: "#f0fdf4"
+  icon: tree
   services_en:
     - {title: "Emergency removal", body: "Storm-damaged and fallen trees, cleared fast."}
     - {title: "Trimming & pruning", body: "Keeps trees healthy and off the roofline."}
@@ -145,6 +167,10 @@
   avg_ticket_usd: 2800   # estimado, guía de precios 2026
   urgency: low            # compra meditada, no de emergencia
   rank: 5
+  theme_primary: "#7e22ce"
+  theme_primary_dark: "#55158a"
+  theme_bg_tint: "#faf5ff"
+  icon: roller
   services_en:
     - {title: "Interior painting", body: "Clean lines, no drips, furniture protected."}
     - {title: "Exterior painting", body: "Prepped and sealed against the weather."}
@@ -172,6 +198,10 @@
   avg_ticket_usd: 2500   # estimado, guía de precios 2026
   urgency: low
   rank: 6
+  theme_primary: "#92400e"
+  theme_primary_dark: "#66290a"
+  theme_bg_tint: "#fffbeb"
+  icon: fence
   services_en:
     - {title: "Fence installation", body: "Wood, vinyl or chain-link, set to code."}
     - {title: "Repairs", body: "Storm damage and rot fixed without a full rebuild."}
@@ -199,6 +229,10 @@
   avg_ticket_usd: 500
   urgency: high            # no poder sacar el auto, o la puerta como riesgo de seguridad
   rank: 7
+  theme_primary: "#334155"
+  theme_primary_dark: "#1e293b"
+  theme_bg_tint: "#f8fafc"
+  icon: garage
   services_en:
     - {title: "Emergency repair", body: "Broken spring or stuck door, same-day service."}
     - {title: "Opener install", body: "Quiet, modern openers with rolling-code security."}
@@ -226,6 +260,10 @@
   avg_ticket_usd: 750    # estimado, la muestra HVAC/plumbing lo describe como "el más bajo de los oficios"
   urgency: medium         # sin luz en parte de la casa es apremiante, un panel nuevo no
   rank: 8
+  theme_primary: "#ca8a04"
+  theme_primary_dark: "#8e6103"
+  theme_bg_tint: "#fefce8"
+  icon: bolt
   services_en:
     - {title: "Troubleshooting", body: "Dead outlets, tripping breakers, flickering lights."}
     - {title: "Panel upgrades", body: "Safe capacity for modern loads and EV charging."}
@@ -253,6 +291,10 @@
   avg_ticket_usd: 900    # estimado
   urgency: low
   rank: 9
+  theme_primary: "#4d7c0f"
+  theme_primary_dark: "#33530a"
+  theme_bg_tint: "#f7fee7"
+  icon: leaf
   services_en:
     - {title: "Yard maintenance", body: "Scheduled service that actually shows up."}
     - {title: "Irrigation", body: "Install and repair, with water use in mind."}
@@ -280,6 +322,10 @@
   avg_ticket_usd: 800    # estimado
   urgency: low
   rank: 10
+  theme_primary: "#475569"
+  theme_primary_dark: "#2c384a"
+  theme_bg_tint: "#f1f5f9"
+  icon: gutter
   services_en:
     - {title: "Gutter installation", body: "Seamless gutters sized to your roofline."}
     - {title: "Gutter guards", body: "Less climbing a ladder to clean them out."}
@@ -307,6 +353,10 @@
   avg_ticket_usd: 375    # estimado
   urgency: medium         # una plaga activa apremia, el servicio preventivo no
   rank: 11
+  theme_primary: "#b91c1c"
+  theme_primary_dark: "#7f1414"
+  theme_bg_tint: "#fef2f2"
+  icon: shield
   services_en:
     - {title: "Emergency treatment", body: "Active infestations handled fast."}
     - {title: "Termite protection", body: "Inspection and treatment before structural damage."}
@@ -334,6 +384,10 @@
   avg_ticket_usd: 450    # estimado, recurrente
   urgency: low
   rank: 14
+  theme_primary: "#0d9488"
+  theme_primary_dark: "#0a6d63"
+  theme_bg_tint: "#f0fdfa"
+  icon: wave
   services_en:
     - {title: "Weekly service", body: "Chemicals balanced, skimmed, filter checked."}
     - {title: "Equipment repair", body: "Pumps, heaters and filters fixed, not replaced by default."}
@@ -361,6 +415,10 @@
   avg_ticket_usd: 325    # estimado
   urgency: medium         # heladera rota apremia, secarropas no tanto
   rank: 12
+  theme_primary: "#c2410c"
+  theme_primary_dark: "#8f2f09"
+  theme_bg_tint: "#fff7ed"
+  icon: gear
   services_en:
     - {title: "Refrigerator repair", body: "Diagnosed same-day before the food spoils."}
     - {title: "Washer & dryer", body: "Most repairs done in a single visit."}
@@ -388,6 +446,10 @@
   avg_ticket_usd: 200    # estimado
   urgency: high           # quedarse afuera es la definición de urgente
   rank: 13
+  theme_primary: "#a16207"
+  theme_primary_dark: "#704504"
+  theme_bg_tint: "#fefce8"
+  icon: key
   services_en:
     - {title: "Lockout service", body: "Locked out of your home, car or business, fast."}
     - {title: "Rekeying", body: "New key control without replacing the whole lock."}
@@ -415,6 +477,10 @@
   avg_ticket_usd: 300    # estimado
   urgency: low
   rank: 15
+  theme_primary: "#57534e"
+  theme_primary_dark: "#3a3733"
+  theme_bg_tint: "#fafaf9"
+  icon: truck
   services_en:
     - {title: "Same-day pickup", body: "Furniture, appliances and yard debris, gone today."}
     - {title: "Estate cleanouts", body: "Full property cleared, donations sorted out."}

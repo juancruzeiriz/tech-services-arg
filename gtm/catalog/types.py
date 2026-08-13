@@ -35,6 +35,14 @@ class Trade:
     avg_ticket_usd: int
     urgency: str
     rank: int
+    # Identidad visual de la demo (gtm/factory/generate.py la vuelca en CSS custom
+    # properties). Sin fotos reales del negocio -- los Términos de Places prohíben
+    # cachearlas -- esto es lo que hace que dos oficios distintos no se lean como
+    # el mismo template. `icon` es una clave de gtm/factory/icons.py, no markup.
+    theme_primary: str
+    theme_primary_dark: str
+    theme_bg_tint: str
+    icon: str
     services_en: tuple[ServiceCopy, ...]
     services_es: tuple[ServiceCopy, ...]
     name_prefixes: tuple[str, ...]
