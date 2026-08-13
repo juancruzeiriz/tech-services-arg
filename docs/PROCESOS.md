@@ -802,6 +802,19 @@ vertical no está en catálogo.
   el cálculo de contraste exacto más la inspección del HTML servido, no en un nuevo reporte de
   Lighthouse; recomendado re-correr `@lhci/cli` contra las demos regeneradas cuando el entorno
   lo permita para confirmar `best-practices`/`accessibility` en 100.
+- (2026-08-13) **Decidido: no se agrega Google Analytics (ni ningún analytics de
+  terceros) al sitio, ni a la demo ni al entregado al cliente.** Cualquier analytics real
+  manda requests a un servidor externo en cada carga — `tests/gtm/test_generate.py::
+  test_no_hace_requests_externas` lo prohíbe explícitamente (`<script`, `src="http`,
+  `@import`, `<link rel="stylesheet"`), y esa regla no es una preferencia de estilo: es
+  lo que sostiene "carga instantánea, cero requests" como argumento de venta medible
+  (Lighthouse `performance=100`, confirmado arriba). Agregar GA lo rompería literalmente,
+  para la demo y para el sitio que compra el cliente (mismo `render()`, no hay un camino
+  de código distinto entre ambos). Lo que sí cubre parte de la necesidad sin tocar la
+  plantilla: las aperturas del link enviado por email/SMS ya se registran en
+  `demo_views` vía `cloudflare/functions/v/[token].js` (Nodo 2), sin ningún request desde
+  la página misma. Clics en el botón de llamar/WhatsApp **no se pueden medir** sin romper
+  la regla — no hay atajo gratis, es la contrapartida exacta de la promesa de velocidad.
 
 **Bitácora** —
 

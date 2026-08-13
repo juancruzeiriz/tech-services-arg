@@ -30,7 +30,10 @@ de esta ciudad". La especialización sustituye a la fama.
 | Recurrente (opcional) | **USD 150-200/mes**: hosting, bot y cambios menores |
 
 **El bot no se construye.** Se configura un proveedor existente (AI receptionist /
-missed-call-text-back, USD 25-50/mes) con la info real del negocio. El mercado ya está
+missed-call-text-back, **~USD 99/mes** — [Enzak](https://enzak.com/), investigado
+2026-08-13: mantiene el número real del cliente, sin portarlo. Corregido desde el
+USD 25-50/mes original, que no era compatible con ese requisito; ver
+`docs/SERVICIOS_FUTUROS.md` ítem 2) con la info real del negocio. El mercado ya está
 poblado por startups financiadas; construir el propio significa heredar guardias 24/7,
 que es exactamente lo que no entra en 5-10 hs semanales. El margen está en la
 instalación, no en el software.

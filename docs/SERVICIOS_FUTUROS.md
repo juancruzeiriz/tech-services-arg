@@ -20,7 +20,7 @@ trabajo que ese archivo existe para frenar. Preparar no es construir.
 | # | Servicio | Estado | Depende de |
 |---|---|---|---|
 | 1 | Envío de mails a suscriptores | **Hueco activo** — el botón junta emails sin destino | Nada |
-| 2 | Proveedor de missed-call-text-back | **Hueco activo** — está vendido en el one-pager, sin proveedor elegido | Nada |
+| 2 | Proveedor de missed-call-text-back | **Investigado (2026-08-13)** — Enzak, USD 99/mes, mantiene el número real del cliente. Falta la alta real y probar | Nada |
 | 3 | Bot de WhatsApp | Analizado — ver [`WHATSAPP_BOT.md`](WHATSAPP_BOT.md) | Sitio del cliente (prerequisito de Meta) |
 | 4 | Sistema de reservas | No empezado | Primera venta |
 | 5 | Calculadora de precio para el cliente | No empezado | Primera venta |
@@ -77,17 +77,34 @@ de entrega — pero no hay ningún proveedor elegido. Si mañana alguien paga, h
 para resolverlo con el reloj corriendo.
 
 **Decisión ya tomada:** se configura, no se construye
-([`pipeline.md:32`](../gtm/pipeline.md)), con presupuesto de 25-50 USD/mes.
+([`pipeline.md:32`](../gtm/pipeline.md)).
 
 **Plan (una sesión, 45 min):**
-1. Elegir 3 candidatos de AI receptionist / missed-call-text-back que operen en USA.
-2. Comparar: precio real, si permite reventa o cuenta por cliente, cuánto tarda el alta,
+1. ✅ Elegir 3 candidatos de AI receptionist / missed-call-text-back que operen en USA.
+2. ✅ Comparar: precio real, si permite reventa o cuenta por cliente, cuánto tarda el alta,
    si el número puede ser del cliente, y qué pasa si el cliente se va.
-3. Dar de alta uno con el número propio y probarlo de punta a punta llamando y cortando.
-4. Escribir el procedimiento de alta en la ficha del Nodo 12 de `PROCESOS.md`.
+3. ⏳ Dar de alta uno con el número propio y probarlo de punta a punta llamando y cortando
+   — pendiente: implica un compromiso de pago mensual real, no se hace sin confirmar.
+4. ⏳ Escribir el procedimiento de alta en la ficha del Nodo 12 de `PROCESOS.md`.
 
-**Salida:** un proveedor elegido y probado, con el paso a paso escrito. Sin esto, la
-promesa de "48 horas" es un riesgo, no una feature.
+**Comparación (2026-08-13):**
+
+| Proveedor | Precio | ¿Usa el número real del cliente? |
+|---|---|---|
+| [Enzak](https://enzak.com/) | USD 99/mes + USD 99 alta (primer mes USD 19) | **Sí** — se integra al sistema telefónico existente, sin número nuevo |
+| [OpenPhone/Quo](https://www.openphone.com/features/missed-call-service) | USD 15-23/usuario/mes | No directo — dan número nuevo, o exigen portar el número (cambia de operador) |
+| Rango de mercado general | USD 40-120/mes típico | Varía |
+
+**Hallazgo que corrige el presupuesto de arriba:** el requisito no negociable es que el
+bot conteste desde el **mismo número** que ya tiene el negocio (está en su cartel, en
+Google Maps, en la demo) — portar el número a otro operador para ahorrar es peor que el
+problema que resuelve. Con ese filtro, el presupuesto real es **~USD 99/mes (Enzak)**, no
+25-50. Sigue siendo absorbible: el recurrente que se le cobra al cliente
+(`pipeline.md`, USD 150-200/mes) tiene margen de sobra. Corregido el número en
+`pipeline.md:32`.
+
+**Salida:** un proveedor elegido y probado, con el paso a paso escrito. Falta el paso 3
+(alta real, requiere decidir pagar la suscripción) antes de poder cerrar este ítem.
 
 ---
 
