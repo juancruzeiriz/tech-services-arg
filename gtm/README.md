@@ -71,6 +71,16 @@ discover  →  score  →  generate  →  deploy  →  outreach  →  contact
 
 Cada etapa es idempotente y se identifica por `place_id`. Re-correrla no duplica nada.
 
+**Ojo con correr dos cohortes (dos pares oficio/metro) en la misma máquina.**
+`demos.json`, `contacts.json` y `queue.md` tienen ruta fija (`gtm/build/data/demos.json`,
+`gtm/build/queue.md`) — ninguno de los tres tiene un flag de salida propio en `contact.py`,
+y `generate.py`/`contact.py` los sobreescriben sin fusionar. Generar o armar la cola de un
+segundo metro (ej. Miami después de Albuquerque) pisa el manifiesto/cola del primero sin
+aviso. Workaround usado el 2026-08-13: pasar `--demos` con un nombre de archivo propio para
+el segundo lote (ej. `demos-miami.json`), capturar `contact --queue` a un archivo aparte
+(ej. `queue-miami.md`) y volver a correr `contact` para el primer lote al final, para que
+`queue.md` quede con el que se quiere ver por defecto.
+
 ## Uso
 
 ```bash
