@@ -560,6 +560,61 @@ class TestDeploy:
 
         assert result[0].language is Language.ES
 
+    def test_copia_las_functions_desde_sus_fuentes_versionadas(self, tmp_path, monkeypatch):
+        """Regresión: `gtm/public/functions/` no está en git (gtm/public/ entero
+        está fuera de git) y hasta esta sesión nada lo armaba -- existía solo porque
+        se había copiado a mano una vez. Un clon nuevo del repo perdía el unsubscribe
+        y el tracking en silencio. `deploy()` ahora los junta desde las fuentes que sí
+        están versionadas en cada corrida."""
+        fake_v = tmp_path / "src" / "v_token.js"
+        fake_v.parent.mkdir(parents=True)
+        fake_v.write_text("export function onRequestGet() {}", encoding="utf-8")
+        fake_unsub = tmp_path / "src" / "unsubscribe.js"
+        fake_unsub.write_text("export function onRequestPost() {}", encoding="utf-8")
+        monkeypatch.setattr(
+            deploy_mod,
+            "_FUNCTIONS_SOURCES",
+            ((fake_v, "v/[token].js"), (fake_unsub, "api/unsubscribe.js")),
+        )
+
+        source = tmp_path / "demo" / "index.html"
+        source.parent.mkdir(parents=True)
+        source.write_text("<html></html>", encoding="utf-8")
+        public = tmp_path / "public"
+
+        deploy_mod.deploy(
+            [Demo(place_id="p", slug="s-abc123", html_path=str(source))],
+            "https://demos.example.com",
+            public_dir=public,
+        )
+
+        assert (public / "functions" / "v" / "[token].js").read_text(encoding="utf-8") == (
+            "export function onRequestGet() {}"
+        )
+        assert (public / "functions" / "api" / "unsubscribe.js").exists()
+
+    def test_fuente_de_function_faltante_no_rompe_el_deploy(self, tmp_path, monkeypatch, caplog):
+        """Si falta una fuente (repo movido, archivo borrado), el deploy de las
+        demos tiene que seguir -- perder el tracking es peor, pero perder TODA la
+        publicación por eso sería peor todavía."""
+        monkeypatch.setattr(
+            deploy_mod, "_FUNCTIONS_SOURCES", ((tmp_path / "no-existe.js", "v/[token].js"),)
+        )
+
+        source = tmp_path / "demo" / "index.html"
+        source.parent.mkdir(parents=True)
+        source.write_text("<html></html>", encoding="utf-8")
+        public = tmp_path / "public"
+
+        deploy_mod.deploy(
+            [Demo(place_id="p", slug="s-abc123", html_path=str(source))],
+            "https://demos.example.com",
+            public_dir=public,
+        )
+
+        assert (public / "s-abc123" / "index.html").exists()
+        assert not (public / "functions").exists() or not list((public / "functions").rglob("*"))
+
 
 class TestNet:
     def test_backoff_es_acotado(self):

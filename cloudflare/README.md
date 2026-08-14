@@ -24,7 +24,15 @@ ya no tiene ningún workflow de deploy (GitHub Pages se apagó).
 eso al desplegar con Cloudflare Pages: la Function de tracking de aperturas.
 
 ```bash
-wrangler pages deploy gtm/public
+# El primer comando no es opcional: Wrangler dejó de compilar functions/ solo
+# dentro de `pages deploy` en versiones recientes. Sin este paso, la Function de
+# tracking (y la de unsubscribe, ver site/functions/README.md) quedan rotas en
+# producción sin ningún error -- toda ruta cae a la página estática de índice.
+# gtm/factory/deploy.py::_copy_functions arma functions/ desde acá y desde
+# site/functions/api/unsubscribe.js en cada corrida de `deploy`.
+wrangler pages functions build gtm/public/functions \
+    --outdir=gtm/public/_worker.js --build-output-directory=gtm/public
+wrangler pages deploy gtm/public --project-name=<nombre-del-proyecto>
 ```
 
 `functions/v/[token].js` resuelve un link de redirección (`/v/{token}`) contra

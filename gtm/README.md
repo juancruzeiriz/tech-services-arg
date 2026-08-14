@@ -89,7 +89,13 @@ python -m gtm.factory.ledger record --place-id ChIJ... --event replied
 python -m gtm.factory.ledger suppress --place-id ChIJ... --reason opted_out
 python -m gtm.factory.ledger report --spend 150
 
-wrangler pages deploy gtm/public           # publicar
+# Publicar. El primer comando NO es opcional -- ver el docstring de deploy.py:
+# desde que Wrangler dejó de compilar functions/ solo dentro de `pages deploy`,
+# sin este paso el unsubscribe y el tracking de aperturas quedan rotos en
+# silencio en producción (sin error, sin log).
+wrangler pages functions build gtm/public/functions \
+    --outdir=gtm/public/_worker.js --build-output-directory=gtm/public
+wrangler pages deploy gtm/public --project-name=<nombre-del-proyecto>
 ```
 
 Sin credenciales de Places, se puede correr todo desde la etapa 3 con el fixture:
@@ -141,8 +147,13 @@ En `.env.personal` (raíz del repo). Ninguna de estas variables va al código.
 | `GTM_FROM_EMAIL` | outreach | sí |
 | `GTM_PHYSICAL_ADDRESS` | outreach | sí — CAN-SPAM |
 | `GTM_UNSUBSCRIBE_URL` | outreach | sí — CAN-SPAM |
+| `GTM_AUTHOR_URL` | generate | no — sin ella, cae a `GTM_UNSUBSCRIBE_URL` (el link "Who made this" de la demo terminaba en el formulario de baja hasta 2026-08-13; poné acá tu presencia real: portfolio, LinkedIn) |
 | `GTM_DEMO_BASE_URL` | deploy, UI | sí |
-| `SUPABASE_DB_URL` | UI, store, backfill | no — sin ella, degrada al outbox local |
+| `GTM_SMTP_HOST` / `GTM_SMTP_PORT` / `GTM_SMTP_USER` / `GTM_SMTP_PASSWORD` | send | sí, para mandar email real — sin esto `gtm.send` no puede autenticarse |
+| `GTM_BOUNCE_ADDRESS` | send | sí, para mandar email real — casilla que recibe los rebotes (VERP + IMAP) |
+| `GTM_IMAP_HOST` / `GTM_IMAP_PORT` | send | sí, para mandar email real — lectura de rebotes |
+| `GTM_DAILY_SEND_CAP` | send | no — default conservador si no se define, ver `gtm/send/outbox.py` |
+| `SUPABASE_DB_URL` | UI, store, backfill, send | no — sin ella, degrada al outbox local; **el worker de envío real (`gtm.send`) sí la necesita**, no tiene fallback local |
 
 ## Reglas que el código hace cumplir
 

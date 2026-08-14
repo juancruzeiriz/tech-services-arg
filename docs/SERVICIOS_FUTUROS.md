@@ -53,8 +53,11 @@ mandar**. El problema real no es técnico.
 2. Double opt-in real. La columna `confirmed_at` ya existe en
    [`0005_subscribers.sql`](../gtm/store/schema/0005_subscribers.sql) esperando esto.
    Sin confirmación, un alta falsa con el mail de otro te ensucia la reputación de envío.
-3. Baja funcionando antes del primer envío. `GTM_UNSUBSCRIBE_URL` ya está en el entorno
-   pero apunta a `example.com` — hoy no existe.
+3. Baja funcionando antes del primer envío. **Resuelto (2026-08-13) para el pipeline de
+   prospección**: `GTM_UNSUBSCRIBE_URL` ya no apunta a `example.com`, `/api/unsubscribe`
+   está en vivo y probado de punta a punta (inserta en la tabla `unsubscribes` real).
+   Sigue siendo un mecanismo genérico por email, así que sirve igual para esta lista de
+   suscriptores — no hace falta nada nuevo acá, solo conectar el worker (paso 4).
 4. Recién ahí conectar `gtm/send/worker.py` leyendo de `subscribers`.
 
 **Costo:** cero en infraestructura (ya está todo). El costo es de decisión y de tiempo.

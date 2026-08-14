@@ -7,11 +7,24 @@ veces; un link que abre desde el teléfono, en dos segundos, no lo es.
 Esta etapa arma el directorio publicable (`gtm/public/`) y lo deja listo para subir al
 host estático:
 
+    wrangler pages functions build gtm/public/functions \\
+        --outdir=gtm/public/_worker.js --build-output-directory=gtm/public
     wrangler pages deploy gtm/public
+
+**El primer comando no es opcional.** Versiones recientes de Wrangler dejaron de
+compilar `functions/` automáticamente dentro de `pages deploy` — sin ese paso, el
+unsubscribe y el tracking de aperturas quedan silenciosamente rotos en producción
+(devuelven la página estática de índice para cualquier ruta, sin error, sin log).
+Encontrado el 2026-08-13 recién al probar en vivo, no por ningún test.
 
 `gtm/public/` está fuera de git a propósito. Contiene datos de contacto de negocios
 reales que no pidieron estar acá; meterlos en el historial del repo los vuelve
-permanentes y públicos. El artefacto se publica, no se versiona.
+permanentes y públicos. El artefacto se publica, no se versiona — **incluida
+`gtm/public/functions/`**, que por eso `deploy()` la arma copiándola de las fuentes
+que sí están versionadas (`cloudflare/functions/`, `site/functions/api/unsubscribe.js`)
+en cada corrida, en vez de asumir que ya está ahí. Sin este paso, un clon nuevo del
+repo (o simplemente borrar `gtm/public/`) pierde el unsubscribe y el tracking sin
+ningún aviso — pasó una vez en esta máquina porque se habían copiado a mano.
 
 Uso:
     python -m gtm.factory.deploy --dry-run
@@ -46,6 +59,40 @@ _INDEX_TEMPLATE = """<!DOCTYPE html>
 def demo_url(slug: str, base_url: str) -> str:
     """URL pública y estable de una demo."""
     return f"{base_url.rstrip('/')}/{slug}/"
+
+
+# Fuentes versionadas de las Cloudflare Pages Functions -- viven fuera de gtm/ por
+# motivos históricos (cloudflare/ nació para el tracking, site/ es del portfolio) y
+# se juntan acá porque Cloudflare exige que `functions/` esté en la raíz de lo que
+# se publica. `gtm/public/` nunca las tiene por su cuenta: está fuera de git.
+_FUNCTIONS_SOURCES: tuple[tuple[Path, str], ...] = (
+    (config.ROOT / "cloudflare" / "functions" / "v" / "[token].js", "v/[token].js"),
+    (config.ROOT / "site" / "functions" / "api" / "unsubscribe.js", "api/unsubscribe.js"),
+)
+
+
+def _copy_functions(target_root: Path) -> None:
+    """Junta las Functions versionadas en `<public>/functions/`, listo para que
+    `wrangler pages functions build` las compile. Ver el docstring del módulo:
+    sin este paso el unsubscribe y el tracking quedan rotos en silencio."""
+    missing = [rel for src, rel in _FUNCTIONS_SOURCES if not src.exists()]
+    if missing:
+        _logger.warning(
+            "faltan fuentes de Functions: unsubscribe/tracking van a quedar rotos",
+            extra={"event": "functions_source_missing", "missing": missing},
+        )
+
+    for source, relative in _FUNCTIONS_SOURCES:
+        if not source.exists():
+            continue
+        destination = target_root / "functions" / relative
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(source, destination)
+
+    _logger.info(
+        "functions copiadas",
+        extra={"event": "functions_copied", "target": str(target_root / "functions")},
+    )
 
 
 def _copy_assets(target_root: Path) -> None:
@@ -123,6 +170,7 @@ def deploy(
     if not dry_run:
         target_root.mkdir(parents=True, exist_ok=True)
         _copy_assets(target_root)
+        _copy_functions(target_root)
         items = "".join(
             f'<li><a href="./{d.slug}/">{d.slug}</a></li>' for d in published
         )
